@@ -137,3 +137,17 @@ Alternatives: keep the fences where they are and tighten `_worktree_copy` to rej
 Impact: `wrap stage` with `BACKLOG_STAGE_STAGING` pointing at an absent file now exits 1 instead of creating it. `wrap knowledge-root` falls back to `<repo>/.claude/memory` when `projects` is a symlink. Every other path keeps its behavior. Test counts: `tests/test-wrap.sh` 192, `tests/test-staging-stage.sh` 24.
 
 Open questions: `_worktree_copy` still returns a path on a `[ -f ]` gate that follows symlinks. The callers re-fence, and the helper carries a comment saying they must, but a future third caller can forget. Whether the helper should refuse a symlink itself is a follow-up call.
+
+## 2026-09-07 17:33 review fix batch C: resolve before fence
+
+Context: batch B left the post-copy re-fence running on an UNRESOLVED string. A symlink at a PARENT directory of the worktree copy (`wt/_meta` pointing at a directory outside HOME) passed `_refuse_symlink`, which inspects the leaf only, and passed `_home_fence` and the repo-prefix rule, which both matched the string's prefix. Reproduced: `wrap log` and `wrap stage` each wrote outside HOME and exited 0. Three smaller gaps: `_home_fence` refused a path equal to `$HOME` while `_under_home` accepted it, so `config seams` called a root `filled` that `wrap knowledge-root` rejected; `_skill_dirs` hand-rolled the prefix case `_under_home` owns; the seam report's `file` check followed a leaf symlink.
+
+Decision: resolve the copied path with `_realpath_f` immediately after `_worktree_copy` in both `cmd_log` and `cmd_stage`, then fence the resolved value against the realpath'd `repo_top` and `cur_top`. Make `_home_fence` resolve its own argument and accept `$HOME` itself. Migrate `_skill_dirs` to `_under_home`. Add `[ ! -L ]` to the seam `file` check.
+
+Why: a leaf-only refusal plus a prefix match on a string is not a fence. The resolution has to happen on the exact value the write uses, and putting it inside `_home_fence` means a future caller cannot forget it. HOME-equality parity closes the case where the advisor and the consumer disagree on the same path.
+
+Alternatives: refuse a symlink at every component of the copied path (more code, same outcome as one realpath); make `_worktree_copy` itself return only resolved paths (the helper would then own a policy its callers vary on, the open question batch B left); document that callers must resolve first (batch B already tried that shape and this bug is what it cost).
+
+Impact: `wrap log` and `wrap stage` refuse a worktree copy reached through any symlinked parent, exit 1, nothing written. `wrap knowledge-root` accepts `knowledge.root` equal to `$HOME`. A symlinked `wrap.activity_log` under HOME reads `unresolved` in `config seams` instead of `filled`. Test counts: `tests/test-wrap.sh` 201, `tests/test-config-seams.sh` 37.
+
+Open questions: `_realpath_f` on `/` returns `//`, which every fence refuses, so no caller is wrong today, but the degenerate return is not obviously correct for a future caller.

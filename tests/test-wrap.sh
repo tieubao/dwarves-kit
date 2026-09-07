@@ -577,6 +577,17 @@ chk_has "knowledge-root: symlinked projects falls back on stdout" "$out" "$KRREP
 chk "knowledge-root: creates nothing under the symlink target" \
   "$([ ! -e "$KRESC/kr-repo" ]; echo $?)"
 
+# `config seams` calls a root equal to $HOME `filled`, so the consumer must accept it too:
+# an advisor that disagrees with the thing it advises on is the bug this closes.
+KRHOME_REAL="$(cd "$KRHOME" && pwd -P)"
+set_kr_key "$KRHOME"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: a root equal to HOME itself exits 0" "$rc"
+chk_has "knowledge-root: HOME-as-root prints <HOME>/projects/<basename>" \
+  "$out" "$KRHOME_REAL/projects/kr-repo"
+chk "knowledge-root: HOME-as-root creates the directory" \
+  "$([ -d "$KRHOME_REAL/projects/kr-repo" ]; echo $?)"
+
 out="$(kr 2>&1)"; rc=$?
 chk "knowledge-root: missing repo argument exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 
@@ -707,6 +718,43 @@ chk "log: a symlinked worktree copy refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?
 chk_has "log: names the symlink on stderr" "$out" "is a symlink"
 chk "log: the canary outside HOME is byte-identical" \
   "$([ "$LOGCANARY_BEFORE" = "$(shasum -a 256 "$LOGCANARY" | cut -d' ' -f1)" ]; echo $?)"
+
+# A symlink at a PARENT directory of the worktree copy escapes a leaf-only refusal and a
+# prefix fence run on the unresolved string: `wt/_meta` pointing at a directory outside HOME
+# still leaves `wt/_meta/<file>` looking like a plain file under the worktree. Both verbs must
+# resolve the copied path before they fence it.
+PDHOME="$TMPD/pd-home"; mkdir -p "$PDHOME"
+PDOUT="$TMPD/pd-outside/_meta"; mkdir -p "$PDOUT"
+printf 'staging canary untouched\n' > "$PDOUT/backlog-staging.md"
+printf 'log canary untouched\n' > "$PDOUT/LOG.md"
+R9MAIN="$PDHOME/pd-main"
+git init -q "$R9MAIN" && git -C "$R9MAIN" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+mkdir -p "$R9MAIN/_meta"
+printf '# Backlog staging\n\n' > "$R9MAIN/_meta/backlog-staging.md"
+printf 'main copy\n' > "$R9MAIN/_meta/LOG.md"
+git -C "$R9MAIN" add _meta
+git -C "$R9MAIN" -c user.name=t -c user.email=t@t commit -q -m meta
+git -C "$R9MAIN" worktree add -q -b pd-side "$PDHOME/pd-wt"
+rm -rf "$PDHOME/pd-wt/_meta"
+ln -s "$TMPD/pd-outside/_meta" "$PDHOME/pd-wt/_meta"
+git -C "$PDHOME/pd-wt" add _meta 2>/dev/null
+git -C "$PDHOME/pd-wt" -c user.name=t -c user.email=t@t commit -q -m symlinked-meta 2>/dev/null
+PD_STAGE_BEFORE="$(shasum -a 256 "$PDOUT/backlog-staging.md" | cut -d' ' -f1)"
+PD_LOG_BEFORE="$(shasum -a 256 "$PDOUT/LOG.md" | cut -d' ' -f1)"
+
+out="$(cd "$PDHOME/pd-wt" && HOME="$PDHOME" "$WRAP" stage --repo "$R9MAIN" "Parent Symlink Row" "i" "h" 2>&1)"; rc=$?
+chk "stage: a parent-dir symlink on the worktree copy refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "stage: names a reason on stderr" "$out" "wrap stage:"
+chk "stage: the staging canary outside HOME is byte-identical" \
+  "$([ "$PD_STAGE_BEFORE" = "$(shasum -a 256 "$PDOUT/backlog-staging.md" | cut -d' ' -f1)" ]; echo $?)"
+
+PDKIT="$TMPD/pd-kitroot"; mkdir -p "$PDKIT"
+printf '[wrap]\nactivity_log = "%s"\n' "$R9MAIN/_meta/LOG.md" > "$PDKIT/kit.toml"
+out="$(cd "$PDHOME/pd-wt" && HOME="$PDHOME" KIT_CONFIG_ROOT="$PDKIT" "$WRAP" log "wrap: parent symlink" 2>&1)"; rc=$?
+chk "log: a parent-dir symlink on the worktree copy refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "log: names a reason on stderr" "$out" "wrap log:"
+chk "log: the log canary outside HOME is byte-identical" \
+  "$([ "$PD_LOG_BEFORE" = "$(shasum -a 256 "$PDOUT/LOG.md" | cut -d' ' -f1)" ]; echo $?)"
 
 # ===========================================================================
 echo "=== help and usage ==="

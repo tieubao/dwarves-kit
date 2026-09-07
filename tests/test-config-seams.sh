@@ -267,6 +267,27 @@ OUT17B="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_
 chk_has "the same dir INSIDE HOME set as knowledge.root -> filled" "$OUT17B" "filled"
 write_root_toml ""
 
+# --------------------------------------------------------------------------- case 19: file target that is a symlink
+
+# `[ -f ]` follows a leaf symlink, so a symlink under HOME whose target is a regular file used
+# to read `filled` while `wrap log` refuses it outright (a symlink at a write target redirects
+# the append). The advisor must agree with the consumer.
+: > "$OUTSIDE_DIR/real-activity.md"
+ln -s "$OUTSIDE_DIR/real-activity.md" "$HOME_DIR/linked-activity.md"
+write_root_toml "[wrap]
+activity_log = \"$HOME_DIR/linked-activity.md\""
+OUT19="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" bash "$CONFIG_BIN" seams | grep '^wrap.activity_log')"
+chk_has "a file target that is a symlink under HOME -> unresolved" "$OUT19" "unresolved"
+
+: > "$HOME_DIR/real-activity.md"
+write_root_toml "[wrap]
+activity_log = \"$HOME_DIR/real-activity.md\""
+OUT19B="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" bash "$CONFIG_BIN" seams | grep '^wrap.activity_log')"
+chk_has "a plain regular file under HOME -> filled" "$OUT19B" "filled"
+write_root_toml ""
+
 # --------------------------------------------------------------------------- case 18: forged env-var cell never executes
 
 # ATTACK SHAPE: bash evaluates an array subscript during indirect expansion, so an env-var

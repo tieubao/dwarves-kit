@@ -179,14 +179,13 @@ _seam_cells() {
 # ($HOME/.claude/skills plus $CLAUDE_PLUGIN_ROOT/skills when set) is the kit's own and needs
 # no fence. set -u safe: CLAUDE_PLUGIN_ROOT and KIT_SKILL_DIRS are read with ${VAR:-}.
 _skill_dirs() {
-  local list="${KIT_SKILL_DIRS:-}" home_real d rp
+  local list="${KIT_SKILL_DIRS:-}" d rp
   if [ -n "$list" ]; then
-    home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" || return 0
     local IFS=':'
     for d in $list; do
       [ -n "$d" ] || continue
       rp="$(cd "$d" 2>/dev/null && pwd -P)" || continue
-      case "$rp" in "$home_real"|"$home_real"/*) printf '%s\n' "$rp" ;; esac
+      _under_home "$rp" && printf '%s\n' "$rp"
     done
   else
     printf '%s\n' "${HOME}/.claude/skills"
@@ -223,7 +222,8 @@ _seam_target_resolves() {
     file)
       base="$(basename "$val")"
       d="$(cd "$(dirname "$val")" 2>/dev/null && pwd -P)" || return 1
-      [ -f "$d/$base" ] || return 1
+      # `[ -f ]` follows a leaf symlink; `wrap log` refuses one outright, so the advisor does too.
+      [ -f "$d/$base" ] && [ ! -L "$d/$base" ] || return 1
       _under_home "$d/$base"
       ;;
     dir)

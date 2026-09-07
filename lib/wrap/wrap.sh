@@ -509,15 +509,19 @@ _realpath_f() {
   printf '%s/%s\n' "${dir%/}" "$base"
 }
 
-# _home_fence <path> [<label>] -- 0 when <path> sits under the physical $HOME. <path> must
-# already be resolved by the caller. Prints the reason and returns 1 otherwise.
+# _home_fence <path> [<label>] -- 0 when <path> is the physical $HOME or sits under it.
+# The fence resolves its own argument: a caller that forgets to resolve first would otherwise
+# fence a string whose parent directory is a symlink pointing anywhere on disk. $HOME itself
+# is accepted so this fence agrees with `_under_home`, the parity `config seams` reports on.
+# Prints the reason and returns 1 otherwise.
 _home_fence() {
-  local p="$1" label="${2:-wrap}" home_real
+  local p="$1" label="${2:-wrap}" home_real real
   home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" \
     || { echo "${label}: cannot resolve HOME" >&2; return 1; }
-  case "$p" in
-    "$home_real"/*) return 0 ;;
-    *) echo "${label}: '${p}' is outside HOME (${home_real})" >&2; return 1 ;;
+  real="$(_realpath_f "$p")" || { echo "${label}: cannot resolve '${p}'" >&2; return 1; }
+  case "$real" in
+    "$home_real"|"$home_real"/*) return 0 ;;
+    *) echo "${label}: '${real}' is outside HOME (${home_real})" >&2; return 1 ;;
   esac
 }
 
@@ -603,9 +607,13 @@ cmd_log() {
   [ -f "$resolved" ] || { echo "wrap log: '${resolved}' is not an existing regular file" >&2; return 1; }
 
   # The worktree copy is a different path, gated only by `[ -f ]`, so it gets the same
-  # refusal and the same fence before anything is written to it.
+  # refusal and the same fence before anything is written to it. The refusal covers the leaf;
+  # resolving the whole path covers a symlink at any parent directory, which would otherwise
+  # carry the write outside HOME while the string still reads as being under the worktree.
   resolved="$(_worktree_copy "$resolved")"
   _refuse_symlink "$resolved" "wrap log" || return 1
+  resolved="$(_realpath_f "$resolved")" \
+    || { echo "wrap log: cannot resolve the worktree copy" >&2; return 1; }
   _home_fence "$resolved" "wrap log" || return 1
   [ -f "$resolved" ] || { echo "wrap log: '${resolved}' is not an existing regular file" >&2; return 1; }
 
@@ -787,17 +795,23 @@ cmd_stage() {
   fi
 
   # The worktree copy is a path none of the checks above saw, and `_worktree_copy` gates it
-  # only with `[ -f ]`, which follows a symlink. Re-run the refusal and the fence on it.
+  # only with `[ -f ]`, which follows a symlink. Re-run the refusal and the fence on it. The
+  # refusal covers the leaf; resolving the whole path covers a symlink at any parent directory
+  # (`<worktree>/_meta` pointing off disk), which the prefix rules below would otherwise pass
+  # because the unresolved string still starts with the worktree toplevel.
   local pre_copy="$resolved"
   resolved="$(_worktree_copy "$resolved")"
   if [ "$resolved" != "$pre_copy" ]; then
     _refuse_symlink "$resolved" "wrap stage" || return 1
+    resolved="$(_realpath_f "$resolved")" \
+      || { echo "wrap stage: cannot resolve the worktree copy" >&2; return 1; }
     [ -f "$resolved" ] \
       || { echo "wrap stage: '${resolved}' is not a regular file" >&2; return 1; }
     if [ -n "${BACKLOG_STAGE_STAGING:-}" ]; then
       _home_fence "$resolved" "wrap stage" || return 1
     else
       # The copy lives in the CURRENT worktree, which is a different toplevel of the same repo.
+      # Both toplevels are compared as realpaths, matching the resolved copy.
       local cur_top
       cur_top="$(git rev-parse --show-toplevel 2>/dev/null)" \
         && cur_top="$(cd "$cur_top" 2>/dev/null && pwd -P)"
