@@ -414,6 +414,18 @@ def test_intake_filter_modes():
     assert any("intake filtered" in n for n in p2.notes)
 
 
+def test_intake_skip_re_keeps_threaded_tickets_on_the_app():
+    # A support ticket carries a `thread:` line and closes through its own
+    # desk; adopting it would archive it on the next scope-exit.
+    items = [item("r11", "Support: payment | someone",
+                  body="category: payment\nthread: 1546399662305443940\nfiled-by: support-desk"),
+             item("r12", "Investigate CRIT", body="rule_id: x\nno thread here")]
+    p = plan_sync(parse_board(BOARD), items, {},
+                  filt={"intake": "all", "intake_skip_re": r"^thread: "})
+    assert [a[0] for a in p.board_add] == ["r12"]
+    assert any("intake filtered" in n and "Support:" in n for n in p.notes)
+
+
 def test_inbox_quarantine_tag_on_intake_rows():
     plan = Plan(board_add=[("r9", "buy milk", "", "queued")])
     new_text, assigned = apply_board(BOARD, plan)
