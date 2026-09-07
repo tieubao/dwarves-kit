@@ -222,6 +222,9 @@ jobs:
       - name: Run config-registry drift + bin/config tests (SPEC-198, harness-loop sub-goal 08)
         run: bash tests/test-config-registry.sh
 
+      - name: Run config seams report tests (SPEC-249 TASK-002)
+        run: bash tests/test-config-seams.sh
+
       # Quoted: an unquoted YAML scalar containing ": " parses as a mapping and breaks the
       # whole workflow file (which is how this step shipped red on its first push).
       - name: "Run the kit contract (SPEC-200: naming, wiring, docs, currency, root, portability)"

@@ -46,3 +46,21 @@ Why: DEC-007 names this module as the one place that owns `norm`/`existing_keys`
 Alternatives: none considered; the interface paragraph is fully prescriptive.
 Impact: `_main`'s usage line and the module's top docstring now name `stage` alongside `parse`/`render`; the "write side" comment above `render_block` now credits `stage` as a third caller alongside drain and propose. New `tests/test-staging-stage.sh` registered in `.github/workflows/test.yml` after the `test-wrap.sh` step. Directory creation for the staging file's parent is deliberately NOT this verb's job (TASK-004's `wrap stage` owns path resolution + fences before calling this writer).
 Open questions: none.
+
+## 2026-09-07 17:05 TASK-002: malformed-row cell count uses 4, not 5
+
+Context: the Interfaces paragraph says a malformed seam row has "fewer than three cells"; nothing pins the arithmetic. The first pass counted `${#f[@]}` after `IFS='|' read -ra f <<< "$row"` and used a `-lt 5` threshold, reasoning a well-formed 4-pipe row splits into 5 fields the way `awk` or parameter-expansion splitting would.
+Decision: threshold is `-lt 4`. Bash's `read -a` under a non-whitespace `IFS` keeps a LEADING empty field from the opening pipe but drops the TRAILING one from the closing pipe, so `"| Key | Kind | Filled by |"` (3 data cells) splits into exactly 4 array elements, and `"| Key | Kind |"` (2 cells) splits into 3.
+Why: verified directly (`IFS='|' read -ra f <<< "$row"; echo "${#f[@]}"`) against both shapes; the `-lt 5` version flagged every well-formed seam row, including the five live ones, as malformed.
+Alternatives: switch to `awk`-based field counting (trailing empty preserved) to avoid the asymmetry. Rejected: `_row_get` (existing, unmodified) already relies on the same `read -a` behavior for the six-column registry rows, so a seam-row helper using a different split mechanism would be two inconsistent conventions in one file.
+Impact: `_seam_cells` and its `-lt 4` check in `lib/config/config.sh`; `tests/test-config-seams.sh`'s malformed-row fixture row is a real 2-column `"| test.malformed_seam | dir |"` line, verified to trip it.
+Open questions: none.
+
+## 2026-09-07 17:05 TASK-002: unregistered seam key treated as malformed
+
+Context: the spec names two failure shapes for `unresolved`'s marker VALUE: a malformed row (`(malformed row)`) and an unknown kind (`(unknown kind)`). It does not say what to print when a seam row has a valid `Key`/`Kind` shape but the `Key` matches no registry row at all (`_find_row` fails) -- a case the live registry can never hit (AC6 in `tests/test-config-registry.sh` lints it) but a fixture registry could.
+Decision: that case also reports `VALUE=(malformed row)`, `STATUS=unresolved`, rather than aborting or printing a third marker.
+Why: `_seam_resolve` never calls `_resolve` (the invariant), and a key with no registry row has no default/module to join against -- structurally the same problem as a row with no `Filled by` cell, so reusing the existing marker avoids inventing a fourth VALUE string the Interfaces paragraph never names.
+Alternatives: a distinct `(unregistered key)` marker. Rejected: unnecessary given the case cannot occur against the shipped registry, and the AC6 lint is the real guardrail.
+Impact: none on the live registry's five rows (all pass `_find_row`). Defensive only.
+Open questions: none.

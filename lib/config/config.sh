@@ -55,6 +55,22 @@ _row_get() {
   _trim "${f[$idx]:-}"
 }
 
+# _seam_rows -- print every data row (raw, pipe-delimited) from the "## Seams" join table
+# (SPEC-249 TASK-002). This table sits AFTER "## Allowlist", outside _registry_rows' window,
+# so it never doubles as a fake registry row in `config list`. Three columns: Key, Kind,
+# Filled by.
+_seam_rows() {
+  [ -f "$REGISTRY_FILE" ] || { echo "config: registry file missing: $REGISTRY_FILE" >&2; return 1; }
+  awk '
+    /^## Seams/ {inseam=1; next}
+    inseam && /^\|/ {
+      if ($0 ~ /^\| Key \|/) next
+      if ($0 ~ /^\|---/) next
+      print
+    }
+  ' "$REGISTRY_FILE"
+}
+
 # _find_row <key> -- first registry row whose env-var column OR kit.toml-key column exactly
 # matches <key>. Registry order is the tie-break when a kit.toml key has more than one env var
 # (ledger.location: KIT_LEDGER_DIR is listed before DWARVES_KIT_LOG_DIR before the toml-only
@@ -121,6 +137,112 @@ _resolve() {
   elif [ "$PROJ_SET" = 1 ]; then EFFECTIVE="$PROJ_VAL"; PROVENANCE="project .kit.toml"
   elif [ "$ROOT_SET" = 1 ]; then EFFECTIVE="$ROOT_VAL"; PROVENANCE="kit-root kit.toml"
   else EFFECTIVE="$defaultval"; PROVENANCE="default"
+  fi
+}
+
+# _seam_cells <row> -- how many pipe-delimited fields the raw row splits into. `read -a`
+# preserves a LEADING empty field from the opening pipe but drops the trailing one, so a
+# well-formed "| Key | Kind | Filled by |" row (3 data cells) splits into 4 fields; anything
+# short of that is missing at least one of the three columns.
+_seam_cells() {
+  local row="$1" f
+  IFS='|' read -ra f <<< "$row"
+  printf '%s' "${#f[@]}"
+}
+
+# _skill_dirs -- the ordered list of skill dirs a "skill" kind seam is checked against
+# (SPEC-249 TASK-002). KIT_SKILL_DIRS entries are kept only when their realpath sits under
+# $HOME's realpath (a repo .envrc can set this env var, so it is untrusted); the default list
+# ($HOME/.claude/skills plus $CLAUDE_PLUGIN_ROOT/skills when set) is the kit's own and needs
+# no fence. set -u safe: CLAUDE_PLUGIN_ROOT and KIT_SKILL_DIRS are read with ${VAR:-}.
+_skill_dirs() {
+  local list="${KIT_SKILL_DIRS:-}" home_real d rp
+  if [ -n "$list" ]; then
+    home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" || return 0
+    local IFS=':'
+    for d in $list; do
+      [ -n "$d" ] || continue
+      rp="$(cd "$d" 2>/dev/null && pwd -P)" || continue
+      case "$rp" in "$home_real"|"$home_real"/*) printf '%s\n' "$rp" ;; esac
+    done
+  else
+    printf '%s\n' "${HOME}/.claude/skills"
+    [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && printf '%s\n' "${CLAUDE_PLUGIN_ROOT}/skills"
+  fi
+}
+
+# _seam_target_resolves <kind> <value> -- does the seam's resolved value name a real target?
+# Never executes anything; existence checks only (per the Interfaces contract).
+_seam_target_resolves() {
+  local kind="$1" val="$2" d
+  case "$kind" in
+    skill)
+      while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        [ -f "$d/$val/SKILL.md" ] && return 0
+      done < <(_skill_dirs)
+      return 1
+      ;;
+    file) [ -f "$val" ] ;;
+    dir)  [ -d "$val" ] ;;
+    *) return 1 ;;
+  esac
+}
+
+# _seam_resolve <row> -- sets SEAM_KEY / SEAM_KIND / SEAM_FILLEDBY / SEAM_VALUE / SEAM_STATUS
+# (globals, mirrors _resolve's own style). Joins the seam's Key to its registry row with
+# _find_row for the default and module -- NEVER _resolve (that reads the project .kit.toml,
+# which a seam target must never do; DEC-004/DEC-010). A section.key resolves through
+# kit_config_get_root; an env-only key reads ${VAR:-}. The verb never executes a target.
+_seam_resolve() {
+  local srow="$1" key kind filledby row envvar tomlkey defaultval raw
+
+  if [ "$(_seam_cells "$srow")" -lt 4 ]; then
+    SEAM_KEY="$(_row_get "$srow" 1)"; SEAM_KIND="$(_row_get "$srow" 2)"; SEAM_FILLEDBY="$(_row_get "$srow" 3)"
+    [ -n "$SEAM_KEY" ] || SEAM_KEY="(malformed row)"
+    SEAM_VALUE="(malformed row)"; SEAM_STATUS="unresolved"
+    return 0
+  fi
+
+  key="$(_row_get "$srow" 1)"; kind="$(_row_get "$srow" 2)"; filledby="$(_row_get "$srow" 3)"
+  SEAM_KEY="$key"; SEAM_KIND="$kind"; SEAM_FILLEDBY="$filledby"
+
+  case "$kind" in
+    skill|file|dir|binary) ;;
+    *) SEAM_VALUE="(unknown kind)"; SEAM_STATUS="unresolved"; return 0 ;;
+  esac
+
+  row="$(_find_row "$key")" || { SEAM_VALUE="(malformed row)"; SEAM_STATUS="unresolved"; return 0; }
+  envvar="$(_row_get "$row" 1)"; tomlkey="$(_row_get "$row" 2)"
+  defaultval="$(_default_value "$(_row_get "$row" 3)")"
+
+  if [ "$tomlkey" != "env-only" ] && [ "$tomlkey" != "-" ]; then
+    raw="$(kit_config_get_root "$tomlkey" "")"
+  else
+    raw="${!envvar:-}"
+  fi
+  case "$raw" in "~"/*) raw="${HOME}/${raw#\~/}" ;; esac
+
+  if [ "$kind" != "binary" ]; then
+    if [ -z "$raw" ] || [ "$raw" = "$defaultval" ]; then
+      SEAM_VALUE="${raw:-(empty)}"; SEAM_STATUS="default"
+      return 0
+    fi
+    SEAM_VALUE="$raw"
+    if _seam_target_resolves "$kind" "$raw"; then SEAM_STATUS="filled"; else SEAM_STATUS="unresolved"; fi
+    return 0
+  fi
+
+  # binary: "default" never applies (DEC-009); env-set must be executable, else PATH lookup.
+  if [ -n "$raw" ]; then
+    SEAM_VALUE="$raw"
+    if [ -x "$raw" ]; then SEAM_STATUS="filled"; else SEAM_STATUS="unresolved"; fi
+    return 0
+  fi
+  local found
+  found="$(command -v "$defaultval" 2>/dev/null || true)"
+  if [ -n "$found" ]; then SEAM_VALUE="$found"; SEAM_STATUS="filled"
+  else SEAM_VALUE="(not on PATH)"; SEAM_STATUS="absent"
   fi
 }
 
@@ -193,13 +315,34 @@ cmd_explain() {
   printf 'Effective: %s   (source: %s)\n' "$EFFECTIVE" "$PROVENANCE"
 }
 
+cmd_seams() {
+  local check=0 srow any_unresolved=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --check) check=1; shift ;;
+      *) echo "config seams: unknown flag '$1'" >&2; usage >&2; return 64 ;;
+    esac
+  done
+  printf '%-30s %-10s %-30s %-15s %s\n' "KEY" "KIND" "VALUE" "STATUS" "FILLED-BY"
+  while IFS= read -r srow; do
+    [ -n "$srow" ] || continue
+    _seam_resolve "$srow"
+    printf '%-30s %-10s %-30s %-15s %s\n' "$SEAM_KEY" "$SEAM_KIND" "$SEAM_VALUE" "$SEAM_STATUS" "$SEAM_FILLEDBY"
+    [ "$SEAM_STATUS" = "unresolved" ] && any_unresolved=1
+  done < <(_seam_rows)
+  [ "$check" = 1 ] && [ "$any_unresolved" = 1 ] && return 1
+  return 0
+}
+
 usage() {
   cat <<'EOF'
-usage: config {list|get|explain} [args...]
+usage: config {list|get|explain|seams} [args...]
 
   config list             every declared knob: key, status, effective value, provenance, module
   config get <key>        the resolved effective value only (env var name or dotted kit.toml key)
   config explain <key>    the full 4-level provenance chain (env > project > kit-root > default)
+  config seams [--check]  cross-kit seam report: KEY KIND VALUE STATUS FILLED-BY (SPEC-249);
+                          --check exits 1 if any row is unresolved
 
 `config set` is not built. Hand-edit <project>/.kit.toml to change a project-level value; the
 kit-root default lives in kit.toml. See docs/specs/SPEC-198-config-surface.md.
@@ -215,7 +358,7 @@ main() {
   # key" message instead of the real cause. (A separate guard case, not `;;&` fall-through
   # -- that is bash-4-only and macOS ships bash 3.2.)
   case "$verb" in
-    list|get|explain)
+    list|get|explain|seams)
       [ -f "$REGISTRY_FILE" ] || { echo "config: registry file missing: $REGISTRY_FILE" >&2; return 1; }
       ;;
   esac
@@ -223,6 +366,7 @@ main() {
     list) cmd_list ;;
     get) shift; cmd_get "$@" ;;
     explain) shift; cmd_explain "$@" ;;
+    seams) shift; cmd_seams "$@" ;;
     ""|-h|--help|help) usage ;;
     *) echo "config: unknown verb '$verb'" >&2; usage >&2; return 64 ;;
   esac
