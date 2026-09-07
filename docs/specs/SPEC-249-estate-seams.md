@@ -266,6 +266,63 @@ bash tests/test-config-registry.sh && bash tests/test-config.sh && bash tests/te
 - DEC-012 (validate): candidate matching branches on `precedent find --json` (`nothing_matched`), because `--quiet` always exits 0 and its summary names a section, not a tool.
 - DEC-013 (review): the review loop tightened five things the first build left open. A seam `Key` must be a shell identifier with a registry row, so a forged registry cell can never reach an indirect expansion. Every wrap write target resolves through `_realpath_f` BEFORE any fence, because a symlink at a parent directory of a path passed the leaf-only refusal and the prefix fence read the unresolved string. A `BACKLOG_STAGE_STAGING` override may only append to a file that already exists, since the value comes from the environment a repo `.envrc` writes. The staging append opens with `O_NOFOLLOW`. The seam report's `file` and `dir` checks now apply the consumers' own HOME fence and symlink refusal, so the advisor never calls a target `filled` that `wrap log` or `wrap knowledge-root` would reject.
 
+## Review
+
+Written by `/kit:review-team` on 2026-09-07 over `1d50cc3..HEAD` (20 files at round one). Lenses: security (opus), architecture (sonnet), test-coverage (sonnet), advisor critique (opus). Two review rounds plus one targeted re-verify; every CRITICAL and HIGH finding was validated by an independent refuter that reproduced it before the fix and confirmed the close after.
+
+### Verdict: SHIP (after three fix commits: 4b32c0c, 9fd15ee, 79e2b5c)
+
+### Round one findings (merged, deduplicated)
+
+| # | Finding | Lens | Severity | Confidence | Status | Route | Closed in |
+|---|---|---|---|---|---|---|---|
+| 1 | `${!envvar:-}` on a registry cell evaluates an array subscript, so `EVIL[$(cmd)]` runs cmd in `config seams` and `config list` | security | CRITICAL | 100 | validated | gated_auto | 4b32c0c (`_env_val` identifier guard) |
+| 2 | Post-`_worktree_copy` path never re-fenced; a symlinked staging file in the current worktree redirects the append (same order in `wrap log`) | security | HIGH | 100 | validated | gated_auto | 9fd15ee, completed in 79e2b5c (resolve before fence) |
+| 3 | `mkdir -p` through a symlinked `<root>/projects` escapes HOME | security | MEDIUM | 50 | taken | manual | 9fd15ee |
+| 4 | `BACKLOG_STAGE_STAGING` override accepted an absent leaf anywhere under HOME (prompt-injection path into an agent-instruction file) | security | MEDIUM | 75 | taken | advisory | 9fd15ee (override must exist as a regular file) |
+| 5 | TOCTOU between the bash symlink check and python's append | security | LOW | 50 | taken | advisory | 9fd15ee (`O_NOFOLLOW`) |
+| 6 | HOME-fence idiom duplicated at three sites in `wrap.sh` | architecture | MEDIUM | 75 | taken | advisory | 9fd15ee (`_home_fence`, `_refuse_symlink`), 79e2b5c (`_skill_dirs` on `_under_home`) |
+| 7 | `_find_row`-miss branch of `_seam_resolve` untested | test-coverage | MEDIUM | 75 | taken | gated_auto | 4b32c0c (ghost seam fixture) |
+| 8 | `config seams` fenced file/dir by existence while consumers require realpath under HOME, so `--check` was green on a root the consumer refuses | advisor | HIGH | 100 | validated by live run | gated_auto | 4b32c0c, parity finished in 79e2b5c |
+| 9 | `_seam_rows` read to EOF while the lint stopped at the next heading | advisor | MEDIUM | 75 | taken | gated_auto | 4b32c0c (shared `^## ` stop rule) |
+| 10 | Step 7b staged into the current repo; `--repo` unnamed in the prose | advisor | MEDIUM | 75 | taken | gated_auto | 9fd15ee |
+| 11 | Registry rows for the staging env vars omitted `wrap` and contradicted its unset default | advisor | LOW | 75 | taken | gated_auto | 4b32c0c, 79e2b5c |
+| 12 | `_seam_cells` is a single-caller helper | architecture | LOW | 50 | kept | advisory | none (kept for the documented `read -a` quirk and its own test row) |
+| 13 | index.lock contention untested on the two new wrap writers | test-coverage | LOW | 75 | recorded | advisory | none (the shared `_write_guard` is covered by the `apply` cases) |
+
+### Round two (fix diff `6497868..a013b80`)
+
+Security: the round-one HIGH was half closed, a symlinked PARENT directory in the worktree still escaped because the re-fence ran on an unresolved path; reproduced, fixed in 79e2b5c (`_home_fence` resolves its own argument, both post-copy blocks realpath before fencing). Architecture: `_skill_dirs` had not migrated to `_under_home`; the spec's Interfaces text lagged the override rule; both fixed in 79e2b5c. Advisor: all four round-one items confirmed closed; found the `$HOME`-itself disagreement between the two fence helpers and four spec-prose drifts; all fixed in 79e2b5c. No convergent CRITICAL or HIGH remained after the targeted re-verify, so the loop converged at the round cap.
+
+### Security
+
+Scores: round one 3/10, round two 6/10 (one HIGH left), targeted re-verify after 79e2b5c: 9/10, all five exploit shapes CLOSED (outside-HOME parent symlink, inside-HOME-outside-repo parent symlink, a two-hop chain, HOME itself as root, a symlinked activity log in the seams report). Verified closed by re-running each exploit shape: forged env-name canary never created; worktree leaf and parent symlinks refused with byte-identical canaries; symlinked `projects` falls back with nothing created; absent override refused; symlinked python target `FAILED` exit 2; `config seams` never executes a target (a canary-printing `prose-rag` stub on PATH never ran).
+
+### Architecture
+
+Round one 8/10, round two 7/10. Seam table sits outside the parser window; `_seam_resolve` is a deep module that never calls `_resolve`; `staging-format.py stage` is the one writer and bash holds no copy of the grammar or the dedupe key; `wrap.sh` 621 to 858 lines, under the 1k tripwire; `config list` keeps its inert render for consumer rows by the spec's Out of Scope.
+
+### Test coverage
+
+8/10. Edge cases 1 to 14 and 18 to 27 covered by named cases asserting the exact status word; 15 to 17, 28, 29 are command prose (no code under test); 30 structural. Both new test files registered in the workflow. Coverage-delta: ok.
+
+### Suppressed findings
+
+None below the confidence gate; no validator refuted a finding.
+
+### Previously rejected
+
+None.
+
+### TODOs
+
+- Residual by design: `wrap log` fences on HOME only (the spec's rule), so a committed `_meta` symlink pointing INSIDE HOME but outside the repo can redirect the one dated line to a pre-existing file whose leaf name equals the configured log leaf. Low; a repo fence on `wrap log` would close it.
+- Test hygiene: the new parent-symlink `log` cases rely on the file-level `KIT_CONFIG_OPERATOR` pin; a copied case that re-exports only HOME and KIT_CONFIG_ROOT would read the real operator overlay. Pin it per case when the pattern is copied.
+
+- `_realpath_f "/"` returns `//`; every fence refuses it today. Normalise if a future caller needs the root.
+- `wrap knowledge-root` on a non-git directory falls back with the reason `index.lock held by another writer` (from `_write_guard`); right outcome, misleading text.
+- `config seams --json` and a per-kit filter when a third kit's installer asks.
+
 ## Open questions
 
 (none; a /goal loop appends here if it hits a decision this spec does not cover, then stops)
