@@ -72,7 +72,19 @@ cat > "$FIXTURE_REGISTRY" <<'EOF'
 | test.dir_seam | dir | fixture |
 | test.malformed_seam | dir |
 | test.unknown_kind_seam | bogus | fixture |
+| test.ghost_seam | dir | fixture |
+
+## Known gaps
+
+| Key | Kind | Filled by |
+|---|---|---|
+| test.after_heading_seam | dir | should-never-appear |
 EOF
+
+# test.ghost_seam is deliberately absent from the registry table above: it exercises
+# _seam_resolve's _find_row failure branch (a well-formed seam row naming an unregistered key).
+# The "## Known gaps" table mirrors the live registry's own trailing section: its rows must
+# never be read as seams.
 
 # --------------------------------------------------------------------------- case 1: all-default
 
@@ -214,6 +226,93 @@ OUT14="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_O
 RC14=$?
 chk "CLAUDE_PLUGIN_ROOT unset does not abort (default skill dir list is HOME/.claude/skills alone)" "$RC14"
 chk_no "no unbound-variable error on stderr" "$OUT14" "unbound variable"
+
+# --------------------------------------------------------------------------- case 15: ghost seam key
+
+chk_has "a seam row whose Key has no registry row: VALUE is (malformed row)" \
+  "$(printf '%s\n' "$OUT11" | grep '^test.ghost_seam')" "(malformed row)"
+chk_has "a seam row whose Key has no registry row: status is unresolved" \
+  "$(printf '%s\n' "$OUT11" | grep '^test.ghost_seam')" "unresolved"
+
+# --------------------------------------------------------------------------- case 16: seam window stops at the next heading
+
+chk_no "a pipe table under a heading AFTER ## Seams is never read as a seam row" \
+  "$OUT11" "test.after_heading_seam"
+FIXROWS="$(printf '%s\n' "$OUT11" | tail -n +2 | grep -c .)"
+chk "the fixture report prints exactly its five ## Seams rows" \
+  "$([ "$FIXROWS" -eq 5 ] && echo 0 || echo 1)"
+
+# --------------------------------------------------------------------------- case 17: dir target outside HOME
+
+# The consumers (`wrap log`, `wrap knowledge-root`) refuse a target whose realpath sits
+# outside $HOME, so an advisor that called such a target `filled` would exit 0 on a root the
+# consumer rejects. Same directory, inside HOME, must still read `filled`.
+mkdir -p "$OUTSIDE_DIR/knowledge"
+write_root_toml "[knowledge]
+root = \"$OUTSIDE_DIR/knowledge\""
+OUT17="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" bash "$CONFIG_BIN" seams | grep '^knowledge.root')"
+chk_has "an existing dir OUTSIDE HOME set as knowledge.root -> unresolved" "$OUT17" "unresolved"
+
+HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" env -u PROSE_RAG_BIN -u KIT_SKILL_DIRS -u CLAUDE_PLUGIN_ROOT \
+  PATH="/usr/bin:/bin" bash "$CONFIG_BIN" seams --check >/dev/null 2>&1
+chk "--check exits 1 on that out-of-HOME knowledge.root" "$([ $? -eq 1 ] && echo 0 || echo 1)"
+
+mkdir -p "$HOME_DIR/knowledge"
+write_root_toml "[knowledge]
+root = \"$HOME_DIR/knowledge\""
+OUT17B="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" bash "$CONFIG_BIN" seams | grep '^knowledge.root')"
+chk_has "the same dir INSIDE HOME set as knowledge.root -> filled" "$OUT17B" "filled"
+write_root_toml ""
+
+# --------------------------------------------------------------------------- case 18: forged env-var cell never executes
+
+# ATTACK SHAPE: bash evaluates an array subscript during indirect expansion, so an env-var
+# cell of `EVIL[$(cmd)]` used to run cmd on `"${!cell:-}"` (bash 3.2 included).
+# CONFIG_REGISTRY_FILE is an unvalidated env override, so a forged registry is
+# attacker-controlled input reaching both `config seams` and `config list`.
+CANARY="$TMPD/canary"
+FORGED_REGISTRY="$TMPD/forged-registry.md"
+cat > "$FORGED_REGISTRY" <<EOF
+# forged module-registry.md for test-config-seams.sh
+
+## Env <-> key registry
+
+### test
+
+| Env var | kit.toml key | Default | Status | Module | Doc |
+|---|---|---|---|---|---|
+| EVIL[\$(touch $CANARY)] | env-only | (none) | [impl] | test | forged env-var cell. |
+
+## Allowlist
+
+| Token | Why excluded |
+|---|---|
+
+## Seams
+
+| Key | Kind | Filled by |
+|---|---|---|
+| EVIL[\$(touch $CANARY)] | dir | forged |
+EOF
+
+rm -f "$CANARY"
+OUT18="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" CONFIG_REGISTRY_FILE="$FORGED_REGISTRY" \
+  bash "$CONFIG_BIN" seams 2>&1)"
+chk "a forged env-var cell never executes its subscript during config seams" \
+  "$([ -e "$CANARY" ] && echo 1 || echo 0)"
+chk_has "the forged seam row reads unresolved" "$OUT18" "unresolved"
+chk_has "the forged seam row VALUE is (malformed row)" "$OUT18" "(malformed row)"
+
+rm -f "$CANARY"
+HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" CONFIG_REGISTRY_FILE="$FORGED_REGISTRY" \
+  bash "$CONFIG_BIN" list >/dev/null 2>&1
+chk "a forged env-var cell never executes its subscript during config list" \
+  "$([ -e "$CANARY" ] && echo 1 || echo 0)"
 
 # --------------------------------------------------------------------------- bonus: unknown flag
 

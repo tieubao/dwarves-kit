@@ -109,3 +109,17 @@ Why: every other consumer sources the file; the command prose was the only calle
 Alternatives: add a standalone mode to the library; out of scope for a doc build.
 Impact: the reflect step fix is a pre-existing defect repaired in passing, not a build regression.
 Open questions: `wrap knowledge-root` on a non-git directory falls back with the reason `index.lock held by another writer` because `_write_guard` returns 1 when `git rev-parse` fails; the fallback is right, the reason text is misleading. Left for a follow-up row.
+
+## 2026-09-07 17:07 review fix batch A: config seams hardening
+
+Context: a review pass on `lib/config/config.sh` found one confirmed command-execution path, two advisor-drift defects, one untested branch, and one stale registry description.
+
+Decision: add `_env_val NAME`, which returns an env value only when NAME matches a shell identifier and returns 1 otherwise; call it from `_resolve` and `_seam_resolve`. Fence `file` and `dir` seam targets to a realpath under `$HOME`. Stop `_seam_rows` at the next top-level `## ` heading, in the engine and in the lint copy. Add fixture coverage for the `_find_row` failure branch. Add `wrap` to both `BACKLOG_STAGE_*` Module cells with the defaulting clause.
+
+Why: bash evaluates an array subscript during indirect expansion, so a registry cell of `EVIL[$(cmd)]` ran cmd on `"${!cell:-}"`, and `CONFIG_REGISTRY_FILE` is an unvalidated env override. Confirmed by exploit: a canary file appeared after both `config seams` and `config list`. The seam consumers (`wrap log`, `wrap knowledge-root`) already refuse a target outside `$HOME`, so bare existence made `config seams --check` exit 0 on a root the consumer rejects. The seam window ran to end of file while the lint stopped at the literal `## Known gaps`, so any future pipe table after `## Seams` would be read as seam rows by one and not the other. `wrap stage` reads both `BACKLOG_STAGE_*` knobs and defaults instead of erroring when they are unset, which the rows denied.
+
+Alternatives: `eval` with a quoted name (same class of risk, no gain); an allowlist of known env names (breaks on every new registry row); dropping the indirect expansion for a `printenv` call (loses set-but-empty semantics `_resolve` depends on); keeping bare existence and fixing the consumers instead (the fence is the consumer contract, not a bug).
+
+Impact: `bin/config seams` output shape is unchanged on this checkout, header plus five rows, every live row still `filled` or `default`. A malformed env-var cell now resolves as unset in `_resolve` and as `unresolved` / `(malformed row)` in `_seam_resolve`. A `file` or `dir` seam target outside `$HOME` flips from `filled` to `unresolved`, which makes `--check` exit 1 where it used to pass.
+
+Open questions: the `binary` kind still accepts any executable path, with no `$HOME` fence, because `PROSE_RAG_BIN` legitimately resolves under `/usr/local` or a PATH entry. Whether a binary seam deserves its own allowlist is a separate call.

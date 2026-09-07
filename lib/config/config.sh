@@ -24,6 +24,23 @@ REGISTRY_FILE="${CONFIG_REGISTRY_FILE:-$CONFIG_SELF/module-registry.md}"
 # shellcheck source=lib/config/kit-config.sh
 source "$CONFIG_SELF/kit-config.sh" || { echo "config: lib/config/kit-config.sh missing or unreadable" >&2; exit 1; }
 
+# _env_val <name> -- the value of env var <name>, and ONLY when <name> is a syntactically
+# valid shell identifier ([A-Za-z_][A-Za-z0-9_]*). Prints nothing and returns 1 otherwise.
+#
+# ATTACK SHAPE (why this exists): bash EVALUATES an array subscript during indirect expansion,
+# so `"${!n}"` where n holds `EVIL[$(cmd)]` runs cmd -- command execution from a plain string,
+# bash 3.2 included. Every name reaching an indirect expansion here comes from the registry
+# table, and CONFIG_REGISTRY_FILE is an unvalidated env override, so a forged registry is
+# attacker-controlled input. Validate the NAME before any indirect expansion, at both call
+# sites (_resolve and _seam_resolve). The `case` glob keeps this bash 3.2 safe.
+_env_val() {
+  local n="$1"
+  case "$n" in
+    ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;;
+  esac
+  printf '%s' "${!n:-}"
+}
+
 _trim() {
   local s="$1"
   s="${s#"${s%%[![:space:]]*}"}"
@@ -58,11 +75,14 @@ _row_get() {
 # _seam_rows -- print every data row (raw, pipe-delimited) from the "## Seams" join table
 # (SPEC-249 TASK-002). This table sits AFTER "## Allowlist", outside _registry_rows' window,
 # so it never doubles as a fake registry row in `config list`. Three columns: Key, Kind,
-# Filled by.
+# Filled by. The window CLOSES at the next top-level "## " heading, so a pipe table under a
+# later section (module-registry.md already carries "## Known gaps") is never read as a seam
+# row. tests/test-config-registry.sh's own lint copy must use the same stop rule.
 _seam_rows() {
   [ -f "$REGISTRY_FILE" ] || { echo "config: registry file missing: $REGISTRY_FILE" >&2; return 1; }
   awk '
     /^## Seams/ {inseam=1; next}
+    inseam && /^## / {inseam=0}
     inseam && /^\|/ {
       if ($0 ~ /^\| Key \|/) next
       if ($0 ~ /^\|---/) next
@@ -119,9 +139,12 @@ _resolve() {
   # KIT_LEDGER_DIR's set-but-empty FATAL in kit_resolve_log_dir, is documented on that row;
   # the generic model does not replay it.) Also consistent with the TOML levels below, whose
   # [ -n ... ] tests already treat empty as unset.
+  #
+  # A malformed env-var cell (see _env_val's attack-shape note) resolves as if unset.
   ENV_VAL=""; ENV_SET=0
-  if [ "$envvar" != "-" ] && [ -n "${!envvar:-}" ]; then
-    ENV_SET=1; ENV_VAL="${!envvar}"
+  local ev
+  if [ "$envvar" != "-" ] && ev="$(_env_val "$envvar")" && [ -n "$ev" ]; then
+    ENV_SET=1; ENV_VAL="$ev"
   fi
 
   PROJ_VAL=""; PROJ_SET=0; ROOT_VAL=""; ROOT_SET=0
@@ -171,10 +194,24 @@ _skill_dirs() {
   fi
 }
 
+# _under_home <realpath> -- is <realpath> $HOME's realpath, or under it? The caller resolves
+# the path first; this only compares.
+_under_home() {
+  local home_real
+  home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" || return 1
+  case "$1" in "$home_real"|"$home_real"/*) return 0 ;; esac
+  return 1
+}
+
 # _seam_target_resolves <kind> <value> -- does the seam's resolved value name a real target?
 # Never executes anything; existence checks only (per the Interfaces contract).
+#
+# For file and dir the check is realpath-under-$HOME, not bare existence: the consumers
+# (`wrap log`, `wrap knowledge-root`) apply exactly that fence and REFUSE a target outside
+# $HOME. Reporting such a target as `filled` made `config seams --check` exit 0 on a root the
+# consumer would reject -- an advisor that disagrees with the thing it advises on.
 _seam_target_resolves() {
-  local kind="$1" val="$2" d
+  local kind="$1" val="$2" d base
   case "$kind" in
     skill)
       while IFS= read -r d; do
@@ -183,8 +220,16 @@ _seam_target_resolves() {
       done < <(_skill_dirs)
       return 1
       ;;
-    file) [ -f "$val" ] ;;
-    dir)  [ -d "$val" ] ;;
+    file)
+      base="$(basename "$val")"
+      d="$(cd "$(dirname "$val")" 2>/dev/null && pwd -P)" || return 1
+      [ -f "$d/$base" ] || return 1
+      _under_home "$d/$base"
+      ;;
+    dir)
+      d="$(cd "$val" 2>/dev/null && pwd -P)" || return 1
+      _under_home "$d"
+      ;;
     *) return 1 ;;
   esac
 }
@@ -219,7 +264,9 @@ _seam_resolve() {
   if [ "$tomlkey" != "env-only" ] && [ "$tomlkey" != "-" ]; then
     raw="$(kit_config_get_root "$tomlkey" "")"
   else
-    raw="${!envvar:-}"
+    # A malformed env-var cell (see _env_val's attack-shape note) is a broken registry row,
+    # not an unset knob: report it as such rather than silently resolving to empty.
+    raw="$(_env_val "$envvar")" || { SEAM_VALUE="(malformed row)"; SEAM_STATUS="unresolved"; return 0; }
   fi
   case "$raw" in "~"/*) raw="${HOME}/${raw#\~/}" ;; esac
 

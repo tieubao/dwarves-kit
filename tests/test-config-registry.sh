@@ -154,11 +154,14 @@ assert_eq "get ledger.location resolves via the first (canonical KIT_LEDGER_DIR)
 # (advisor finding 4). One rule, one enforcer.
 
 # --- SPEC-249 TASK-001: the ## Seams join table (lives OUTSIDE the registry window) ---
+# The window stops at the next top-level "## " heading, matching config.sh's own _seam_rows.
+# A stop keyed to one literal heading name would let a pipe table under any OTHER later
+# section be linted (and ingested) as a seam row.
 
 _seam_rows() {
   awk '
     /^## Seams/ {inseam=1; next}
-    /^## Known gaps/ {inseam=0}
+    inseam && /^## / {inseam=0}
     inseam && /^\|/ {
       if ($0 ~ /^\| Key \|/) next
       if ($0 ~ /^\|---/) next
