@@ -21,6 +21,26 @@ The two local failures are not the sweep:
 - `tests/test-kit-gates-cost.sh` runs from `lib/stats` in CI; the local runner invoked it from the repo root (path artifact of the runner script).
 - `tests/test-orchestrate-wavefront.sh` fails `wave_run g`, `wave_run h2`, `dispatch k` on this host. Bisect in the same worktree: the first-wrap commit fails, the trap commit with the wavefront file reverted fails, and master's own `tests/` on the final libs fails the same three. The mock barrier sessions exit 7 (sibling never overlapped) in every leg, a host timing condition. It had passed on the same commit earlier in the day.
 
+Recorded run:
+
+```
+Command: bash tests/test-meta.sh
+Exit: 0
+Verdict: PASS (840/840)
+
+Command: bash tests/test-config-registry.sh
+Exit: 0
+Verdict: PASS (19/19, the assertion that failed on the #508 macOS job)
+
+Command: bash docs/verification/test-grep-pipefail-negctl.sh
+Exit: 0
+Verdict: PASS (CONTROL: PASS, both signal regimes)
+```
+
+## Rollback
+
+`git revert` of the sweep commits restores the bare `printf | grep -q` form. Nothing else depends on the guarded shape; the tests assert the same things either way.
+
 ## Negative control (`docs/verification/test-grep-pipefail-negctl.sh`)
 
 A 300 KB payload outruns the pipe buffer, so the race is deterministic.
