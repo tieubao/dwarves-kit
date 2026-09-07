@@ -78,7 +78,7 @@ explain_fires() {
   expect="$1"; label="$2"
   TOTAL=$((TOTAL+1))
   out="$(bash "$SC" explain "${args[@]}" 2>/dev/null)"
-  if printf '%s' "$out" | grep -qF "$expect"; then
+  if { printf '%s' "$out" 2>/dev/null || :; } | grep -qF "$expect"; then
     echo -e "  ${GREEN}PASS${NC} $label (fired: $expect)"
     PASS=$((PASS+1))
   else

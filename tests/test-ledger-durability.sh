@@ -71,7 +71,7 @@ assert "AC2/AC8: seeded kit-harden corpus present at durable path after migratio
 rm -rf "$HH/.claude/dwarves-kit"
 REP="$(run "$LT" report 2>/dev/null)"; MIS="$(run "$LT" misfires 2>/dev/null)"
 [ ! -d "$HH/.claude/dwarves-kit" ]; assert "AC3 [NC]: legacy dir is gone (reinstall simulated)" $?
-printf '%s%s' "$REP" "$MIS" | grep -q "." ; assert "AC3 [NC]: lane-telemetry still reads records after the wipe" $?
+{ printf '%s%s' "$REP" "$MIS" 2>/dev/null || :; } | grep -q "." ; assert "AC3 [NC]: lane-telemetry still reads records after the wipe" $?
 [ -f "$DURABLE/runs/kit-harden-01-eff-val.log" ]; assert "AC3 [NC]: migrated corpus survives the wipe" $?
 
 # --- AC4a: idempotent (sentinel short-circuit) ---
@@ -135,7 +135,7 @@ bash "$GL" override ov think "shared blanket reason" >/dev/null 2>&1; assert "AC
 bash "$GL" override ov design "shared blanket reason" >/dev/null 2>&1
 [ $? -eq 65 ]; assert "AC6: blanket override (same reason, other gate) rejected exit 65" $?
 ERRTXT="$(bash "$GL" override ov build "shared blanket reason" 2>&1 >/dev/null)"
-printf '%s' "$ERRTXT" | grep -q "already used"; assert "AC6: rejection message names the duplicate" $?
+{ printf '%s' "$ERRTXT" 2>/dev/null || :; } | grep -q "already used"; assert "AC6: rejection message names the duplicate" $?
 bash "$GL" override ov design "a distinct design reason" >/dev/null 2>&1; assert "AC6: distinct per-gate reason accepted" $?
 
 # --- AC7: idempotent same-phase override allowed ---
@@ -157,7 +157,7 @@ bash "$GL" override inj design "$INJ" >/dev/null 2>&1 || true
 [ "$(wc -l < "$DWARVES_KIT_LOG_DIR/runs/inj.log")" -eq 1 ]; assert "SEC-1: reason newline collapsed to ONE ledger line" $?
 # capture-then-grep: check() exits 1 on missing gates, which pipefail would mask
 CHK="$(bash "$GL" check full inj 2>&1 || true)"
-printf '%s' "$CHK" | grep -q "MISSING-GATE: build"; assert "SEC-1: forged 'build | ran' does NOT satisfy check() (still reported missing)" $?
+{ printf '%s' "$CHK" 2>/dev/null || :; } | grep -q "MISSING-GATE: build"; assert "SEC-1: forged 'build | ran' does NOT satisfy check() (still reported missing)" $?
 unset DWARVES_KIT_LOG_DIR
 
 # --- SPEC-110: the tokens verb writes an ADDITIVE marker that check() IGNORES ---

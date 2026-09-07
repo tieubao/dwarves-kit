@@ -37,12 +37,12 @@ roster_is_read_only() {
   local file="$1" fm rc=0
   fm="$(awk '/^---$/{c++; next} c==1' "$file")"
   # no bare Bash
-  printf '%s\n' "$fm" | grep -qE '^[[:space:]]*-[[:space:]]*Bash[[:space:]]*$' && { echo "bare Bash"; rc=1; }
+  { printf '%s\n' "$fm" 2>/dev/null || :; } | grep -qE '^[[:space:]]*-[[:space:]]*Bash[[:space:]]*$' && { echo "bare Bash"; rc=1; }
   # no write-capable tools
-  printf '%s\n' "$fm" | grep -qE '^[[:space:]]*-[[:space:]]*(Write|Edit|NotebookEdit)[[:space:]]*$' && { echo "write tool"; rc=1; }
+  { printf '%s\n' "$fm" 2>/dev/null || :; } | grep -qE '^[[:space:]]*-[[:space:]]*(Write|Edit|NotebookEdit)[[:space:]]*$' && { echo "write tool"; rc=1; }
   # Read/Grep/Glob present
   for t in Read Grep Glob; do
-    printf '%s\n' "$fm" | grep -qE "^[[:space:]]*-[[:space:]]*$t[[:space:]]*\$" || { echo "missing $t"; rc=1; }
+    { printf '%s\n' "$fm" 2>/dev/null || :; } | grep -qE "^[[:space:]]*-[[:space:]]*$t[[:space:]]*\$" || { echo "missing $t"; rc=1; }
   done
   # every Bash(...) pattern from the read-only verb allowlist
   local pats

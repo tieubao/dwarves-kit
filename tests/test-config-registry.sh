@@ -76,7 +76,7 @@ EOF
 PLANT_OUT="$(manifest_diff_flat "$PLANT_DIR/lib" "$SEED_RE" "$REGISTRY" "$ALLOW_RE")"
 PLANT_RC=$?
 assert_eq "the plant is flagged exactly 1 orphan" "$PLANT_RC" "1"
-if printf '%s\n' "$PLANT_OUT" | grep -qF "ORPHAN: KIT_TOTALLY_UNREGISTERED_PLANT"; then RC=0; else RC=1; fi
+if { printf '%s\n' "$PLANT_OUT" 2>/dev/null || :; } | grep -qF "ORPHAN: KIT_TOTALLY_UNREGISTERED_PLANT"; then RC=0; else RC=1; fi
 assert "the flagged orphan is specifically KIT_TOTALLY_UNREGISTERED_PLANT" $RC
 
 echo ""
@@ -126,19 +126,19 @@ cat > "$FIXDIR/proj/.kit.toml" <<'EOF'
 wave_cap = 5
 EOF
 FIXTURE_LIST="$(KIT_CONFIG_ROOT="$FIXDIR/root" KIT_PROJECT_ROOT="$FIXDIR/proj" KIT_DELIVERY_RATIO_WARN=99 bash "$CONFIG_BIN" list)"
-if printf '%s\n' "$FIXTURE_LIST" | grep -qE '^WAVE_CAP[[:space:]]+\[impl\][[:space:]]+5[[:space:]]+project \.kit\.toml'; then RC=0; else RC=1; fi
+if { printf '%s\n' "$FIXTURE_LIST" 2>/dev/null || :; } | grep -qE '^WAVE_CAP[[:space:]]+\[impl\][[:space:]]+5[[:space:]]+project \.kit\.toml'; then RC=0; else RC=1; fi
 assert "list: a project .kit.toml override visibly wins WAVE_CAP's row (5, project .kit.toml)" $RC
-if printf '%s\n' "$FIXTURE_LIST" | grep -qE '^KIT_DELIVERY_RATIO_WARN[[:space:]]+\[impl\][[:space:]]+99[[:space:]]+env'; then RC=0; else RC=1; fi
+if { printf '%s\n' "$FIXTURE_LIST" 2>/dev/null || :; } | grep -qE '^KIT_DELIVERY_RATIO_WARN[[:space:]]+\[impl\][[:space:]]+99[[:space:]]+env'; then RC=0; else RC=1; fi
 assert "list: an env override visibly wins KIT_DELIVERY_RATIO_WARN's row (99, env)" $RC
-if printf '%s\n' "$FIXTURE_LIST" | grep -qE '^TIER4_CLOSE[[:space:]]+\[impl\][[:space:]]+true[[:space:]]+kit-root kit\.toml'; then RC=0; else RC=1; fi
+if { printf '%s\n' "$FIXTURE_LIST" 2>/dev/null || :; } | grep -qE '^TIER4_CLOSE[[:space:]]+\[impl\][[:space:]]+true[[:space:]]+kit-root kit\.toml'; then RC=0; else RC=1; fi
 assert "list: no override falls to kit-root kit.toml (TIER4_CLOSE = true, kit-root kit.toml)" $RC
 
 EXPLAIN_OUT="$(KIT_CONFIG_ROOT="$FIXDIR/root" KIT_PROJECT_ROOT="$FIXDIR/proj" bash "$CONFIG_BIN" explain mega.wave_cap)"
-if printf '%s\n' "$EXPLAIN_OUT" | grep -qE '^Effective: 5   \(source: project \.kit\.toml\)$'; then RC=0; else RC=1; fi
+if { printf '%s\n' "$EXPLAIN_OUT" 2>/dev/null || :; } | grep -qE '^Effective: 5   \(source: project \.kit\.toml\)$'; then RC=0; else RC=1; fi
 assert "explain mega.wave_cap: the winner line names project .kit.toml + the resolved 5" $RC
-if printf '%s\n' "$EXPLAIN_OUT" | grep -qE '2\. project \.kit\.toml \[mega\.wave_cap\][[:space:]]+= 5'; then RC=0; else RC=1; fi
+if { printf '%s\n' "$EXPLAIN_OUT" 2>/dev/null || :; } | grep -qE '2\. project \.kit\.toml \[mega\.wave_cap\][[:space:]]+= 5'; then RC=0; else RC=1; fi
 assert "explain mega.wave_cap: level 2 (project) shows the winning value 5" $RC
-if printf '%s\n' "$EXPLAIN_OUT" | grep -qE '3\. kit-root kit\.toml \[mega\.wave_cap\][[:space:]]+= 2'; then RC=0; else RC=1; fi
+if { printf '%s\n' "$EXPLAIN_OUT" 2>/dev/null || :; } | grep -qE '3\. kit-root kit\.toml \[mega\.wave_cap\][[:space:]]+= 2'; then RC=0; else RC=1; fi
 assert "explain mega.wave_cap: level 3 (kit-root) shows the shadowed value 2" $RC
 
 # Multi-env-var tie-break: ledger.location is shared by two env rows (KIT_LEDGER_DIR listed

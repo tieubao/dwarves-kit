@@ -20,7 +20,7 @@ PASS=0; FAIL=0; TOTAL=0
 ok()   { TOTAL=$((TOTAL+1)); PASS=$((PASS+1)); echo -e "  ${GREEN}PASS${NC} $1"; }
 bad()  { TOTAL=$((TOTAL+1)); FAIL=$((FAIL+1)); echo -e "  ${RED}FAIL${NC} $1"; }
 expect() {  # <name> <needle> <haystack>  (grep -q = BRE: parens in needles are LITERAL)
-  if printf '%s' "$3" | grep -q "$2"; then ok "$1"; else bad "$1 (missing '$2')"; fi
+  if { printf '%s' "$3" 2>/dev/null || :; } | grep -q "$2"; then ok "$1"; else bad "$1 (missing '$2')"; fi
 }
 
 echo "=== golden run: one task end to end (SPEC-067) ==="

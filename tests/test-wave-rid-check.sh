@@ -130,7 +130,7 @@ N1=$(START_LINES_FOR "$LOGDIR_NC" "rid-check-nc-sg-01")
 N2=$(START_LINES_FOR "$LOGDIR_NC" "rid-check-nc-sg-02")
 box1=$(_sg_line "$WM2/ROADMAP.md" SG-01); box2=$(_sg_line "$WM2/ROADMAP.md" SG-02)
 both_flipped=0
-{ printf '%s' "$box1" | grep -q '^\- \[x\]' && printf '%s' "$box2" | grep -q '^\- \[x\]'; } && both_flipped=1
+{ { printf '%s' "$box1" 2>/dev/null || :; } | grep -q '^\- \[x\]' && { printf '%s' "$box2" 2>/dev/null || :; } | grep -q '^\- \[x\]'; } && both_flipped=1
 
 if [ "$ncrc" = 0 ] && [ "$N1" = 0 ] && [ "$N2" = 0 ] && [ "$both_flipped" = 1 ]; then
   pass "wave-rid-check NEGATIVE CONTROL A: pre-fix-equivalent code (START call stubbed) completes the SAME wave (both boxes flip) but records ZERO START lines -- causal effect demonstrated"
@@ -161,7 +161,7 @@ nrrc=0
   _wave_run "$WM3" "$WM3/ROADMAP.md" ) > "$TMP/norid.out" 2>&1 || nrrc=$?
 
 box3=$(_sg_line "$WM3/ROADMAP.md" SG-01)
-box3_flipped=0; printf '%s' "$box3" | grep -q '^\- \[x\]' && box3_flipped=1
+box3_flipped=0; { printf '%s' "$box3" 2>/dev/null || :; } | grep -q '^\- \[x\]' && box3_flipped=1
 warned=0; grep -q "WARN: SG-01 goal file has no '\*\*Branch:\*\*' header" "$TMP/norid.out" && warned=1
 # No ledger dir for this run at all (no rid was ever derivable to key a file by).
 ledger_files=$(find "$LOGDIR_NORID/runs" -type f 2>/dev/null | wc -l | tr -d ' ')

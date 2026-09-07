@@ -81,8 +81,8 @@ grep -qiE 'FINAL sub-goal' "$RT"; assert "AC2: review-team.md names the final-su
 # mid-phrase, so a single-line grep on a multi-word phrase is fragile; normalize, then match.
 MEGA_FLAT="$(tr '\n' ' ' < "$MEGA")"
 grep -qiE 'convergence gate dispatches advisor' "$MEGA"; assert "AC3: mega.md names an explicit convergence-gate advisor dispatch" $?
-printf '%s' "$MEGA_FLAT" | grep -qE 'P5[[:space:]]*\(critique\)'; assert "AC3: mega.md names P5 critique explicitly" $?
-printf '%s' "$MEGA_FLAT" | grep -qE 'P6[[:space:]]*\(over-suggest\)'; assert "AC3: mega.md names P6 over-suggest explicitly" $?
+{ printf '%s' "$MEGA_FLAT" 2>/dev/null || :; } | grep -qE 'P5[[:space:]]*\(critique\)'; assert "AC3: mega.md names P5 critique explicitly" $?
+{ printf '%s' "$MEGA_FLAT" 2>/dev/null || :; } | grep -qE 'P6[[:space:]]*\(over-suggest\)'; assert "AC3: mega.md names P6 over-suggest explicitly" $?
 grep -qE 'mode=P5 findings=<N> actor=' "$MEGA" && grep -qE 'mode=P6 findings=<N> actor=' "$MEGA"
 assert "AC3: mega.md emits BOTH mode=P5 and mode=P6 rows" $?
 fail_open_call "$MEGA"; assert "AC3: mega.md's advisor emit is fail-open (|| WARNING fallback)" $?

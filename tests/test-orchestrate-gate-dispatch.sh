@@ -256,11 +256,11 @@ rc=0; run_gate_fixture "$DG5" "$TMP/b5.out" WAVE_CAP=2 || rc=$?
 # --- B6: --dry-run names the dispatch-then-hold plan ---
 DG6="$TMP/mg-gate-dry"; mk_megagoal "$DG6"
 out=$(bash "$ORCH" run "$DG6" --dry-run 2>&1)
-printf '%s' "$out" | grep -q 'SG-02 (gate, dispatch then hold for human merge)' \
+{ printf '%s' "$out" 2>/dev/null || :; } | grep -q 'SG-02 (gate, dispatch then hold for human merge)' \
   && pass "B6: dry-run plan says 'gate, dispatch then hold for human merge'" \
   || { fail "B6: dry-run plan wrong"; printf '%s\n' "$out"; }
 out=$(MEGA_GATE_DISPATCH=0 bash "$ORCH" run "$DG6" --dry-run 2>&1)
-printf '%s' "$out" | grep -q 'SG-02 (gate)' \
+{ printf '%s' "$out" 2>/dev/null || :; } | grep -q 'SG-02 (gate)' \
   && pass "B6 (neg control): MEGA_GATE_DISPATCH=0 dry-run keeps the plain '(gate)' label" \
   || { fail "B6 neg control wrong"; printf '%s\n' "$out"; }
 

@@ -47,7 +47,7 @@ assert_eq() {
 assert_contains() {
   local NAME="$1" NEEDLE="$2" HAY="$3"
   TOTAL=$((TOTAL + 1))
-  if printf '%s' "$HAY" | grep -qF "$NEEDLE"; then
+  if { printf '%s' "$HAY" 2>/dev/null || :; } | grep -qF "$NEEDLE"; then
     echo -e "  ${GREEN}PASS${NC} $NAME"
     PASS=$((PASS + 1))
   else
@@ -59,7 +59,7 @@ assert_contains() {
 assert_not_contains() {
   local NAME="$1" NEEDLE="$2" HAY="$3"
   TOTAL=$((TOTAL + 1))
-  if printf '%s' "$HAY" | grep -qF "$NEEDLE"; then
+  if { printf '%s' "$HAY" 2>/dev/null || :; } | grep -qF "$NEEDLE"; then
     echo -e "  ${RED}FAIL${NC} $NAME (unexpectedly found '$NEEDLE')"
     FAIL=$((FAIL + 1))
   else

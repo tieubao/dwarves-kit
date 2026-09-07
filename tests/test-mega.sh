@@ -216,13 +216,13 @@ cat > "$BOARDREPO/_meta/BACKLOG.md" <<'BOARDMD'
 BOARDMD
 
 WITH_MEGA_OUT="$(GH_BIN="$STUBGH" bash "$BOARD_SH" board --with-mega --mega-code-root "$CODEROOT" --backlog-file "$BOARDREPO/_meta/BACKLOG.md" 2>&1)"
-if printf '%s\n' "$WITH_MEGA_OUT" | grep -qF "testmega: 1/8 ok  ⚠ 3 drift"; then
+if { printf '%s\n' "$WITH_MEGA_OUT" 2>/dev/null || :; } | grep -qF "testmega: 1/8 ok  ⚠ 3 drift"; then
   ok "board board --with-mega surfaces the mega rollup in a trailing MEGA ROLLUP section"
 else
   no "board --with-mega did not surface the rollup: $WITH_MEGA_OUT"
 fi
 WITHOUT_MEGA_OUT="$(bash "$BOARD_SH" board --backlog-file "$BOARDREPO/_meta/BACKLOG.md" 2>&1)"
-if ! printf '%s\n' "$WITHOUT_MEGA_OUT" | grep -q "MEGA ROLLUP"; then
+if ! { printf '%s\n' "$WITHOUT_MEGA_OUT" 2>/dev/null || :; } | grep -q "MEGA ROLLUP"; then
   ok "board board WITHOUT --with-mega never touches gh / never prints a rollup (opt-in, non-regressing default)"
 else
   no "board board without --with-mega should not print a MEGA ROLLUP section"

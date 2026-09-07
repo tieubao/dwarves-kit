@@ -131,7 +131,7 @@ echo "=== AC1: row-hash is deterministic and content-sensitive ==="
 H1="$(bash "$BOARD_MIRROR" row-hash fixR ID-001 "Do the thing" "some notes" queued)"
 H2="$(bash "$BOARD_MIRROR" row-hash fixR ID-001 "Do the thing" "some notes" queued)"
 H3="$(bash "$BOARD_MIRROR" row-hash fixR ID-001 "Do the thing CHANGED" "some notes" queued)"
-assert "row-hash is 64 lowercase hex chars" "$(printf '%s' "$H1" | grep -qE '^[0-9a-f]{64}$' && echo 0 || echo 1)"
+assert "row-hash is 64 lowercase hex chars" "$({ printf '%s' "$H1" 2>/dev/null || :; } | grep -qE '^[0-9a-f]{64}$' && echo 0 || echo 1)"
 assert "row-hash is deterministic (same inputs -> same hash)" "$([ "$H1" = "$H2" ] && echo 0 || echo 1)"
 assert "row-hash is content-sensitive (changed item -> different hash)" "$([ "$H1" != "$H3" ] && echo 0 || echo 1)"
 
@@ -147,19 +147,19 @@ assert "ID-003 (speccing) -> target ready"   "$([ "$(tnative ID-003)" = "ready" 
 assert "ID-004 (validated) -> target ready"  "$([ "$(tnative ID-004)" = "ready" ] && echo 0 || echo 1)"
 assert "ID-005 (executing) -> target ready"  "$([ "$(tnative ID-005)" = "ready" ] && echo 0 || echo 1)"
 assert "ID-006 (parked) -> target blocked"   "$([ "$(tnative ID-006)" = "blocked" ] && echo 0 || echo 1)"
-assert "ID-007 (shipped) is EXCLUDED from extraction" "$(printf '%s\n' "$ROWS" | grep -q 'ID-007' && echo 1 || echo 0)"
-assert "ID-008 (dropped) is EXCLUDED from extraction" "$(printf '%s\n' "$ROWS" | grep -q 'ID-008' && echo 1 || echo 0)"
-assert "ID-007's skip reason is logged" "$(printf '%s\n' "$ERRS" | grep -q 'skip ID-007' && echo 0 || echo 1)"
-assert "ID-008's skip reason is logged" "$(printf '%s\n' "$ERRS" | grep -q 'skip ID-008' && echo 0 || echo 1)"
+assert "ID-007 (shipped) is EXCLUDED from extraction" "$({ printf '%s\n' "$ROWS" 2>/dev/null || :; } | grep -q 'ID-007' && echo 1 || echo 0)"
+assert "ID-008 (dropped) is EXCLUDED from extraction" "$({ printf '%s\n' "$ROWS" 2>/dev/null || :; } | grep -q 'ID-008' && echo 1 || echo 0)"
+assert "ID-007's skip reason is logged" "$({ printf '%s\n' "$ERRS" 2>/dev/null || :; } | grep -q 'skip ID-007' && echo 0 || echo 1)"
+assert "ID-008's skip reason is logged" "$({ printf '%s\n' "$ERRS" 2>/dev/null || :; } | grep -q 'skip ID-008' && echo 0 || echo 1)"
 assert "extract-rows emits exactly the 6 bridgeable rows (001-006), not 8" \
   "$([ "$(printf '%s\n' "$ROWS" | grep -c . )" -eq 6 ] && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC3: extract-megas -- active detection, progress, held flag, inactive-skip ==="
 MEGAS="$(bash "$BOARD_MIRROR" extract-megas "$FIXR" fixR)"
-assert "the active mega (1 unchecked box) is emitted" "$(printf '%s\n' "$MEGAS" | grep -q 'megagoals:fixR/mymega' && echo 0 || echo 1)"
-assert "progress reads 1/2 (one checked, one unchecked)" "$(printf '%s\n' "$MEGAS" | grep -q 'progress 1/2' && echo 0 || echo 1)"
-assert "the held-PR text signal is surfaced" "$(printf '%s\n' "$MEGAS" | grep -qi 'held-PR flag set' && echo 0 || echo 1)"
+assert "the active mega (1 unchecked box) is emitted" "$({ printf '%s\n' "$MEGAS" 2>/dev/null || :; } | grep -q 'megagoals:fixR/mymega' && echo 0 || echo 1)"
+assert "progress reads 1/2 (one checked, one unchecked)" "$({ printf '%s\n' "$MEGAS" 2>/dev/null || :; } | grep -q 'progress 1/2' && echo 0 || echo 1)"
+assert "the held-PR text signal is surfaced" "$({ printf '%s\n' "$MEGAS" 2>/dev/null || :; } | grep -qi 'held-PR flag set' && echo 0 || echo 1)"
 assert "mega target_native is ready" "$(printf '%s\n' "$MEGAS" | awk -F'\t' '{print $7}' | grep -qx ready && echo 0 || echo 1)"
 # A fully-checked (inactive) roadmap in a second mega dir must NOT be emitted.
 mkdir -p "$FIXR/_meta/megagoals/donemega"
@@ -170,7 +170,7 @@ cat > "$FIXR/_meta/megagoals/donemega/ROADMAP.md" <<'ROADMAP_DONE'
 - [x] 02-thing also done
 ROADMAP_DONE
 MEGAS2="$(bash "$BOARD_MIRROR" extract-megas "$FIXR" fixR)"
-assert "a fully-checked (inactive) mega is NOT emitted" "$(printf '%s\n' "$MEGAS2" | grep -q 'donemega' && echo 1 || echo 0)"
+assert "a fully-checked (inactive) mega is NOT emitted" "$({ printf '%s\n' "$MEGAS2" 2>/dev/null || :; } | grep -q 'donemega' && echo 1 || echo 0)"
 rm -rf "$FIXR/_meta/megagoals/donemega"
 
 echo ""
@@ -198,7 +198,7 @@ echo ""
 echo "=== Apply the AC4 plan for real (against the stub), building the golden snapshot for NC2 ==="
 : > "$CALLS"; echo 0 > "$IDCTR"; : > "$SNAP"
 APPLY1_ERR="$(STUB_CALL_LOG="$CALLS" STUB_ID_COUNTER="$IDCTR" HERMES_BIN="$STUB" bash "$BOARD" mirror --repo-root "$TMPDIR_T" --registry "$REGISTRY" --snapshot "$SNAP" 2>&1 >/dev/null)"
-assert "run 1 applies with 0 errors" "$(printf '%s\n' "$APPLY1_ERR" | grep -q '7 create, 0 change, 0 complete, 0 error' && echo 0 || echo 1)"
+assert "run 1 applies with 0 errors" "$({ printf '%s\n' "$APPLY1_ERR" 2>/dev/null || :; } | grep -q '7 create, 0 change, 0 complete, 0 error' && echo 0 || echo 1)"
 assert "run 1 writes 7 rows to the snapshot" "$([ "$(wc -l < "$SNAP" | tr -d ' ')" -eq 7 ] && echo 0 || echo 1)"
 assert "run 1 makes real stub calls (create + the ID-006 block-needs-input followup)" \
   "$(grep -q 'create \[untrusted\] Do the thing' "$CALLS" && grep -q 'block .* --kind needs_input' "$CALLS" && echo 0 || echo 1)"
@@ -208,18 +208,18 @@ assert "run 1 never issues a --kind dependency call (todo has no durable synthet
 echo ""
 echo "=== AC5 / board status ==="
 STATUS1="$(bash "$BOARD" status --repo-root "$TMPDIR_T" --registry "$REGISTRY" --snapshot "$SNAP" 2>&1)"
-assert "status reports up to date right after a mirror" "$(printf '%s\n' "$STATUS1" | grep -qi 'up to date' && echo 0 || echo 1)"
-assert "status summary line matches the contract wording" "$(printf '%s\n' "$STATUS1" | grep -qE '^[0-9]+ repos changed since last mirror, last synced' && echo 0 || echo 1)"
+assert "status reports up to date right after a mirror" "$({ printf '%s\n' "$STATUS1" 2>/dev/null || :; } | grep -qi 'up to date' && echo 0 || echo 1)"
+assert "status summary line matches the contract wording" "$({ printf '%s\n' "$STATUS1" 2>/dev/null || :; } | grep -qE '^[0-9]+ repos changed since last mirror, last synced' && echo 0 || echo 1)"
 cat >> "$FIXR/_meta/BACKLOG.md" <<'BOARD_R2'
 | ID-009 | New row after mirror | notes9 | queued |
 BOARD_R2
 git -C "$FIXR" add -A && git -C "$FIXR" commit -q -m "test: add ID-009 after first mirror"
 STATUS2="$(bash "$BOARD" status --repo-root "$TMPDIR_T" --registry "$REGISTRY" --snapshot "$SNAP" 2>&1)"
-assert "status detects drift after a real git touch" "$(printf '%s\n' "$STATUS2" | grep -qi 'changed since last mirror' && echo 0 || echo 1)"
+assert "status detects drift after a real git touch" "$({ printf '%s\n' "$STATUS2" 2>/dev/null || :; } | grep -qi 'changed since last mirror' && echo 0 || echo 1)"
 STUB_CALL_LOG="$TMPDIR_T/calls-heal.log" STUB_ID_COUNTER="$IDCTR" HERMES_BIN="$STUB" \
   bash "$BOARD" mirror --repo-root "$TMPDIR_T" --registry "$REGISTRY" --snapshot "$SNAP" >/dev/null 2>&1
 STATUS3="$(bash "$BOARD" status --repo-root "$TMPDIR_T" --registry "$REGISTRY" --snapshot "$SNAP" 2>&1)"
-assert "status heals back to up to date after re-mirroring" "$(printf '%s\n' "$STATUS3" | grep -qi 'up to date' && echo 0 || echo 1)"
+assert "status heals back to up to date after re-mirroring" "$({ printf '%s\n' "$STATUS3" 2>/dev/null || :; } | grep -qi 'up to date' && echo 0 || echo 1)"
 # revert the ID-009 addition so NC2's golden-fixture idempotence check below is unaffected by it
 git -C "$FIXR" revert -q --no-edit HEAD >/dev/null 2>&1 || true
 
@@ -248,10 +248,10 @@ assert "NC2: second (real, non-dry-run) run makes ZERO stub-hermes calls" "$([ !
 
 echo ""
 echo "=== NC3: an opted-OUT repo (fixTrading) never appears in any plan or applied calls ==="
-assert "NC3: fixTrading's TR-001 never appears in the AC4 plan" "$(printf '%s\n' "$DRYPLAN" | grep -q 'TR-001\|fixTrading' && echo 1 || echo 0)"
+assert "NC3: fixTrading's TR-001 never appears in the AC4 plan" "$({ printf '%s\n' "$DRYPLAN" 2>/dev/null || :; } | grep -q 'TR-001\|fixTrading' && echo 1 || echo 0)"
 assert "NC3: fixTrading never appears in any stub call log so far" \
   "$(grep -qi 'trading\|TR-001\|secret trading' "$CALLS" "$TMPDIR_T"/*.log 2>/dev/null && echo 1 || echo 0)"
-assert "NC3: fixTrading never appears in board status output" "$(printf '%s\n%s\n%s\n' "$STATUS1" "$STATUS2" "$STATUS3" | grep -qi trading && echo 1 || echo 0)"
+assert "NC3: fixTrading never appears in board status output" "$({ printf '%s\n%s\n%s\n' "$STATUS1" "$STATUS2" "$STATUS3" 2>/dev/null || :; } | grep -qi trading && echo 1 || echo 0)"
 
 echo ""
 echo "=== NC4: every write is a recorded hermes CLI call; no direct DB access ==="
@@ -286,7 +286,7 @@ assert "NC5: the complete op targets 'done'" "$([ "$(printf '%s' "$NC5_COMPLETE"
 STUB_CALL_LOG="$TMPDIR_T/nc5-calls.log" HERMES_BIN="$STUB" bash "$BOARD" mirror --repo-root "$TMPDIR_T" --registry "$REGISTRY" --snapshot "$SNAP" >/dev/null 2>&1
 assert "NC5: after applying, the completed row is DROPPED from the snapshot (never re-touched)" "$(grep -q 'fixR:ID-003' "$SNAP" && echo 1 || echo 0)"
 NC5_PLAN2="$(HERMES_BIN="$STUB" bash "$BOARD" mirror --repo-root "$TMPDIR_T" --registry "$REGISTRY" --snapshot "$SNAP" --dry-run 2>/dev/null)"
-assert "NC5: re-running the plan does NOT re-complete ID-003 (idempotent even for disappeared rows)" "$(printf '%s\n' "$NC5_PLAN2" | grep -q 'ID-003' && echo 1 || echo 0)"
+assert "NC5: re-running the plan does NOT re-complete ID-003 (idempotent even for disappeared rows)" "$({ printf '%s\n' "$NC5_PLAN2" 2>/dev/null || :; } | grep -q 'ID-003' && echo 1 || echo 0)"
 
 echo ""
 echo "=== NC6: REGISTRY NON-REGRESSION -- board/next/priority/states/queue unaffected by the bridge column ==="
@@ -297,16 +297,16 @@ fixTrading  $FIXT/_meta/BACKLOG.md        off
 REG3
 ALL_BOARD="$(bash "$BOARD" all board --registry "$NC6_REG")"
 assert "NC6: 'board all board' still renders both repo headers with a bridge column present" \
-  "$(printf '%s\n' "$ALL_BOARD" | grep -q '=== fixR ===' && printf '%s\n' "$ALL_BOARD" | grep -q '=== fixTrading ===' && echo 0 || echo 1)"
+  "$({ printf '%s\n' "$ALL_BOARD" 2>/dev/null || :; } | grep -q '=== fixR ===' && { printf '%s\n' "$ALL_BOARD" 2>/dev/null || :; } | grep -q '=== fixTrading ===' && echo 0 || echo 1)"
 ALL_NEXT="$(bash "$BOARD" all next --registry "$NC6_REG")"
-assert "NC6: 'board all next' still resolves fixR's next queued row" "$(printf '%s\n' "$ALL_NEXT" | grep -q 'fixR' && echo 0 || echo 1)"
+assert "NC6: 'board all next' still resolves fixR's next queued row" "$({ printf '%s\n' "$ALL_NEXT" 2>/dev/null || :; } | grep -q 'fixR' && echo 0 || echo 1)"
 ALL_STATES="$(bash "$BOARD" all states --registry "$NC6_REG")"
-assert "NC6: 'board all states' still renders per repo" "$(printf '%s\n' "$ALL_STATES" | grep -q '=== fixR ===' && echo 0 || echo 1)"
+assert "NC6: 'board all states' still renders per repo" "$({ printf '%s\n' "$ALL_STATES" 2>/dev/null || :; } | grep -q '=== fixR ===' && echo 0 || echo 1)"
 bash "$BOARD" queue --registry "$NC6_REG" >/dev/null 2>"$TMPDIR_T/nc6-queue.err"; QUEUE_RC=$?
 assert "NC6: 'board queue' still exits 0 with the bridge column present (no #queue{} tokens seeded here, so 0 rows is correct)" \
   "$([ "$QUEUE_RC" -eq 0 ] && grep -q '0 rows' "$TMPDIR_T/nc6-queue.err" && echo 0 || echo 1)"
 PRIO_SINGLE="$(bash "$BOARD" priority overview --backlog-file "$FIXR/_meta/BACKLOG.md")"
-assert "NC6: single-repo 'board priority overview' is unaffected" "$(printf '%s\n' "$PRIO_SINGLE" | grep -q 'DO NOW' && echo 0 || echo 1)"
+assert "NC6: single-repo 'board priority overview' is unaffected" "$({ printf '%s\n' "$PRIO_SINGLE" 2>/dev/null || :; } | grep -q 'DO NOW' && echo 0 || echo 1)"
 
 echo ""
 echo "=== NC7: SECURITY -- untrusted BACKLOG content is LABELLED + routing-tags stripped before it reaches a Hermes card (stored-injection hardening) ==="
@@ -335,9 +335,9 @@ INJ_ROWS="$(bash "$BOARD_MIRROR" extract-rows "$FIXINJ/_meta/BACKLOG.md" fixInj 
 # extract-rows TSV layout: 1=origin 2=repo 3=id 4=item 5=notes 6=status 7=target 8=hash
 INJ_ITEM="$(printf '%s\n' "$INJ_ROWS" | awk -F'\t' '$3=="ID-901"{print $4}')"
 INJ_NOTES="$(printf '%s\n' "$INJ_ROWS" | awk -F'\t' '$3=="ID-901"{print $5}')"
-assert "NC7: extract-rows strips the #queue{} token from the item" "$(printf '%s' "$INJ_ITEM" | grep -q '#queue{' && echo 1 || echo 0)"
-assert "NC7: extract-rows strips the #queue{} token from the notes" "$(printf '%s' "$INJ_NOTES" | grep -q '#queue{' && echo 1 || echo 0)"
-assert "NC7: the item's own PROSE is retained (labelled, never dropped)" "$(printf '%s' "$INJ_ITEM" | grep -q 'IGNORE ALL PREVIOUS INSTRUCTIONS' && echo 0 || echo 1)"
+assert "NC7: extract-rows strips the #queue{} token from the item" "$({ printf '%s' "$INJ_ITEM" 2>/dev/null || :; } | grep -q '#queue{' && echo 1 || echo 0)"
+assert "NC7: extract-rows strips the #queue{} token from the notes" "$({ printf '%s' "$INJ_NOTES" 2>/dev/null || :; } | grep -q '#queue{' && echo 1 || echo 0)"
+assert "NC7: the item's own PROSE is retained (labelled, never dropped)" "$({ printf '%s' "$INJ_ITEM" 2>/dev/null || :; } | grep -q 'IGNORE ALL PREVIOUS INSTRUCTIONS' && echo 0 || echo 1)"
 
 INJ_REG="$TMPDIR_T/boards-inj.txt"
 printf 'fixInj  %s/_meta/BACKLOG.md  on\n' "$FIXINJ" > "$INJ_REG"
@@ -347,10 +347,10 @@ INJ_CREATE="$(printf '%s\n' "$INJ_PLAN" | jq -c 'select(.origin=="fixInj:ID-901"
 INJ_BODY="$(printf '%s' "$INJ_CREATE" | jq -r '.argv as $a | ($a | index("--body")) as $i | $a[$i+1]')"
 INJ_TITLE="$(printf '%s' "$INJ_CREATE" | jq -r '.argv as $a | ($a | index("create")) as $i | $a[$i+1]')"
 assert "NC7: the card BODY begins with the untrusted-content marker" "$(printf '%s' "$INJ_BODY" | head -1 | grep -q '^\[AUTOMATED MIRROR' && echo 0 || echo 1)"
-assert "NC7: the card TITLE carries the compact untrusted tag" "$(printf '%s' "$INJ_TITLE" | grep -q '^\[untrusted\] ' && echo 0 || echo 1)"
-assert "NC7: the #queue{} token never reaches the card title" "$(printf '%s' "$INJ_TITLE" | grep -q '#queue{' && echo 1 || echo 0)"
-assert "NC7: the #queue{} token never reaches the card body" "$(printf '%s' "$INJ_BODY" | grep -q '#queue{' && echo 1 || echo 0)"
-assert "NC7: the injection prose survives into the card (labelled, not censored)" "$(printf '%s' "$INJ_TITLE" | grep -q 'IGNORE ALL PREVIOUS INSTRUCTIONS' && echo 0 || echo 1)"
+assert "NC7: the card TITLE carries the compact untrusted tag" "$({ printf '%s' "$INJ_TITLE" 2>/dev/null || :; } | grep -q '^\[untrusted\] ' && echo 0 || echo 1)"
+assert "NC7: the #queue{} token never reaches the card title" "$({ printf '%s' "$INJ_TITLE" 2>/dev/null || :; } | grep -q '#queue{' && echo 1 || echo 0)"
+assert "NC7: the #queue{} token never reaches the card body" "$({ printf '%s' "$INJ_BODY" 2>/dev/null || :; } | grep -q '#queue{' && echo 1 || echo 0)"
+assert "NC7: the injection prose survives into the card (labelled, not censored)" "$({ printf '%s' "$INJ_TITLE" 2>/dev/null || :; } | grep -q 'IGNORE ALL PREVIOUS INSTRUCTIONS' && echo 0 || echo 1)"
 
 # NC7b: the MEGAS path (title from a ROADMAP.md `# Mega-goal:` line) gets the SAME strip + tag.
 mkdir -p "$FIXINJ/_meta/megagoals/injmega"
@@ -363,8 +363,8 @@ git -C "$FIXINJ" add -A && git -C "$FIXINJ" commit -q -m "test: seed injection m
 INJ_PLAN2="$(HERMES_BIN="$STUB" bash "$BOARD" mirror --repo-root "$FIXINJ" --registry "$INJ_REG" --snapshot "$TMPDIR_T/snap-inj2.jsonl" --dry-run 2>/dev/null)"
 MEGA_CREATE="$(printf '%s\n' "$INJ_PLAN2" | jq -c 'select(.origin=="megagoals:fixInj/injmega")')"
 MEGA_TITLE="$(printf '%s' "$MEGA_CREATE" | jq -r '.argv as $a | ($a | index("create")) as $i | $a[$i+1]')"
-assert "NC7b: the MEGAS-path title strips the #queue{} token" "$(printf '%s' "$MEGA_TITLE" | grep -q '#queue{' && echo 1 || echo 0)"
-assert "NC7b: the MEGAS-path title carries the untrusted tag" "$(printf '%s' "$MEGA_TITLE" | grep -q '^\[untrusted\] ' && echo 0 || echo 1)"
+assert "NC7b: the MEGAS-path title strips the #queue{} token" "$({ printf '%s' "$MEGA_TITLE" 2>/dev/null || :; } | grep -q '#queue{' && echo 1 || echo 0)"
+assert "NC7b: the MEGAS-path title carries the untrusted tag" "$({ printf '%s' "$MEGA_TITLE" 2>/dev/null || :; } | grep -q '^\[untrusted\] ' && echo 0 || echo 1)"
 
 # NC7c: the CHANGE-op comment path (a row whose content moved since the snapshot) is ALSO labelled
 # + tag-stripped. Seed a prior snapshot whose row_hash cannot match the current crafted row (a
@@ -377,8 +377,8 @@ CH_PLAN="$(HERMES_BIN="$STUB" bash "$BOARD" mirror --repo-root "$FIXINJ" --regis
 CH_OP="$(printf '%s\n' "$CH_PLAN" | jq -c 'select(.origin=="fixInj:ID-901" and .op=="change")')"
 CH_COMMENT="$(printf '%s' "$CH_OP" | jq -r '.argv | last')"
 assert "NC7c: a CHANGE is planned for the moved row (prior hash differs)" "$([ -n "$CH_OP" ] && echo 0 || echo 1)"
-assert "NC7c: the CHANGE comment carries the untrusted marker" "$(printf '%s' "$CH_COMMENT" | grep -q '\[AUTOMATED MIRROR' && echo 0 || echo 1)"
-assert "NC7c: the CHANGE comment strips the #queue{} token" "$(printf '%s' "$CH_COMMENT" | grep -q '#queue{' && echo 1 || echo 0)"
+assert "NC7c: the CHANGE comment carries the untrusted marker" "$({ printf '%s' "$CH_COMMENT" 2>/dev/null || :; } | grep -q '\[AUTOMATED MIRROR' && echo 0 || echo 1)"
+assert "NC7c: the CHANGE comment strips the #queue{} token" "$({ printf '%s' "$CH_COMMENT" 2>/dev/null || :; } | grep -q '#queue{' && echo 1 || echo 0)"
 
 echo ""
 echo "=== NC8: a 'complete' op failing with 'unknown id or terminal state' records ok/done, not error ==="

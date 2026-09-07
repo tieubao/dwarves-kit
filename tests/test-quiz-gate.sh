@@ -56,13 +56,13 @@ done
 assert "AC1 each of Q1..Q5 appears exactly once (no dup/drop)" "$EACH_ONCE"
 # grounded: a question names a real changed file
 assert "AC1 questions reference a real changed file (widget.js)" \
-  "$(printf '%s' "$QOUT" | grep -q 'widget.js' && echo 0 || echo 1)"
+  "$({ printf '%s' "$QOUT" 2>/dev/null || :; } | grep -q 'widget.js' && echo 0 || echo 1)"
 # grounded in ADDED LINES, not the commit message: the added identifier `widget` appears
 assert "AC1 questions quote the actual added code (names 'widget')" \
-  "$(printf '%s' "$QOUT" | grep -q 'function widget' && echo 0 || echo 1)"
+  "$({ printf '%s' "$QOUT" 2>/dev/null || :; } | grep -q 'function widget' && echo 0 || echo 1)"
 # grounded in the RECORDED test verdict (not invented)
 assert "AC1 questions carry the recorded test verdict (PASS from the proof)" \
-  "$(printf '%s' "$QOUT" | grep -qi 'PASS\|Exit: 0' && echo 0 || echo 1)"
+  "$({ printf '%s' "$QOUT" 2>/dev/null || :; } | grep -qi 'PASS\|Exit: 0' && echo 0 || echo 1)"
 
 echo "=== AC2: three responses each land in the debt ledger ==="
 RID="ac2-rid-$$"
@@ -81,18 +81,18 @@ assert "AC2 wave logged"    "$(grep -q '| DEBT | response=wave'   "$LF" && echo 
 # writer's format -- a regression widening check()'s awk predicate to match DEBT would fail HERE.
 CHK="$( bash "$GL" check full "$RID" 2>&1 )"; CHK_RC=$?
 assert "AC2 a DEBT-only ledger fails gate check (response lines never satisfy a required gate)" \
-  "$([ "$CHK_RC" -ne 0 ] && printf '%s' "$CHK" | grep -q 'MISSING-GATE' && echo 0 || echo 1)"
+  "$([ "$CHK_RC" -ne 0 ] && { printf '%s' "$CHK" 2>/dev/null || :; } | grep -q 'MISSING-GATE' && echo 0 || echo 1)"
 
 echo "=== AC3: engage routes through deep-understand (dispatch, not reimplementation) ==="
 ROUT="$( cd "$DA" && bash "$QG" respond "engage-rid-$$" engage --ref "$REFA" )"
 assert "AC3 engage output names the deep-understand engine" \
-  "$(printf '%s' "$ROUT" | grep -q 'deep-understand' && echo 0 || echo 1)"
+  "$({ printf '%s' "$ROUT" 2>/dev/null || :; } | grep -q 'deep-understand' && echo 0 || echo 1)"
 assert "AC3 engage output names the AskUserQuestion mastery gate" \
-  "$(printf '%s' "$ROUT" | grep -qi 'AskUserQuestion' && echo 0 || echo 1)"
+  "$({ printf '%s' "$ROUT" 2>/dev/null || :; } | grep -qi 'AskUserQuestion' && echo 0 || echo 1)"
 # defer / wave do NOT route to deep-understand (only engage does)
 DWAVE="$( bash "$QG" respond "wave-rid-$$" wave )"
 assert "AC3 wave does NOT route to deep-understand" \
-  "$(printf '%s' "$DWAVE" | grep -q 'deep-understand' && echo 1 || echo 0)"
+  "$({ printf '%s' "$DWAVE" 2>/dev/null || :; } | grep -q 'deep-understand' && echo 1 || echo 0)"
 # the kit does NOT reimplement a quiz scorer: quiz-gate.sh has no answer-key / grading logic
 assert "AC3 quiz-gate.sh reimplements no scorer (no answer-key/grade/score logic)" \
   "$(grep -qiE 'answer[_ -]?key|def .*score|grade_quiz|correct_answer|is_correct' "$QG" && echo 1 || echo 0)"
@@ -112,13 +112,13 @@ gitq "$DB" commit -qm "update calc helper" -m "Adds a multiply operation as requ
 REFB="$(gitq "$DB" rev-parse HEAD)"
 QB="$( cd "$DB" && bash "$QG" questions "$REFB" )"
 assert "AC4 quiz describes the DIFF (names 'subtract')" \
-  "$(printf '%s' "$QB" | grep -q 'subtract' && echo 0 || echo 1)"
+  "$({ printf '%s' "$QB" 2>/dev/null || :; } | grep -q 'subtract' && echo 0 || echo 1)"
 assert "AC4 quiz does NOT parrot the false narrative ('multiply')" \
-  "$(printf '%s' "$QB" | grep -qi 'multiply' && echo 1 || echo 0)"
+  "$({ printf '%s' "$QB" 2>/dev/null || :; } | grep -qi 'multiply' && echo 1 || echo 0)"
 # MINOR-4: Fixture B has a code change but NO recorded proof -> Q4 must fall back to the honest
 # "[no recorded test result]" string, never an invented verdict (the honesty guarantee).
 assert "AC4 no recorded proof -> Q4 says '[no recorded test result]' (does not invent a verdict)" \
-  "$(printf '%s' "$QB" | grep -q '\[no recorded test result' && echo 0 || echo 1)"
+  "$({ printf '%s' "$QB" 2>/dev/null || :; } | grep -q '\[no recorded test result' && echo 0 || echo 1)"
 
 echo "=== Edges: docs/tests-only change + a range ref ==="
 # MAJOR-2: a change touching ONLY docs/ + tests/ has no primary code file -> Q3 fires the
@@ -134,13 +134,13 @@ QD="$( cd "$DD" && bash "$QG" questions "$REFD" )"
 assert "Edge docs/tests-only: still exactly 5 questions" \
   "$([ "$(printf '%s\n' "$QD" | grep -c '^Q[1-5]\.')" -eq 5 ] && echo 0 || echo 1)"
 assert "Edge docs/tests-only: Q3 fires the 'touches only docs/tests' branch (no mis-labeled primary)" \
-  "$(printf '%s' "$QD" | grep -qi 'only docs/tests' && echo 0 || echo 1)"
+  "$({ printf '%s' "$QD" 2>/dev/null || :; } | grep -qi 'only docs/tests' && echo 0 || echo 1)"
 
 # MINOR-3: a range ref (A..B) is the code's other resolve branch; assert it grounds the same as a SHA.
 BASEA="$(gitq "$DA" rev-parse "${REFA}^1")"
 QRANGE="$( cd "$DA" && bash "$QG" questions "${BASEA}..${REFA}" )"
 assert "Edge range ref (A..B): 5 questions, still names the real changed file (widget.js)" \
-  "$([ "$(printf '%s\n' "$QRANGE" | grep -c '^Q[1-5]\.')" -eq 5 ] && printf '%s' "$QRANGE" | grep -q 'widget.js' && echo 0 || echo 1)"
+  "$([ "$(printf '%s\n' "$QRANGE" | grep -c '^Q[1-5]\.')" -eq 5 ] && { printf '%s' "$QRANGE" 2>/dev/null || :; } | grep -q 'widget.js' && echo 0 || echo 1)"
 
 echo "=== AC5: WIRING negative control (fires on tap, absent on wave / not-significant / non-gate) ==="
 TAP_DESC="add a new data model migration that introduces a primitive future work will build on"    # -> tap
@@ -157,7 +157,7 @@ V_NS="$(   bash "$KIT_DIR/lib/classify/significance-classify.sh" classify "$NS_D
 assert "AC5 classifier sanity: tap/$V_TAP wave/$V_WAVE ns/$V_NS" \
   "$([ "$V_TAP" = tap ] && [ "$V_WAVE" = wave ] && [ "$V_NS" = not-significant ] && echo 0 || echo 1)"
 assert "AC5 tap FIRES on a tap-verdict gate PR (nudge printed)" \
-  "$(printf '%s' "$T_TAP" | grep -q '★ worth understanding' && echo 0 || echo 1)"
+  "$({ printf '%s' "$T_TAP" 2>/dev/null || :; } | grep -q '★ worth understanding' && echo 0 || echo 1)"
 assert "AC5 tap ABSENT on a wave-verdict change (anti-fatigue)" \
   "$([ -z "$T_WAVE" ] && echo 0 || echo 1)"
 assert "AC5 tap ABSENT on a not-significant change" \
