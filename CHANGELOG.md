@@ -2,7 +2,7 @@
 
 All notable changes to dwarves-kit are documented here. Format: [Keep a Changelog](https://keepachangelog.com/).
 
-**Current version:** 2.0.0 (2026-07-03). An `[Unreleased]` section accumulates entries above it
+**Current version:** 2.2.0 (2026-09-07). An `[Unreleased]` section accumulates entries above it
 until the next cut.
 
 **Full history:** [`docs/CHANGELOG.md`](docs/CHANGELOG.md) -- every version, its date, and its
