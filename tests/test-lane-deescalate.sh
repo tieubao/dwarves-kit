@@ -26,7 +26,7 @@ assert() { TOTAL=$((TOTAL+1)); if [ "$2" -eq 0 ]; then echo -e "  ${GREEN}PASS${
 assert_contains() {
   local name="$1" needle="$2" haystack="$3"
   TOTAL=$((TOTAL+1))
-  if printf '%s' "$haystack" | grep -qF "$needle"; then
+  if { trap '' PIPE; printf '%s' "$haystack" 2>/dev/null || :; } | grep -qF "$needle"; then
     echo -e "  ${GREEN}PASS${NC} $name"; PASS=$((PASS+1))
   else
     echo -e "  ${RED}FAIL${NC} $name"; FAIL=$((FAIL+1))

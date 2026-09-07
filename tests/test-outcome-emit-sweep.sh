@@ -127,10 +127,10 @@ FIXTURE_OUT="$(manifest_diff_by_phase "$FIXTURE_DIR" "*.md" "$SITE_PATTERN" "$CO
 FIXTURE_RC=$?
 assert_eq "the sweep flags exactly 1 orphan in the fixture dir (the unbracketed fixture)" "$FIXTURE_RC" "1"
 
-if printf '%s\n' "$FIXTURE_OUT" | grep -qF "ORPHAN: fixture-unbracketed.md (fixture-phase)"; then RC=0; else RC=1; fi
+if { trap '' PIPE; printf '%s\n' "$FIXTURE_OUT" 2>/dev/null || :; } | grep -qF "ORPHAN: fixture-unbracketed.md (fixture-phase)"; then RC=0; else RC=1; fi
 assert "the flagged orphan is specifically fixture-unbracketed.md (fixture-phase)" $RC
 
-if printf '%s\n' "$FIXTURE_OUT" | grep -q "ORPHAN: think.md"; then RC=1; else RC=0; fi
+if { trap '' PIPE; printf '%s\n' "$FIXTURE_OUT" 2>/dev/null || :; } | grep -q "ORPHAN: think.md"; then RC=1; else RC=0; fi
 assert "the legit bracketed copy (think.md) is NOT flagged" $RC
 
 echo ""
@@ -144,7 +144,7 @@ WITHOUT_OUT="$(manifest_diff_by_phase "$COMMANDS_DIR" "*.md" "$SITE_PATTERN" "$C
 WITHOUT_RC=$?
 RC=1; [ "$WITHOUT_RC" -ge 1 ] && RC=0
 assert "removing the 'ship' exemption alone makes the sweep flag >=1 new orphan (ship.md)" "$RC"
-if printf '%s\n' "$WITHOUT_OUT" | grep -qF "ORPHAN: ship.md (Ship)"; then RC=0; else RC=1; fi
+if { trap '' PIPE; printf '%s\n' "$WITHOUT_OUT" 2>/dev/null || :; } | grep -qF "ORPHAN: ship.md (Ship)"; then RC=0; else RC=1; fi
 assert "...and that orphan is specifically ship.md (Ship)" $RC
 
 echo ""

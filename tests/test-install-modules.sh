@@ -82,7 +82,7 @@ echo "== NC un-opted-hook-absent: a cosmetic/session/advisor hook never reaches 
 UNWANTED="auto-format.sh notification.sh slop-cleaner.sh statusline.sh codebase-index.sh permission-auto-approve.sh context-hints.sh tool-policy-guard.sh harvest.sh session-state-save.sh citation-guard.sh context-readiness.sh output-offload.sh pre-compact-backup.sh post-compact-reinject.sh money-gate.sh prose-rag.sh"
 LEAKED=""
 for h in $UNWANTED; do
-  printf '%s\n' "$WIRED2" | grep -qx "$h" && LEAKED="$LEAKED $h"
+  { trap '' PIPE; printf '%s\n' "$WIRED2" 2>/dev/null || :; } | grep -qx "$h" && LEAKED="$LEAKED $h"
 done
 assert_true "no un-opted-in module hook present after --with board,stats (leaked:${LEAKED:-none})" "$([ -z "$LEAKED" ]; echo $?)"
 
@@ -92,7 +92,7 @@ echo "== NC team_mode reserved: --with team_mode is a clean error, not installab
 H3="$(mktemp -d)"
 ERR3="$(HOME="$H3" bash "$KIT_DIR/install.sh" --with team_mode 2>&1)"; RC3=$?
 assert_true "--with team_mode exits nonzero" "$([ "$RC3" -ne 0 ]; echo $?)"
-assert_true "--with team_mode error names the reserved reason" "$(printf '%s' "$ERR3" | grep -qi 'reserved'; echo $?)"
+assert_true "--with team_mode error names the reserved reason" "$({ trap '' PIPE; printf '%s' "$ERR3" 2>/dev/null || :; } | grep -qi 'reserved'; echo $?)"
 assert_true "--with team_mode never wrote a settings.json" "$([ ! -f "$H3/.claude/settings.json" ]; echo $?)"
 
 # ============================================================
@@ -101,7 +101,7 @@ echo "== NC unknown module name: clean error, not silent =="
 H4="$(mktemp -d)"
 ERR4="$(HOME="$H4" bash "$KIT_DIR/install.sh" --with bogus-module 2>&1)"; RC4=$?
 assert_true "--with bogus-module exits nonzero" "$([ "$RC4" -ne 0 ]; echo $?)"
-assert_true "--with bogus-module error names the unknown module" "$(printf '%s' "$ERR4" | grep -q 'bogus-module'; echo $?)"
+assert_true "--with bogus-module error names the unknown module" "$({ trap '' PIPE; printf '%s' "$ERR4" 2>/dev/null || :; } | grep -q 'bogus-module'; echo $?)"
 assert_true "--with bogus-module never wrote a settings.json" "$([ ! -f "$H4/.claude/settings.json" ]; echo $?)"
 
 # ============================================================
@@ -172,8 +172,8 @@ source "$(dirname "$0")/../lib/config/kit-config.sh" 2>/dev/null || true
 grep -q board "$HOME/.claude/dwarves-kit/kit.toml" 2>/dev/null
 FAKEHOOK
 NC_LEAK="$(grep -rl 'kit\.toml' "$NC_HOOKS_DIR" 2>/dev/null || true)"
-assert_true "NC: lint catches a planted hook reading kit.toml (caught: ${NC_LEAK:-NONE-BUG})" "$(printf '%s' "$NC_LEAK" | grep -q 'fake-config-reader.sh'; echo $?)"
-if printf '%s' "$NC_LEAK" | grep -qx "$NC_HOOKS_DIR/safety-gate.sh"; then FP_RC=1; else FP_RC=0; fi
+assert_true "NC: lint catches a planted hook reading kit.toml (caught: ${NC_LEAK:-NONE-BUG})" "$({ trap '' PIPE; printf '%s' "$NC_LEAK" 2>/dev/null || :; } | grep -q 'fake-config-reader.sh'; echo $?)"
+if { trap '' PIPE; printf '%s' "$NC_LEAK" 2>/dev/null || :; } | grep -qx "$NC_HOOKS_DIR/safety-gate.sh"; then FP_RC=1; else FP_RC=0; fi
 assert_true "NC: lint does not false-positive the untouched real hook" "$FP_RC"
 rm -rf "$NC_HOOKS_DIR"
 

@@ -16,8 +16,8 @@ PASS=0; FAIL=0; TOTAL=0
 
 ok()  { TOTAL=$((TOTAL+1)); PASS=$((PASS+1)); echo -e "  ${GREEN}PASS${NC} $1"; }
 bad() { TOTAL=$((TOTAL+1)); FAIL=$((FAIL+1)); echo -e "  ${RED}FAIL${NC} $1"; }
-expect()  { if printf '%s' "$3" | grep -q "$2"; then ok "$1"; else bad "$1 (missing '$2' in: $3)"; fi; }
-refute()  { if printf '%s' "$3" | grep -q "$2"; then bad "$1 (unexpected '$2')"; else ok "$1"; fi; }
+expect()  { if { trap '' PIPE; printf '%s' "$3" 2>/dev/null || :; } | grep -q "$2"; then ok "$1"; else bad "$1 (missing '$2' in: $3)"; fi; }
+refute()  { if { trap '' PIPE; printf '%s' "$3" 2>/dev/null || :; } | grep -q "$2"; then bad "$1 (unexpected '$2')"; else ok "$1"; fi; }
 
 SPEC_INDEX="$KIT_DIR/lib/spec/spec-index.sh"
 

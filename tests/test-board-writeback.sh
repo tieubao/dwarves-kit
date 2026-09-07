@@ -182,7 +182,7 @@ assert "ID-001's changeset entry: queued -> claimed" \
 assert "ID-003's changeset entry: parked -> shipped" \
   "$(printf '%s\n' "$DIFF1" | jq -e 'select(.origin=="fixR:ID-003") | .current_status=="parked" and .target_status=="shipped"' >/dev/null 2>&1 && echo 0 || echo 1)"
 assert "ID-002 (no Hermes-side move) never appears in the changeset" \
-  "$(printf '%s\n' "$DIFF1" | grep -q 'ID-002' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s\n' "$DIFF1" 2>/dev/null || :; } | grep -q 'ID-002' && echo 1 || echo 0)"
 assert "only ONE hermes call made (batched list, not per-row)" \
   "$([ "$(wc -l < "$CALLS" | tr -d ' ')" -eq 1 ] && echo 0 || echo 1)"
 
@@ -207,8 +207,8 @@ assert "the sync commit body carries actor=hermes" \
 assert "the sync branch's diff touches ONLY the Status column of the two matched rows" \
   "$(git -C "$FIXR" diff "$DEFAULT_BRANCH" chore/board-sync -- _meta/BACKLOG.md | grep -c '^[+-]|' | grep -qx 4 && echo 0 || echo 1)"
 RT_DIFF="$(git -C "$FIXR" diff "$DEFAULT_BRANCH" chore/board-sync -- _meta/BACKLOG.md)"
-assert "RT: the diff shows ID-001 queued->claimed" "$(printf '%s\n' "$RT_DIFF" | grep -q -- '-| ID-001 .* queued ' && printf '%s\n' "$RT_DIFF" | grep -q -- '+| ID-001 .* claimed' && echo 0 || echo 1)"
-assert "RT: the diff shows ID-003 parked->shipped" "$(printf '%s\n' "$RT_DIFF" | grep -q -- '-| ID-003 .* parked ' && printf '%s\n' "$RT_DIFF" | grep -q -- '+| ID-003 .* shipped' && echo 0 || echo 1)"
+assert "RT: the diff shows ID-001 queued->claimed" "$({ trap '' PIPE; printf '%s\n' "$RT_DIFF" 2>/dev/null || :; } | grep -q -- '-| ID-001 .* queued ' && { trap '' PIPE; printf '%s\n' "$RT_DIFF" 2>/dev/null || :; } | grep -q -- '+| ID-001 .* claimed' && echo 0 || echo 1)"
+assert "RT: the diff shows ID-003 parked->shipped" "$({ trap '' PIPE; printf '%s\n' "$RT_DIFF" 2>/dev/null || :; } | grep -q -- '-| ID-003 .* parked ' && { trap '' PIPE; printf '%s\n' "$RT_DIFF" 2>/dev/null || :; } | grep -q -- '+| ID-003 .* shipped' && echo 0 || echo 1)"
 assert "'gh pr create' was called exactly once (never a real API call -- it's the stub)" \
   "$([ "$(wc -l < "$GHCALLS" | tr -d ' ')" -eq 1 ] && echo 0 || echo 1)"
 assert "'gh pr create' argv carries --base/--head/--title/--body-file as discrete args" \
@@ -235,7 +235,7 @@ SYNC_SHA_BEFORE="$(git -C "$FIXR" rev-parse chore/board-sync)"
 WB2_OUT="$(STUB_CALL_LOG="$CALLS" STUB_LIST_JSON="$LIST1" HERMES_BIN="$STUB" GH_BIN="$GHSTUB" GH_CALL_LOG="$GHCALLS" \
   bash "$BOARD" writeback --repo-root "$TMPDIR_T" --registry "$REGISTRY" --snapshot "$SNAP" 2>&1)"; WB2_RC=$?
 assert "NC3: exit 0" "$([ "$WB2_RC" -eq 0 ] && echo 0 || echo 1)"
-assert "NC3: reports '0 changes'" "$(printf '%s\n' "$WB2_OUT" | grep -q '0 changes' && echo 0 || echo 1)"
+assert "NC3: reports '0 changes'" "$({ trap '' PIPE; printf '%s\n' "$WB2_OUT" 2>/dev/null || :; } | grep -q '0 changes' && echo 0 || echo 1)"
 assert "NC3: zero gh calls made" "$([ ! -s "$GHCALLS" ] && echo 0 || echo 1)"
 assert "NC3: default branch HEAD unchanged" "$([ "$(git -C "$FIXR" rev-parse "$DEFAULT_BRANCH")" = "$HEAD_DEFAULT_BEFORE" ] && echo 0 || echo 1)"
 assert "NC3: chore/board-sync branch unchanged (no new commit)" "$([ "$(git -C "$FIXR" rev-parse chore/board-sync)" = "$SYNC_SHA_BEFORE" ] && echo 0 || echo 1)"
@@ -255,7 +255,7 @@ jq -nc --arg i1 "$ID001" --arg i2 "$ID002" --arg i3 "$ID003" \
   '[{id:$i1,status:"ready",title:"x"},{id:$i2,status:"blocked",title:"x"},{id:$i3,status:"done",title:"x"}]' > "$LIST_NC1"
 : > "$CALLS"
 NC1_ERR="$(STUB_CALL_LOG="$CALLS" STUB_LIST_JSON="$LIST_NC1" HERMES_BIN="$STUB" bash "$BOARD_WRITEBACK" diff --registry "$REGISTRY" --snapshot "$SNAP" 2>&1 >/dev/null)"
-assert "NC1: ID-002's hash-mismatch skip is reported" "$(printf '%s\n' "$NC1_ERR" | grep -q 'fixR:ID-002.*row_hash mismatch' && echo 0 || echo 1)"
+assert "NC1: ID-002's hash-mismatch skip is reported" "$({ trap '' PIPE; printf '%s\n' "$NC1_ERR" 2>/dev/null || :; } | grep -q 'fixR:ID-002.*row_hash mismatch' && echo 0 || echo 1)"
 NC1_CONTENT_AFTER="$(git -C "$FIXR" show "$DEFAULT_BRANCH":_meta/BACKLOG.md)"
 assert "NC1: the default-branch BACKLOG.md is byte-for-byte untouched by the (rejected) diff" \
   "$([ "$NC1_CONTENT_BEFORE" = "$NC1_CONTENT_AFTER" ] && echo 0 || echo 1)"
@@ -267,7 +267,7 @@ jq -nc --arg i1 "$ID001" --arg i3 "$ID003" \
   '[{id:$i1,status:"in_review",title:"x"},{id:$i3,status:"done",title:"x"}]' > "$LIST_NC2"
 NC2_ERR="$(STUB_LIST_JSON="$LIST_NC2" STUB_CALL_LOG="$CALLS" HERMES_BIN="$STUB" bash "$BOARD_WRITEBACK" diff --registry "$REGISTRY" --snapshot "$SNAP" 2>&1 >/dev/null)"
 assert "NC2: ID-001's illegal-target-status skip is reported by name" \
-  "$(printf '%s\n' "$NC2_ERR" | grep -q "fixR:ID-001.*no legal backlog.sh mapping" && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$NC2_ERR" 2>/dev/null || :; } | grep -q "fixR:ID-001.*no legal backlog.sh mapping" && echo 0 || echo 1)"
 
 echo ""
 echo "=== NC4: a card from a non-opted-in repo (fixTrading) in the Hermes delta -> refused, NEVER queried ==="
@@ -281,9 +281,9 @@ NC4_ERR="$(STUB_LIST_JSON="$LIST_NC4" STUB_CALL_LOG="$CALLS" HERMES_BIN="$STUB" 
 NC4_RC=$?
 assert "NC4: exit 0 (a per-row rejection, not a whole-run abort)" "$([ "$NC4_RC" -eq 0 ] && echo 0 || echo 1)"
 assert "NC4: fixTrading's row is refused with a named reason" \
-  "$(printf '%s\n' "$NC4_ERR" | grep -q "fixTrading:TR-001.*not opted in" && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$NC4_ERR" 2>/dev/null || :; } | grep -q "fixTrading:TR-001.*not opted in" && echo 0 || echo 1)"
 assert "NC4: the fixTrading board was NEVER queried (stub would have exited 9 and this diff would have shown the FATAL line otherwise)" \
-  "$(printf '%s\n' "$NC4_ERR" | grep -q 'FATAL TEST INVARIANT VIOLATION' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s\n' "$NC4_ERR" 2>/dev/null || :; } | grep -q 'FATAL TEST INVARIANT VIOLATION' && echo 1 || echo 0)"
 assert "NC4: no call log line ever references the fixTrading board" "$(grep -qi 'fixtrading' "$CALLS" && echo 1 || echo 0)"
 
 echo ""
@@ -293,7 +293,7 @@ set +e
 MISSING_ERR="$(bash "$BOARD_WRITEBACK" diff --registry "$REGISTRY" --snapshot "$MISSING_SNAP" 2>&1 >/dev/null)"; MISSING_RC=$?
 set -e
 assert "NC5a: missing snapshot -> nonzero exit" "$([ "$MISSING_RC" -ne 0 ] && echo 0 || echo 1)"
-assert "NC5a: missing snapshot -> explicit REFUSING error" "$(printf '%s\n' "$MISSING_ERR" | grep -q 'REFUSING all edits' && echo 0 || echo 1)"
+assert "NC5a: missing snapshot -> explicit REFUSING error" "$({ trap '' PIPE; printf '%s\n' "$MISSING_ERR" 2>/dev/null || :; } | grep -q 'REFUSING all edits' && echo 0 || echo 1)"
 
 CORRUPT_SNAP="$TMPDIR_T/corrupt.jsonl"
 printf '{"origin":"fixR:ID-001"}\nTHIS IS NOT JSON\n' > "$CORRUPT_SNAP"
@@ -301,7 +301,7 @@ set +e
 CORRUPT_ERR="$(bash "$BOARD_WRITEBACK" diff --registry "$REGISTRY" --snapshot "$CORRUPT_SNAP" 2>&1 >/dev/null)"; CORRUPT_RC=$?
 set -e
 assert "NC5b: corrupt snapshot -> nonzero exit" "$([ "$CORRUPT_RC" -ne 0 ] && echo 0 || echo 1)"
-assert "NC5b: corrupt snapshot -> explicit REFUSING error" "$(printf '%s\n' "$CORRUPT_ERR" | grep -q 'REFUSING all edits' && echo 0 || echo 1)"
+assert "NC5b: corrupt snapshot -> explicit REFUSING error" "$({ trap '' PIPE; printf '%s\n' "$CORRUPT_ERR" 2>/dev/null || :; } | grep -q 'REFUSING all edits' && echo 0 || echo 1)"
 
 EMPTY_SNAP="$TMPDIR_T/empty-valid.jsonl"
 : > "$EMPTY_SNAP"
@@ -309,7 +309,7 @@ set +e
 EMPTY_OUT="$(bash "$BOARD" writeback --repo-root "$TMPDIR_T" --registry "$REGISTRY" --snapshot "$EMPTY_SNAP" 2>&1)"; EMPTY_RC=$?
 set -e
 assert "NC5c: a PRESENT-but-EMPTY snapshot (valid, zero rows) is NOT treated as corrupt -- exit 0" "$([ "$EMPTY_RC" -eq 0 ] && echo 0 || echo 1)"
-assert "NC5c: a present-but-empty snapshot honestly reports 0 changes (not a refusal)" "$(printf '%s\n' "$EMPTY_OUT" | grep -q '0 changes' && echo 0 || echo 1)"
+assert "NC5c: a present-but-empty snapshot honestly reports 0 changes (not a refusal)" "$({ trap '' PIPE; printf '%s\n' "$EMPTY_OUT" 2>/dev/null || :; } | grep -q '0 changes' && echo 0 || echo 1)"
 
 echo ""
 echo "=== NC6: TWO-WRITER coexistence -- a post-snapshot appended row survives byte-for-byte; branch bases on current HEAD ==="

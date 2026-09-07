@@ -97,9 +97,9 @@ MARKPAID_RC=$?
 echo "=== AC1: collects the week's deferred+waved items + impl-notes + explainers ==="
 COLLECT_OUT="$(cd "$KIT_DIR" && bash "$WB" collect --repo fixture-repo --repo-root "$FIXREPO")"
 assert "AC1a collect mentions ug-10-waved-item (waved)" \
-  "$(printf '%s\n' "$COLLECT_OUT" | grep -qE '^## ug-10-waved-item$' && printf '%s\n' "$COLLECT_OUT" | grep -q 'disposition: waved' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$COLLECT_OUT" 2>/dev/null || :; } | grep -qE '^## ug-10-waved-item$' && { trap '' PIPE; printf '%s\n' "$COLLECT_OUT" 2>/dev/null || :; } | grep -q 'disposition: waved' && echo 0 || echo 1)"
 assert "AC1b collect mentions ug-11-deferred-item (deferred)" \
-  "$(printf '%s\n' "$COLLECT_OUT" | grep -qE '^## ug-11-deferred-item$' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$COLLECT_OUT" 2>/dev/null || :; } | grep -qE '^## ug-11-deferred-item$' && echo 0 || echo 1)"
 assert "AC1c ug-10's impl-notes resolved as FOUND (rid-named file)" \
   "$(printf '%s\n' "$COLLECT_OUT" | grep -A6 '^## ug-10-waved-item$' | grep -q 'impl-notes: docs/implementation-notes/ug-10-waved-item.md (found)' && echo 0 || echo 1)"
 assert "AC1d ug-11's explainer resolved as FOUND (slug-named file, ug-NN- prefix stripped)" \
@@ -127,32 +127,32 @@ echo "=== AC3a: NEGATIVE CONTROL -- an already-engaged (paid) item is not re-col
 assert "AC3a mark-paid on ug-12-paid-item exited 0 (the real codepath ran)" "$([ "$MARKPAID_RC" -eq 0 ] && echo 0 || echo 1)"
 LIST_OUT="$(cd "$KIT_DIR" && bash "$WB" list --repo fixture-repo)"
 assert "AC3a [NC] ug-12-paid-item ABSENT from list after mark-paid" \
-  "$(printf '%s\n' "$LIST_OUT" | grep -q 'ug-12-paid-item' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s\n' "$LIST_OUT" 2>/dev/null || :; } | grep -q 'ug-12-paid-item' && echo 1 || echo 0)"
 
 echo ""
 echo "=== AC3b: NEGATIVE CONTROL -- a non-significant change never enters the collectible view ==="
 assert "AC3b the raw ledger DOES contain the not-significant DEBT line (sanity: it really was written)" \
   "$(grep -q 'verdict=not-significant' "$RUNS/ug-13-nonsig-item.log" && echo 0 || echo 1)"
 assert "AC3b [NC] ug-13-nonsig-item ABSENT from list (never collectible)" \
-  "$(printf '%s\n' "$LIST_OUT" | grep -q 'ug-13-nonsig-item' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s\n' "$LIST_OUT" 2>/dev/null || :; } | grep -q 'ug-13-nonsig-item' && echo 1 || echo 0)"
 assert "AC3b [NC, bonus] the still-open ug-16-pending-item (tap, no response) is ALSO absent" \
-  "$(printf '%s\n' "$LIST_OUT" | grep -q 'ug-16-pending-item' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s\n' "$LIST_OUT" 2>/dev/null || :; } | grep -q 'ug-16-pending-item' && echo 1 || echo 0)"
 
 echo ""
 echo "=== AC3c: window scoping -- an item older than --days is excluded ==="
 assert "AC3c default (--days 7) excludes the 30-day-old waved item" \
-  "$(printf '%s\n' "$LIST_OUT" | grep -q 'ug-14-old-item' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s\n' "$LIST_OUT" 2>/dev/null || :; } | grep -q 'ug-14-old-item' && echo 1 || echo 0)"
 LIST_WIDE="$(cd "$KIT_DIR" && bash "$WB" list --repo fixture-repo --days 400)"
 assert "AC3c --days 400 INCLUDES the same item" \
-  "$(printf '%s\n' "$LIST_WIDE" | grep -q 'ug-14-old-item' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$LIST_WIDE" 2>/dev/null || :; } | grep -q 'ug-14-old-item' && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC3d: repo scoping -- a different-repo item is excluded by default, included with --all-repos ==="
 assert "AC3d default (--repo fixture-repo) excludes the other-repo item" \
-  "$(printf '%s\n' "$LIST_OUT" | grep -q 'ug-15-otherrepo-item' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s\n' "$LIST_OUT" 2>/dev/null || :; } | grep -q 'ug-15-otherrepo-item' && echo 1 || echo 0)"
 LIST_ALL="$(cd "$KIT_DIR" && bash "$WB" list --all-repos --days 400)"
 assert "AC3d --all-repos INCLUDES the other-repo item" \
-  "$(printf '%s\n' "$LIST_ALL" | grep -q 'ug-15-otherrepo-item' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$LIST_ALL" 2>/dev/null || :; } | grep -q 'ug-15-otherrepo-item' && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC4: NEGATIVE CONTROL (reuse) -- the skill invokes, does not fork a second engine ==="
@@ -193,7 +193,7 @@ assert "regression: mark-paid on a THIN response-only item exits 0 (was exit 64 
 
 LIST_AFTER_THIN="$(cd "$KIT_DIR" && bash "$WB" list --repo fixture-repo)"
 assert "regression: $RID_THIN is no longer collectible after mark-paid (disposed paid, never re-collected)" \
-  "$(printf '%s\n' "$LIST_AFTER_THIN" | grep -q "$RID_THIN" && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s\n' "$LIST_AFTER_THIN" 2>/dev/null || :; } | grep -q "$RID_THIN" && echo 1 || echo 0)"
 
 echo ""
 echo "=== Forward-carry: a FAT classifier line precedes a response line ==="
@@ -204,13 +204,13 @@ RID_FAT="ug-21-fat-then-response-$$"
 FAT_LOG="$RUNS/$RID_FAT.log"
 LAST_FAT_RESP_LINE="$(grep '| DEBT |' "$FAT_LOG" | tail -n1)"
 assert "forward-carry: the response line carries significance=high from the earlier classifier line" \
-  "$(printf '%s' "$LAST_FAT_RESP_LINE" | grep -q 'significance=high' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$LAST_FAT_RESP_LINE" 2>/dev/null || :; } | grep -q 'significance=high' && echo 0 || echo 1)"
 assert "forward-carry: the response line carries worthiness=high from the earlier classifier line" \
-  "$(printf '%s' "$LAST_FAT_RESP_LINE" | grep -q 'worthiness=high' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$LAST_FAT_RESP_LINE" 2>/dev/null || :; } | grep -q 'worthiness=high' && echo 0 || echo 1)"
 assert "forward-carry: the response line carries verdict=tap from the earlier classifier line" \
-  "$(printf '%s' "$LAST_FAT_RESP_LINE" | grep -q 'verdict=tap' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$LAST_FAT_RESP_LINE" 2>/dev/null || :; } | grep -q 'verdict=tap' && echo 0 || echo 1)"
 assert "forward-carry: the response line still carries its own response=defer" \
-  "$(printf '%s' "$LAST_FAT_RESP_LINE" | grep -q 'response=defer' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$LAST_FAT_RESP_LINE" 2>/dev/null || :; } | grep -q 'response=defer' && echo 0 || echo 1)"
 
 COLLECT_FAT="$(cd "$KIT_DIR" && bash "$WB" collect --repo fixture-repo --repo-root "$FIXREPO")"
 assert "forward-carry: the digest shows real sig/wor for $RID_FAT (high / high), not blanks" \
@@ -265,7 +265,7 @@ assert "AC5a record's own stdout prints the verdict (tap, per this description's
 E2E_LOG="$RUNS/$RID_E2E.log"
 FIRST_DEBT_LINE="$(grep '| DEBT |' "$E2E_LOG" | head -n1)"
 assert "AC5b record wrote a FAT | DEBT | line grounded in the real classification (significance=high worthiness=high verdict=tap)" \
-  "$(printf '%s' "$FIRST_DEBT_LINE" | grep -q 'significance=high worthiness=high verdict=tap' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$FIRST_DEBT_LINE" 2>/dev/null || :; } | grep -q 'significance=high worthiness=high verdict=tap' && echo 0 || echo 1)"
 
 # An open tap with no human response yet is PENDING -- not yet collectible (still Flow A's to
 # resolve; matches AC3b's bonus check on ug-16-pending-item above).
@@ -278,7 +278,7 @@ assert "AC5c before any human response, $RID_E2E is PENDING (not yet collectible
 ( cd "$KIT_DIR" && bash "$GL" debt-response "$RID_E2E" defer "deferred to weekend batch" ) >/dev/null
 LAST_E2E_LINE="$(grep '| DEBT |' "$E2E_LOG" | tail -n1)"
 assert "AC5d the human's defer response line forward-carries record's significance=high/worthiness=high/verdict=tap" \
-  "$(printf '%s' "$LAST_E2E_LINE" | grep -q 'significance=high worthiness=high verdict=tap response=defer' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$LAST_E2E_LINE" 2>/dev/null || :; } | grep -q 'significance=high worthiness=high verdict=tap response=defer' && echo 0 || echo 1)"
 
 COLLECT_E2E="$(cd "$KIT_DIR" && bash "$WB" collect --repo fixture-repo --repo-root "$FIXREPO")"
 assert "AC5e collect shows REAL significance/worthiness for $RID_E2E (high / high), not blank" \

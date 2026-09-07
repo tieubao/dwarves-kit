@@ -28,7 +28,7 @@ assert() { TOTAL=$((TOTAL+1)); if [ "$2" -eq 0 ]; then echo -e "  ${GREEN}PASS${
 assert_contains() {
   local name="$1" needle="$2" haystack="$3"
   TOTAL=$((TOTAL+1))
-  if printf '%s' "$haystack" | grep -qF "$needle"; then
+  if { trap '' PIPE; printf '%s' "$haystack" 2>/dev/null || :; } | grep -qF "$needle"; then
     echo -e "  ${GREEN}PASS${NC} $name"; PASS=$((PASS+1))
   else
     echo -e "  ${RED}FAIL${NC} $name"; FAIL=$((FAIL+1))
@@ -57,7 +57,7 @@ echo "=== DOWNGRADE GUARD [NEGATIVE CONTROL]: full + trivial spec never downgrad
 OUT_NEG="$(bash "$LC" escalate full "$FIX/trivial-spec.md" 2>&1)"
 EXIT_NEG=$?
 assert_contains "AC3 [NEGATIVE CONTROL]: escalate full+trivial-spec HOLDs at full (never downgrades)" "HOLD full" "$OUT_NEG"
-if printf '%s' "$OUT_NEG" | grep -qE '^ESCALATE'; then
+if { trap '' PIPE; printf '%s' "$OUT_NEG" 2>/dev/null || :; } | grep -qE '^ESCALATE'; then
   assert "AC3 [NEGATIVE CONTROL]: no ESCALATE line ever appears for a lighter re-class" 1
 else
   assert "AC3 [NEGATIVE CONTROL]: no ESCALATE line ever appears for a lighter re-class" 0
@@ -95,7 +95,7 @@ fi
 DWARVES_KIT_LOG_DIR="$LOG_DIR" bash "$GL" start --amend "$RID" full tiny feature feature testrepo >/dev/null 2>&1
 LEDGER_TAIL="$(DWARVES_KIT_LOG_DIR="$LOG_DIR" bash "$GL" show "$RID" 2>/dev/null | grep -E 'START|START-AMEND' | tail -1)"
 assert_contains "AC4: last START-AMEND wins -- ledger's effective lane is now full" "lane=full" "$LEDGER_TAIL"
-if printf '%s' "$LEDGER_TAIL" | grep -q 'START-AMEND'; then
+if { trap '' PIPE; printf '%s' "$LEDGER_TAIL" 2>/dev/null || :; } | grep -q 'START-AMEND'; then
   assert "AC4: the amend line is recorded as START-AMEND, not a second plain START" 0
 else
   assert "AC4: the amend line is recorded as START-AMEND, not a second plain START" 1

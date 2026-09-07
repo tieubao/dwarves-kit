@@ -41,7 +41,7 @@ if [ -z "$OUT" ] && [ "$rc" -eq 0 ]; then ok "missing stream -> empty, exit 0"; 
 
 echo "== NC empty-KIT_LEDGER_DIR: a set-but-empty root is a clean fatal error =="
 ERR="$(KIT_LEDGER_DIR="" bash "$LEDGER" append "runs/boom.log" "x" 2>&1)"; rc=$?
-if [ "$rc" -ne 0 ] && printf '%s' "$ERR" | grep -qi "empty"; then
+if [ "$rc" -ne 0 ] && { trap '' PIPE; printf '%s' "$ERR" 2>/dev/null || :; } | grep -qi "empty"; then
   ok "empty KIT_LEDGER_DIR -> nonzero exit + a clear 'empty' error (not a silent relative write)"
 else
   bad "empty KIT_LEDGER_DIR should fatal cleanly (rc=$rc err='$ERR')"
@@ -66,7 +66,7 @@ RID="substrate-shared-test"
 KIT_LEDGER_DIR="$TMP5" bash "$GATE_LEDGER" record "$RID" build ran "wrote via gate-ledger" >/dev/null 2>&1
 # the substrate reads the same runs/<rid>.log gate-ledger wrote (rid slug = runid())
 SR="$(KIT_LEDGER_DIR="$TMP5" bash "$LEDGER" read "runs/$RID.log")"
-if printf '%s' "$SR" | grep -q "| GATE | build | ran |"; then
+if { trap '' PIPE; printf '%s' "$SR" 2>/dev/null || :; } | grep -q "| GATE | build | ran |"; then
   ok "the GATE line gate-ledger wrote is readable through the substrate on the same root"
 else
   bad "shared-root broken: substrate read did not see gate-ledger's write (got '$SR')"

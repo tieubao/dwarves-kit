@@ -64,7 +64,7 @@ mk_mock() {  # path
   cat > "$1" <<'MOCK'
 #!/usr/bin/env bash
 prompt=$(cat)
-if printf '%s' "$prompt" | grep -q 'TIER-4 MEGA-CLOSE VERIFIER'; then
+if { trap '' PIPE; printf '%s' "$prompt" 2>/dev/null || :; } | grep -q 'TIER-4 MEGA-CLOSE VERIFIER'; then
   n=$(printf '%s' "$prompt" | grep -oE 'VERIFIER [0-9]+/3' | head -1 | grep -oE '[0-9]+' | head -1)
   touch "${CLOSE_SENTINEL}.${n}"
   if [ -n "${MOCK_DISSENT:-}" ] && [ "$MOCK_DISSENT" = "$n" ]; then

@@ -35,21 +35,21 @@ echo "=== AC1: agents/test-writer.md grants no bare Bash, only scoped test-runne
 # frontmatter = the block between the first and second '---' line
 FRONTMATTER="$(awk '/^---$/{c++; next} c==1' "$AGENT")"
 
-if printf '%s\n' "$FRONTMATTER" | grep -qE '^[[:space:]]*-[[:space:]]*Bash[[:space:]]*$'; then
+if { trap '' PIPE; printf '%s\n' "$FRONTMATTER" 2>/dev/null || :; } | grep -qE '^[[:space:]]*-[[:space:]]*Bash[[:space:]]*$'; then
   RC=1
 else
   RC=0
 fi
 assert "no bare '- Bash' tools entry (list form)" $RC
 
-if printf '%s\n' "$FRONTMATTER" | grep -qE ',[[:space:]]*Bash[[:space:]]*[,)]|\(Bash[[:space:]]*[,)]'; then
+if { trap '' PIPE; printf '%s\n' "$FRONTMATTER" 2>/dev/null || :; } | grep -qE ',[[:space:]]*Bash[[:space:]]*[,)]|\(Bash[[:space:]]*[,)]'; then
   RC=1
 else
   RC=0
 fi
 assert "no bare ' Bash,' / ' Bash)' token in an inline tools list either" $RC
 
-printf '%s\n' "$FRONTMATTER" | grep -qE '^[[:space:]]*-[[:space:]]*Bash\('
+{ trap '' PIPE; printf '%s\n' "$FRONTMATTER" 2>/dev/null || :; } | grep -qE '^[[:space:]]*-[[:space:]]*Bash\('
 assert "at least one scoped Bash(...) pattern is present (it must be able to run tests)" $?
 
 echo ""

@@ -65,7 +65,7 @@ sweep_check() {
     [ -f "$f" ] || continue
     base="$(basename "$f" .md)"
     grep -qi 'gate-ledger' "$f" && continue
-    printf '%s\n' "$exempt" | grep -qxF "$base" && continue
+    { trap '' PIPE; printf '%s\n' "$exempt" 2>/dev/null || :; } | grep -qxF "$base" && continue
     echo "  ORPHAN: $base.md (no gate-ledger mention, not in the exemption table)"
     orphans=$((orphans + 1))
   done
@@ -149,13 +149,13 @@ FIXTURE_OUT="$(sweep_check "$FIXTURE_DIR" "$EXEMPT")"
 FIXTURE_RC=$?
 assert_eq "the sweep flags exactly 1 orphan in the fixture dir (the fabricated bad command)" "$FIXTURE_RC" "1"
 
-if printf '%s\n' "$FIXTURE_OUT" | grep -qF "ORPHAN: fixture-bad-command.md"; then RC=0; else RC=1; fi
+if { trap '' PIPE; printf '%s\n' "$FIXTURE_OUT" 2>/dev/null || :; } | grep -qF "ORPHAN: fixture-bad-command.md"; then RC=0; else RC=1; fi
 assert "the flagged orphan is specifically fixture-bad-command.md (not a false hit on the legit copies)" $RC
 
-if printf '%s\n' "$FIXTURE_OUT" | grep -q "ORPHAN: review.md"; then RC=1; else RC=0; fi
+if { trap '' PIPE; printf '%s\n' "$FIXTURE_OUT" 2>/dev/null || :; } | grep -q "ORPHAN: review.md"; then RC=1; else RC=0; fi
 assert "the legit 'emits' copy (review.md) is NOT flagged" $RC
 
-if printf '%s\n' "$FIXTURE_OUT" | grep -q "ORPHAN: next.md"; then RC=1; else RC=0; fi
+if { trap '' PIPE; printf '%s\n' "$FIXTURE_OUT" 2>/dev/null || :; } | grep -q "ORPHAN: next.md"; then RC=1; else RC=0; fi
 assert "the legit 'exempt' copy (next.md) is NOT flagged" $RC
 
 echo ""
@@ -170,7 +170,7 @@ WITHOUT_OUT="$(sweep_check "$COMMANDS_DIR" "$EXEMPT_WITHOUT_DISPATCH")"
 WITHOUT_RC=$?
 assert_eq "removing dispatch's exemption entry alone makes the sweep flag exactly 1 new orphan (dispatch.md)" "$WITHOUT_RC" "1"
 
-if printf '%s\n' "$WITHOUT_OUT" | grep -qF "ORPHAN: dispatch.md"; then RC=0; else RC=1; fi
+if { trap '' PIPE; printf '%s\n' "$WITHOUT_OUT" 2>/dev/null || :; } | grep -qF "ORPHAN: dispatch.md"; then RC=0; else RC=1; fi
 assert "...and that orphan is specifically dispatch.md" $RC
 
 echo ""

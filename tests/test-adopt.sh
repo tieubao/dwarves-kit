@@ -120,8 +120,8 @@ fi
 # 13. That same fresh adopt wires the kit-root-default-enabled modules' hooks into the
 # project's settings.json (board/session/advisor default true; cosmetic defaults false).
 W13="$(wired_hooks "$T8/.claude/settings.json")"
-if printf '%s\n' "$W13" | grep -qx backlog-stage.sh && printf '%s\n' "$W13" | grep -qx context-hints.sh \
-  && ! printf '%s\n' "$W13" | grep -qx auto-format.sh; then
+if { trap '' PIPE; printf '%s\n' "$W13" 2>/dev/null || :; } | grep -qx backlog-stage.sh && { trap '' PIPE; printf '%s\n' "$W13" 2>/dev/null || :; } | grep -qx context-hints.sh \
+  && ! { trap '' PIPE; printf '%s\n' "$W13" 2>/dev/null || :; } | grep -qx auto-format.sh; then
   ok "fresh adopt wires kit-root-default-enabled modules' hooks (board/advisor in, cosmetic out)"
 else
   no "fresh adopt wired the wrong hook set: [$W13]"
@@ -132,7 +132,7 @@ fi
 T9="$(newrepo)"
 bash lib/adopt.sh --with cosmetic "$T9" >/dev/null
 if grep -qx 'cosmetic = true' "$T9/.kit.toml" \
-  && printf '%s\n' "$(wired_hooks "$T9/.claude/settings.json")" | grep -qx auto-format.sh; then
+  && { trap '' PIPE; printf '%s\n' "$(wired_hooks "$T9/.claude/settings.json")" 2>/dev/null || :; } | grep -qx auto-format.sh; then
   ok "--with cosmetic on a fresh repo seeds cosmetic=true and wires its hook"
 else
   no "--with cosmetic did not seed/wire cosmetic for a fresh repo"
@@ -143,20 +143,20 @@ fi
 T10="$(newrepo)"
 bash lib/adopt.sh "$T10" >/dev/null
 W15_BEFORE="$(wired_hooks "$T10/.claude/settings.json")"
-printf '%s\n' "$W15_BEFORE" | grep -qx backlog-stage.sh \
+{ trap '' PIPE; printf '%s\n' "$W15_BEFORE" 2>/dev/null || :; } | grep -qx backlog-stage.sh \
   && ok "precondition: board's hook is wired before the override (kit-root default board=true)" \
   || no "precondition failed: board's hook was never wired to begin with"
 sed -i.bak 's/^board = true$/board = false/' "$T10/.kit.toml" && rm -f "$T10/.kit.toml.bak"
 grep -qx 'board = false' "$T10/.kit.toml" || no "test setup: could not flip board=false in $T10/.kit.toml"
 bash lib/adopt.sh --refresh "$T10" >/dev/null
 W15_AFTER="$(wired_hooks "$T10/.claude/settings.json")"
-if ! printf '%s\n' "$W15_AFTER" | grep -qx backlog-stage.sh; then
+if ! { trap '' PIPE; printf '%s\n' "$W15_AFTER" 2>/dev/null || :; } | grep -qx backlog-stage.sh; then
   ok "DONE=: project .kit.toml [modules] board=false -> board's hook is NOT wired (settings.json)"
 else
   no "DONE=: board=false in .kit.toml did not stop board's hook from being wired"
 fi
 # session's hook must be untouched by the board-only edit (surgical re-wiring, not a full reset).
-if printf '%s\n' "$W15_AFTER" | grep -qx context-readiness.sh; then
+if { trap '' PIPE; printf '%s\n' "$W15_AFTER" 2>/dev/null || :; } | grep -qx context-readiness.sh; then
   ok "re-wiring after a board=false edit leaves the still-enabled session module's hooks wired"
 else
   no "re-wiring after a board=false edit dropped an unrelated still-enabled module's hooks"

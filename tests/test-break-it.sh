@@ -71,7 +71,7 @@ Bash(git diff *)
 Bash(git log *)'
 [ "$(printf '%s\n' "$ROSTER" | sort)" = "$(printf '%s\n' "$EXPECTED_ROSTER" | sort)" ]
 assert "T1-DEC-007: the tool roster is exactly the read-only set (no runner grants)" $?
-printf '%s\n' "$ROSTER" | grep -qE '^Bash\((npm|go|pytest|cargo|make|just|bash) '
+{ trap '' PIPE; printf '%s\n' "$ROSTER" 2>/dev/null || :; } | grep -qE '^Bash\((npm|go|pytest|cargo|make|just|bash) '
 assert "T1-DEC-007 [NEGATIVE CONTROL]: no test-runner grant executes branch code" $([ $? -eq 0 ] && echo 1 || echo 0)
 
 # --- TASK-001 AC4 [NEGATIVE CONTROL]: the naming-axis arm is load-bearing -----

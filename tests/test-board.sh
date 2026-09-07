@@ -101,25 +101,25 @@ ROWS_OUT="$(bash "$PARSE_BOARD" rows "$FIXA/_meta/BACKLOG.md")"
 # interprets '\t' inside -E as a tab too, but GNU grep 3.x on Linux/CI does not -- it matches
 # a literal 't'), which silently broke this assertion on ubuntu-latest while staying green on
 # macos-latest. A real tab byte matches identically on both grep implementations.
-assert "pb_rows sees ID-001 as queued" "$(printf '%s\n' "$ROWS_OUT" | grep -qE $'^ID-001\tqueued\t' && echo 0 || echo 1)"
-assert "pb_rows sees ID-008 as claimed" "$(printf '%s\n' "$ROWS_OUT" | grep -qE $'^ID-008\tclaimed\t' && echo 0 || echo 1)"
+assert "pb_rows sees ID-001 as queued" "$({ trap '' PIPE; printf '%s\n' "$ROWS_OUT" 2>/dev/null || :; } | grep -qE $'^ID-001\tqueued\t' && echo 0 || echo 1)"
+assert "pb_rows sees ID-008 as claimed" "$({ trap '' PIPE; printf '%s\n' "$ROWS_OUT" 2>/dev/null || :; } | grep -qE $'^ID-008\tclaimed\t' && echo 0 || echo 1)"
 
 QROWS="$(bash "$PARSE_BOARD" queue-rows "$FIXA/_meta/BACKLOG.md" fixA "$FIXA" 2>/dev/null)"
-assert "ID-002 (megagoals dir) is allow-listed" "$(printf '%s\n' "$QROWS" | grep -q '^ID-002' && echo 0 || echo 1)"
-assert "ID-003 (.claude/goals dir) is allow-listed" "$(printf '%s\n' "$QROWS" | grep -q '^ID-003' && echo 0 || echo 1)"
+assert "ID-002 (megagoals dir) is allow-listed" "$({ trap '' PIPE; printf '%s\n' "$QROWS" 2>/dev/null || :; } | grep -q '^ID-002' && echo 0 || echo 1)"
+assert "ID-003 (.claude/goals dir) is allow-listed" "$({ trap '' PIPE; printf '%s\n' "$QROWS" 2>/dev/null || :; } | grep -q '^ID-003' && echo 0 || echo 1)"
 RESOLVED_002="$(printf '%s\n' "$QROWS" | awk -F'\t' '$1=="ID-002"{print $3}')"
 assert "ID-002 resolves to the real canonical pointer file" "$([ "$RESOLVED_002" = "$FIXA/_meta/megagoals/mg1/goals/g1.md" ] && echo 0 || echo 1)"
 assert "ID-002's repo-root column is the fixture repo root" "$(printf '%s\n' "$QROWS" | awk -F'\t' '$1=="ID-002"{print $2}' | grep -qx "$FIXA" && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC3: malformed token (missing pointer=) is skipped, not emitted ==="
-assert "ID-007 (no pointer key) never emitted" "$(printf '%s\n' "$QROWS" | grep -q '^ID-007' && echo 1 || echo 0)"
+assert "ID-007 (no pointer key) never emitted" "$({ trap '' PIPE; printf '%s\n' "$QROWS" 2>/dev/null || :; } | grep -q '^ID-007' && echo 1 || echo 0)"
 QERR="$(bash "$PARSE_BOARD" queue-rows "$FIXA/_meta/BACKLOG.md" fixA "$FIXA" 2>&1 >/dev/null)"
-assert "ID-007's skip reason is logged" "$(printf '%s\n' "$QERR" | grep -q 'skip ID-007' && echo 0 || echo 1)"
+assert "ID-007's skip reason is logged" "$({ trap '' PIPE; printf '%s\n' "$QERR" 2>/dev/null || :; } | grep -q 'skip ID-007' && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC4: a #queue{} token on a NON-queued row is silently ignored ==="
-assert "ID-008 (claimed, has a token) never emitted" "$(printf '%s\n' "$QROWS" | grep -q '^ID-008' && echo 1 || echo 0)"
+assert "ID-008 (claimed, has a token) never emitted" "$({ trap '' PIPE; printf '%s\n' "$QROWS" 2>/dev/null || :; } | grep -q '^ID-008' && echo 1 || echo 0)"
 
 echo ""
 echo "=== NC-a: zero tokens -> empty stdout, honest '0 rows' on stderr, exit 0 ==="
@@ -144,26 +144,26 @@ echo ""
 echo "=== NC-b: repo not in boards.txt (cross-repo spoof) -> skipped w/ reason ==="
 Q_FULL_ERR="$(bash "$BOARD" queue --registry "$REGISTRY" 2>&1 >/dev/null)"
 assert "NC-b: ID-006 (claims repo=fixB while living in fixA's board) is skipped" \
-  "$(printf '%s\n' "$Q_FULL_ERR" | grep -q 'skip ID-006' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$Q_FULL_ERR" 2>/dev/null || :; } | grep -q 'skip ID-006' && echo 0 || echo 1)"
 assert "NC-b: the skip reason names the mismatch" \
   "$(printf '%s\n' "$Q_FULL_ERR" | grep 'ID-006' | grep -qi 'mismatch\|spoof' && echo 0 || echo 1)"
 Q_FULL_OUT="$(bash "$BOARD" queue --registry "$REGISTRY" 2>/dev/null)"
-assert "NC-b: ID-006 never appears in the emitted rows" "$(printf '%s\n' "$Q_FULL_OUT" | grep -q 'ID-006' && echo 1 || echo 0)"
+assert "NC-b: ID-006 never appears in the emitted rows" "$({ trap '' PIPE; printf '%s\n' "$Q_FULL_OUT" 2>/dev/null || :; } | grep -q 'ID-006' && echo 1 || echo 0)"
 
 echo ""
 echo "=== NC-c: pointer outside allow-listed dirs, incl. '../' traversal -> skipped w/ reason ==="
 assert "NC-c: ID-004 ('../../../etc/passwd') is skipped" \
-  "$(printf '%s\n' "$Q_FULL_ERR" | grep -q 'skip ID-004' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$Q_FULL_ERR" 2>/dev/null || :; } | grep -q 'skip ID-004' && echo 0 || echo 1)"
 assert "NC-c: ID-004's reason names the traversal / disallowed component" \
   "$(printf '%s\n' "$Q_FULL_ERR" | grep 'ID-004' | grep -qi "\\.\\.\\|traversal\\|disallowed" && echo 0 || echo 1)"
 assert "NC-c: ID-005 (lib/board/board.sh, a real file OUTSIDE the allow-listed dirs) is skipped" \
-  "$(printf '%s\n' "$Q_FULL_ERR" | grep -q 'skip ID-005' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$Q_FULL_ERR" 2>/dev/null || :; } | grep -q 'skip ID-005' && echo 0 || echo 1)"
 assert "NC-c: ID-005's reason names 'outside allow-listed'" \
   "$(printf '%s\n' "$Q_FULL_ERR" | grep 'ID-005' | grep -qi 'outside allow-listed' && echo 0 || echo 1)"
 assert "NC-c: neither ID-004 nor ID-005 ever appears in emitted rows" \
-  "$(printf '%s\n' "$Q_FULL_OUT" | grep -qE 'ID-004|ID-005' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s\n' "$Q_FULL_OUT" 2>/dev/null || :; } | grep -qE 'ID-004|ID-005' && echo 1 || echo 0)"
 assert "NC-c: ID-009's dangling (never-created) pointer is also skipped (defense in depth)" \
-  "$(printf '%s\n' "$Q_FULL_ERR" | grep -q 'skip ID-009' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s\n' "$Q_FULL_ERR" 2>/dev/null || :; } | grep -q 'skip ID-009' && echo 0 || echo 1)"
 
 echo ""
 echo "=== NC-d: shell-metachar field is parsed as ONE literal argv element, never executed ==="
@@ -189,7 +189,7 @@ echo "metarepo  $METAREPO/_meta/BACKLOG.md" > "$METAREG"
 
 META_OUT="$(bash "$BOARD" queue --registry "$METAREG" 2>"$TMPDIR_T/meta.err")"
 assert "NC-d: the canary file was NEVER created (metachar never reached a shell)" "$([ ! -e "$CANARY" ] && echo 0 || echo 1)"
-assert "NC-d: ID-901 (metachar payload) never appears in emitted rows" "$(printf '%s\n' "$META_OUT" | grep -q 'ID-901' && echo 1 || echo 0)"
+assert "NC-d: ID-901 (metachar payload) never appears in emitted rows" "$({ trap '' PIPE; printf '%s\n' "$META_OUT" 2>/dev/null || :; } | grep -q 'ID-901' && echo 1 || echo 0)"
 assert "NC-d: ID-901 is skipped for disallowed characters" "$(grep 'ID-901' "$TMPDIR_T/meta.err" | grep -qi 'disallowed characters' && echo 0 || echo 1)"
 
 # Static source-audit: neither lib file ever hands a parsed value to a shell for
@@ -205,28 +205,28 @@ assert "NC-d: static audit -- neither lib/board/board.sh nor lib/board/parse-boa
 echo ""
 echo "=== AC5: single-repo board/next/set/states/priority delegate correctly ==="
 BOARD_OUT="$(bash "$BOARD" board --backlog-file "$FIXB/_meta/BACKLOG.md")"
-assert "single board renders DF-001 under queued" "$(printf '%s\n' "$BOARD_OUT" | grep -q 'DF-001' && echo 0 || echo 1)"
+assert "single board renders DF-001 under queued" "$({ trap '' PIPE; printf '%s\n' "$BOARD_OUT" 2>/dev/null || :; } | grep -q 'DF-001' && echo 0 || echo 1)"
 NEXT_OUT="$(bash "$BOARD" next --backlog-file "$FIXB/_meta/BACKLOG.md")"
 assert "single next picks DF-001" "$([ "$NEXT_OUT" = "DF-001" ] && echo 0 || echo 1)"
 bash "$BOARD" set --backlog-file "$FIXB/_meta/BACKLOG.md" DF-001 claimed "test claim" >/dev/null
 assert "single set flips DF-001 to claimed" "$(grep 'DF-001' "$FIXB/_meta/BACKLOG.md" | grep -q 'claimed' && echo 0 || echo 1)"
 STATES_OUT="$(bash "$BOARD" states --backlog-file "$FIXB/_meta/BACKLOG.md")"
-assert "single states lists queued and shipped" "$(printf '%s\n' "$STATES_OUT" | grep -q 'queued' && printf '%s\n' "$STATES_OUT" | grep -q 'shipped' && echo 0 || echo 1)"
+assert "single states lists queued and shipped" "$({ trap '' PIPE; printf '%s\n' "$STATES_OUT" 2>/dev/null || :; } | grep -q 'queued' && { trap '' PIPE; printf '%s\n' "$STATES_OUT" 2>/dev/null || :; } | grep -q 'shipped' && echo 0 || echo 1)"
 PRIO_OUT="$(bash "$BOARD" priority overview --backlog-file "$FIXA/_meta/BACKLOG.md")"
-assert "single priority renders DO NOW section" "$(printf '%s\n' "$PRIO_OUT" | grep -q 'DO NOW' && echo 0 || echo 1)"
+assert "single priority renders DO NOW section" "$({ trap '' PIPE; printf '%s\n' "$PRIO_OUT" 2>/dev/null || :; } | grep -q 'DO NOW' && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC6: cross-repo all board|next|priority[overview|matrix]|states on the 2-repo registry ==="
 ALL_BOARD="$(bash "$BOARD" all board --registry "$REGISTRY")"
-assert "all board shows both repo headers" "$(printf '%s\n' "$ALL_BOARD" | grep -q '=== fixA ===' && printf '%s\n' "$ALL_BOARD" | grep -q '=== fixB ===' && echo 0 || echo 1)"
+assert "all board shows both repo headers" "$({ trap '' PIPE; printf '%s\n' "$ALL_BOARD" 2>/dev/null || :; } | grep -q '=== fixA ===' && { trap '' PIPE; printf '%s\n' "$ALL_BOARD" 2>/dev/null || :; } | grep -q '=== fixB ===' && echo 0 || echo 1)"
 ALL_NEXT="$(bash "$BOARD" all next --registry "$REGISTRY")"
-assert "all next shows fixA's and fixB's next item" "$(printf '%s\n' "$ALL_NEXT" | grep -q 'fixA' && printf '%s\n' "$ALL_NEXT" | grep -q 'fixB' && echo 0 || echo 1)"
+assert "all next shows fixA's and fixB's next item" "$({ trap '' PIPE; printf '%s\n' "$ALL_NEXT" 2>/dev/null || :; } | grep -q 'fixA' && { trap '' PIPE; printf '%s\n' "$ALL_NEXT" 2>/dev/null || :; } | grep -q 'fixB' && echo 0 || echo 1)"
 ALL_PRIO="$(bash "$BOARD" all priority overview --registry "$REGISTRY")"
-assert "all priority overview groups by repo" "$(printf '%s\n' "$ALL_PRIO" | grep -q '=== fixA ===' && echo 0 || echo 1)"
+assert "all priority overview groups by repo" "$({ trap '' PIPE; printf '%s\n' "$ALL_PRIO" 2>/dev/null || :; } | grep -q '=== fixA ===' && echo 0 || echo 1)"
 ALL_MATRIX="$(bash "$BOARD" all priority matrix --registry "$REGISTRY")"
-assert "all priority matrix renders the pivot header" "$(printf '%s\n' "$ALL_MATRIX" | grep -q 'Priority matrix' && echo 0 || echo 1)"
+assert "all priority matrix renders the pivot header" "$({ trap '' PIPE; printf '%s\n' "$ALL_MATRIX" 2>/dev/null || :; } | grep -q 'Priority matrix' && echo 0 || echo 1)"
 ALL_STATES="$(bash "$BOARD" all states --registry "$REGISTRY")"
-assert "all states renders per repo" "$(printf '%s\n' "$ALL_STATES" | grep -q '=== fixA ===' && echo 0 || echo 1)"
+assert "all states renders per repo" "$({ trap '' PIPE; printf '%s\n' "$ALL_STATES" 2>/dev/null || :; } | grep -q '=== fixA ===' && echo 0 || echo 1)"
 
 echo ""
 echo "=== NC-e: RENDER NON-REGRESSION against the REAL ops-toolkit cockpit ==="

@@ -58,7 +58,7 @@ grep -qi 'opt-in and off by default\|opt-in, off by default\|off by default' "$W
 overclaim_hit=0
 while IFS= read -r line; do
   [ -z "$line" ] && continue
-  if ! printf '%s' "$line" | grep -qiE 'not |never|n.t describe|opt-in|off by default'; then
+  if ! { trap '' PIPE; printf '%s' "$line" 2>/dev/null || :; } | grep -qiE 'not |never|n.t describe|opt-in|off by default'; then
     overclaim_hit=1
   fi
 done < <(grep -inE 'multiplexer.{0,40}(default-on|on by default|enabled by default)' "$WORKFLOW")
