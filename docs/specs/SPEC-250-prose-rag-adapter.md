@@ -57,23 +57,23 @@ None. `kit.toml [modules] prose_rag` comment states the module wires the hook an
 
 ### Phase 1: Foundation
 
-- [ ] TASK-001: the adapter and its test. Rewrite `bin/prose-rag` per the interface; new `tests/test-prose-rag-adapter.sh` (temp PATH, a stub binary that echoes its argv and a canary env; cases: `PROSE_RAG_BIN` set to a stub → stub runs with the args; `PROSE_RAG_BIN` set to a non-executable → falls through; stub on PATH → runs; neither: `hook` exit 0 with empty output, `index` without corpus exit 0 with the message, `query x` exit 1 with the install hint naming `src/prose-rag`; the shim never references `lib/prose-rag/rust`: `grep -c 'lib/prose-rag' bin/prose-rag` is 0). Register the test in `.github/workflows/test.yml`. Acceptance: the new test green; `bash tests/test-kit-contract.sh` green after its references are updated.
+- [x] TASK-001: DONE (commit: e216a53, verified). the adapter and its test. Rewrite `bin/prose-rag` per the interface; new `tests/test-prose-rag-adapter.sh` (temp PATH, a stub binary that echoes its argv and a canary env; cases: `PROSE_RAG_BIN` set to a stub → stub runs with the args; `PROSE_RAG_BIN` set to a non-executable → falls through; stub on PATH → runs; neither: `hook` exit 0 with empty output, `index` without corpus exit 0 with the message, `query x` exit 1 with the install hint naming `src/prose-rag`; the shim never references `lib/prose-rag/rust`: `grep -c 'lib/prose-rag' bin/prose-rag` is 0). Register the test in `.github/workflows/test.yml`. Acceptance: the new test green; `bash tests/test-kit-contract.sh` green after its references are updated.
 
 ### Phase 2: Core
 
-- [ ] TASK-002: retire the crate and fix the docs. `git rm -r lib/prose-rag/rust`; `lib/prose-rag/README.md` and `SPEC.md` describe the adapter and point at context-kit (no personal paths); `kit.toml` comment; `docs/CHANGELOG.md` Unreleased entry; every doc under `docs/verification/` that quotes the old build line gets one sentence "superseded by the adapter (SPEC-250)" rather than a rewrite; `lib/config/module-registry.md` `PROSE_RAG_BIN` row default text matches; regenerate `docs/FEATURES.md`. Acceptance: `bash tests/test-meta.sh` and `bash tests/test-no-personal-paths.sh` green; `ls lib/prose-rag/rust` fails; `git grep -n 'prose-rag-rs'` finds only historical verification docs.
+- [x] TASK-002: DONE (commit: 7e56773, verified). retire the crate and fix the docs. `git rm -r lib/prose-rag/rust`; `lib/prose-rag/README.md` and `SPEC.md` describe the adapter and point at context-kit (no personal paths); `kit.toml` comment; `docs/CHANGELOG.md` Unreleased entry; every doc under `docs/verification/` that quotes the old build line gets one sentence "superseded by the adapter (SPEC-250)" rather than a rewrite; `lib/config/module-registry.md` `PROSE_RAG_BIN` row default text matches; regenerate `docs/FEATURES.md`. Acceptance: `bash tests/test-meta.sh` and `bash tests/test-no-personal-paths.sh` green; `ls lib/prose-rag/rust` fails; `git grep -n 'prose-rag-rs'` finds only historical verification docs.
 
 ## After state
 
-- [ ] `PROSE_RAG_BIN=/path/to/stub bash bin/prose-rag query x` runs the stub. (Today: ignored.)
-- [ ] With `prose-rag` on PATH and no env, `bash bin/prose-rag query x` runs it. (Today: "engine not built".)
-- [ ] `ls lib/prose-rag/rust` fails. (Today: a 116K crate.)
-- [ ] `bash bin/config seams` and `bash bin/prose-rag` agree on which binary runs (same env, same PATH).
+- [x] `PROSE_RAG_BIN=/path/to/stub bash bin/prose-rag query x` runs the stub. (Today: ignored.)
+- [x] With `prose-rag` on PATH and no env, `bash bin/prose-rag query x` runs it. (Today: "engine not built".)
+- [x] `ls lib/prose-rag/rust` fails. (Today: a 116K crate.)
+- [x] `bash bin/config seams` and `bash bin/prose-rag` agree on which binary runs (same env, same PATH).
 
 ## Acceptance Criteria (global)
 
-- [ ] All tasks pass their individual acceptance criteria
-- [ ] No regressions: `bash tests/test-kit-contract.sh && bash tests/test-meta.sh && bash tests/test-no-personal-paths.sh` green
+- [x] All tasks pass their individual acceptance criteria
+- [x] No regressions: `bash tests/test-kit-contract.sh && bash tests/test-meta.sh && bash tests/test-no-personal-paths.sh` green
 
 ## Verification
 
