@@ -101,8 +101,16 @@ b. ...
 **Shipped**
 - **<repo>**: #<pr> (<sha>) DEPLOYED <run or fleet line> | #<pr> 🟡 MERGED, NOT DEPLOYED | #<pr> OPEN
 
-**Left alone:** <repo>: <files / worktrees / branches>, <whose>, PULL BLOCKED; <repo>: ...
-**FYI:** <what changes for the operator from now on> | <a state the operator will meet next time> | NOTHING
+**Left alone:**
+- <repo>: <files / worktrees / branches>, <whose>, PULL BLOCKED
+   -- or --
+- NOTHING
+
+**FYI:**
+- <what changes for the operator from now on>
+- <a state the operator will meet next time>
+   -- or --
+- NOTHING
 ```
 
 - `Needs you` leads and is always present, even as `NOTHING`. It is a lettered action list; it sits at the top, ahead of every other section, because this report is read from the top and the items are the whole point.
@@ -110,9 +118,10 @@ b. ...
 - Status words stay UPPERCASE tokens, always the same ones: `NOTHING`, `DEPLOYED`, `MERGED, NOT DEPLOYED`, `OPEN`, `PULL BLOCKED`, and a leading verb on each `Needs you` item from `DECIDE`, `RUN`, `REVIEW`, `UNBLOCK`. Prose stays lowercase.
 - `What happened` is one bullet per workstream, two to four sentences: the problem as the operator saw it, the root cause, what changed, how it was proven. A ten-minute session earns one bullet; a long one earns five or six.
 - `Shipped` is one line per repo: PR number, merge SHA, deploy state.
-- `Left alone` names another session's dirty files, worktrees, and branches with the owner, so the operator knows a repo is not fully clean and why.
-- `FYI` closes the message: what is not the operator's to act on but changes something they will meet next time, or `NOTHING`.
-- An overlay (a consumer's own routing, distill, or knowledge-capture step) appends its own lines after `FYI`; the kit's grammar stops there. A `wrap.before` skill's report lines fold in at that same place.
+- `Left alone` and `FYI` are bullet lists, one item per repo or fact, never joined with `|` or `;`.
+- `Left alone` names another session's dirty files, worktrees, and branches with the owner, one bullet per repo, so the operator knows a repo is not fully clean and why. A single `- NOTHING` bullet when no repo was left alone.
+- `FYI` closes the message: one bullet per fact that is not the operator's to act on but changes something they will meet next time. A single `- NOTHING` bullet when there is nothing to report.
+- An overlay (a consumer's own routing, distill, or knowledge-capture step) appends its own labelled sections after `FYI`, in the same shape: a bold label line followed by bullets, one item per note, candidate, or queue entry; the kit's grammar stops there. A `wrap.before` skill's report lines fold in at that same place.
 - No table unless the session touched four or more repos. No restating what each step did.
 
 Record the run (SPEC-139), one line: `bash lib/gate/gate-ledger.sh record <rid> wrap ran "<summary>"`. Close the timing bracket (SPEC-129): `bash lib/gate/gate-ledger.sh outcome <rid> wrap end caught=<true if a repo hit step 0's foreign-activity STOP, else false>`.
