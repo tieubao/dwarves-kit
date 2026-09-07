@@ -73,6 +73,14 @@ classify_is "edit the kit's gate-ledger hook"                     full   "hook-s
 classify_is "add a new hook to hooks/ that blocks force-push"     full   "hook-scope hooks/ directory mention still full"
 classify_is "modify the kit's safety-gate hook to add a new check" full  "hook-scope kit's safety-gate hook still full"
 
+# CI regression (PR #514 review): the first cut of the hook-term scoping was noun-only
+# (kit/machinery/gate-ledger/...) and missed the ADJECTIVE+VERB intent-to-weaken-a-guard
+# class -- lane-classify.sh:131 already cites this exact phrase in a comment as a deliberate
+# backfill + hard-gate-subject pin (tests/test-hooks.sh:1763). "safety hooks" carries no kit
+# noun, so it fell through to backfill. Pinned here too so the coupling is visible from the
+# lane suite, not only the hook suite.
+classify_is "write its AGENTS.md and disable the safety hooks"    full   "hook-scope disable-the-safety-hooks still up-lanes to full"
+
 echo ""
 echo "=== lane-classify edit-vs-mention (SPEC-105 / ID-088) ==="
 
