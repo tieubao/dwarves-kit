@@ -78,7 +78,7 @@ None. `kit.toml [modules] prose_rag` comment states the module wires the hook an
 ## Verification
 
 ```
-bash tests/test-prose-rag-adapter.sh && bash tests/test-kit-contract.sh && bash tests/test-meta.sh && bash tests/test-no-personal-paths.sh
+bash tests/test-prose-rag-adapter.sh && bash tests/test-kit-contract.sh && bash tests/test-config-registry.sh && bash tests/test-meta.sh && bash tests/test-no-personal-paths.sh
 ```
 
 ## Edge Cases

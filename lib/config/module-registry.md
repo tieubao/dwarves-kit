@@ -253,6 +253,7 @@ single-reader fence). No env vars; per-repo values live in `.kit.toml [sync]`.
 | PROSE_RAG_CORPUS | env-only | unset (index skips clean) | [impl] | prose_rag | Colon-separated corpus dirs/files for `prose-rag index` (adapter-default invariant: no personal path in the kit). Unset with no `--corpus` = unconfigured consumer -> `index` exits 0, db untouched (the shipped kit-weekly `prose-rag-index` job stays silent-green). Under launchd, supplied via `~/.config/kit-weekly/env`. |
 | MONEY_GATE_REPOS | env-only | (unset) | [impl] | money_gate | Colon-separated list of repo names the guard treats as financial; hook is inert (exits 0) without it. |
 | PROSE_RAG_BIN | env-only | `prose-rag` on PATH | [consumer] | prose_rag | Path to the `prose-rag` binary (context-kit fills this: `cargo install --path src/prose-rag`). `bin/prose-rag` is an adapter and resolves the same order `config seams` reports for the `binary` kind: `${PROSE_RAG_BIN:-}` if set must be an executable regular file, else `command -v prose-rag`. Unset with nothing on PATH means the overlay is not installed, not an error. |
+| PROSE_RAG_SHIM_ACTIVE | env-only | (unset) | [impl] | prose_rag | Recursion guard set by `bin/prose-rag` before it execs the resolved engine. The kit installer puts a PATH wrapper named `prose-rag` that execs this shim, so without the marker `command -v prose-rag` would resolve to the shim itself. Internal: nothing sets it by hand. |
 
 ### precedent (`precedent find` inventory surface, no install module)
 

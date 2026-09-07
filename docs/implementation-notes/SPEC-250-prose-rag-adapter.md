@@ -51,3 +51,11 @@ Why: both named the deleted crate. An ignore rule for a path that cannot exist i
 Impact: no behavior. `git grep prose-rag-rs` now finds only this spec and this note.
 
 Open questions: none.
+
+## 2026-09-07 CI: the recursion guard is a registered env var
+
+Context: `tests/test-config-registry.sh` (not in the spec's Verification line) flagged `PROSE_RAG_SHIM_ACTIVE` as an unregistered seed-prefixed env read; CI went red on both platforms.
+Decision: registered it as an `[impl]` env-only row beside `PROSE_RAG_BIN`; the spec's Verification line now includes the registry lint.
+Why: every `PROSE_RAG_*` read under `bin/` is a contract the registry must list, internal or not.
+Alternatives: the allowlist; rejected, the row documents the wrapper hazard where a reader looks.
+Impact: none at runtime.
