@@ -110,6 +110,8 @@ TOML
 location = "isolated"
 [gauntlet]
 runner_host = "evil-host"
+[knowledge]
+root = "/tmp/proj"
 TOML
   cat > "$d/op/kit.toml" <<'TOML'
 [ledger]
@@ -118,6 +120,8 @@ location = "operator"
 wave_cap = 9
 [gauntlet]
 runner_host = "operator-host"
+[knowledge]
+root = "/tmp/op"
 TOML
   # The base cases pin the operator layer at a path that does not exist, so the operator's
   # REAL ~/.config/dwarves-kit/kit.toml can never leak into this suite on a live machine.
@@ -151,5 +155,11 @@ TOML
     "$(KIT_CONFIG_OPERATOR="$d/none" kit_config_get_root mega.wave_cap)"                        "2"
   chk "KIT_CONFIG_OPERATOR redirects the file" \
     "$(KIT_CONFIG_OPERATOR="$d/none" kit_config_get_root gauntlet.runner_host local)"           "local"
+  # SPEC-249 TASK-001: [knowledge] root is a root-only key like gauntlet.runner_host --
+  # a project .kit.toml MUST NOT be able to redirect where knowledge notes land.
+  chk "root-only knowledge.root: operator wins over kit-root, project ignored" \
+    "$(KIT_CONFIG_OPERATOR="$d/op" kit_config_get_root knowledge.root)"                         "/tmp/op"
+  chk "root-only knowledge.root: empty with no operator/kit-root value, even though project sets it" \
+    "$(kit_config_get_root knowledge.root)"                                                     ""
   [ "$fail" = 0 ] && echo "PASS kit-config selftest" || { echo "SELFTEST FAILED"; exit 1; }
 fi

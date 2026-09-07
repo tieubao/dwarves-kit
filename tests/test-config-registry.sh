@@ -153,6 +153,105 @@ assert_eq "get ledger.location resolves via the first (canonical KIT_LEDGER_DIR)
 # lints doing one job, silently disagreeing, is the fragmentation SPEC-200 exists to stop
 # (advisor finding 4). One rule, one enforcer.
 
+# --- SPEC-249 TASK-001: the ## Seams join table (lives OUTSIDE the registry window) ---
+# The window stops at the next top-level "## " heading, matching config.sh's own _seam_rows.
+# A stop keyed to one literal heading name would let a pipe table under any OTHER later
+# section be linted (and ingested) as a seam row.
+
+_seam_rows() {
+  awk '
+    /^## Seams/ {inseam=1; next}
+    inseam && /^## / {inseam=0}
+    inseam && /^\|/ {
+      if ($0 ~ /^\| Key \|/) next
+      if ($0 ~ /^\|---/) next
+      print
+    }
+  ' "$REGISTRY"
+}
+_seam_col() {
+  local row="$1" idx="$2" f s
+  IFS='|' read -ra f <<< "$row"
+  s="${f[$idx]:-}"
+  s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"
+  printf '%s' "$s"
+}
+# reimplements config.sh's own _registry_rows/_row_get window, kept local to this test file
+# so it never depends on sourcing config.sh (which would run main "$@" on load).
+_window_rows() {
+  awk '
+    /^## Env <-> key registry/ {inreg=1; next}
+    /^## Allowlist/ {inreg=0}
+    inreg && /^\|/ {
+      if ($0 ~ /^\| Env var \|/) next
+      if ($0 ~ /^\|---/) next
+      print
+    }
+  ' "$REGISTRY"
+}
+_window_col() { _seam_col "$1" "$2"; }
+
+SEAM_ROWS="$(_seam_rows)"
+WINDOW_ROWS="$(_window_rows)"
+
+echo ""
+echo "=== AC6: TASK-001 -- every ## Seams row's Key matches a registry row ==="
+SEAM_COUNT=0; SEAM_MISSING=0
+while IFS= read -r srow; do
+  [ -n "$srow" ] || continue
+  SEAM_COUNT=$((SEAM_COUNT+1))
+  skey="$(_seam_col "$srow" 1)"
+  found=0
+  while IFS= read -r wrow; do
+    [ -n "$wrow" ] || continue
+    wenv="$(_window_col "$wrow" 1)"; wkey="$(_window_col "$wrow" 2)"
+    if [ "$wenv" = "$skey" ] || [ "$wkey" = "$skey" ]; then found=1; break; fi
+  done <<< "$WINDOW_ROWS"
+  if [ "$found" -ne 1 ]; then
+    echo "  MISSING registry row for seam key: $skey" >&2
+    SEAM_MISSING=$((SEAM_MISSING+1))
+  fi
+done <<< "$SEAM_ROWS"
+assert "every ## Seams Key ($SEAM_COUNT rows) matches a registered env var or section.key" "$SEAM_MISSING"
+
+echo ""
+echo "=== AC7: TASK-001 -- every ## Seams row's Kind is skill|file|dir|binary ==="
+KIND_BAD=0
+while IFS= read -r srow; do
+  [ -n "$srow" ] || continue
+  skind="$(_seam_col "$srow" 2)"
+  case "$skind" in
+    skill|file|dir|binary) ;;
+    *) echo "  BAD Kind '$skind' for row: $srow" >&2; KIND_BAD=$((KIND_BAD+1)) ;;
+  esac
+done <<< "$SEAM_ROWS"
+assert "every ## Seams Kind is one of skill|file|dir|binary" "$KIND_BAD"
+
+echo ""
+echo "=== AC8: TASK-001 -- the ## Seams table does not leak into the registry window / 'config list' ==="
+LIST_OUT="$(bash "$CONFIG_BIN" list 2>&1)"
+LEAK_ROW=0
+while IFS= read -r srow; do
+  [ -n "$srow" ] || continue
+  if printf '%s\n' "$LIST_OUT" | grep -qF "$srow"; then
+    echo "  LEAK: a literal ## Seams row line appears in 'config list' output: $srow" >&2
+    LEAK_ROW=$((LEAK_ROW+1))
+  fi
+done <<< "$SEAM_ROWS"
+assert "no literal ## Seams row line appears in 'bash bin/config list' output" "$LEAK_ROW"
+
+LEAK_DUP=0
+while IFS= read -r srow; do
+  [ -n "$srow" ] || continue
+  skey="$(_seam_col "$srow" 1)"
+  cnt="$(printf '%s\n' "$LIST_OUT" | grep -cF "$skey")"
+  if [ "$cnt" -gt 1 ]; then
+    echo "  LEAK: seam key '$skey' appears $cnt times in 'config list' output (want <=1)" >&2
+    LEAK_DUP=$((LEAK_DUP+1))
+  fi
+done <<< "$SEAM_ROWS"
+assert "every ## Seams key appears at most once in 'bash bin/config list' output" "$LEAK_DUP"
+
 echo ""
 echo "=== $PASS/$TOTAL passed ==="
 [ "$FAIL" -eq 0 ]

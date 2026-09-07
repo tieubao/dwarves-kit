@@ -2,10 +2,11 @@
 # bin/config -- STABLE consumer entrypoint for the config subsystem (SPEC-198, ADR-0034
 # decision 4). Read/explain surface only: `config set` is not built (hand-edit .kit.toml).
 #
-# Usage: config {list|get|explain} [args...]
+# Usage: config {list|get|explain|seams} [args...]
 #   e.g. config list
 #        config get WAVE_CAP
 #        config explain mega.wave_cap
+#        config seams [--check]
 set -euo pipefail
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 exec bash "$SELF_DIR/../lib/config/config.sh" "$@"

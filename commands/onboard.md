@@ -112,6 +112,20 @@ the one exact line to add by hand to `<repo>/.kit.toml`'s `[modules]` section (e
 already-adopted repo uses. That is the honest reach of the existing mechanic; if a later adopt fix
 widens its set, this caveat heals on its own because both sides are derived, not copied.
 
+## C2. Overlays and seams
+
+The engine installs and runs alone; none of the modules picked above needs a companion kit. Two
+overlays exist today. context-kit is the data plane: it owns the context tree and recall over it,
+and fills `[knowledge] root` plus the `PROSE_RAG_BIN` binary. learning-kit is a study overlay on
+the engine; it fills `[wrap] before` with its concept flush, the skill `/kit:wrap` runs at Step -1.
+
+A seam is a key in the operator `kit.toml` (never a project `.kit.toml`) that the engine reads
+with `kit_config_get_root`, so an overlay fills it without the engine ever depending on the
+overlay. `bash "$KIT/bin/config" seams` lists every seam with its state (`default`, `filled`,
+`unresolved`, `absent`); `--check` exits 1 the moment one is `unresolved`, the one-bit answer an
+installer wants. With nothing filled, every seam reads `default` or `absent` and everything above
+still works. The full table lives in `lib/config/module-registry.md` under `## Seams`.
+
 ## D. Capture the consumer knobs that make chosen modules non-inert
 
 Some modules do nothing until a knob is set (e.g. `prose_rag` is dormant without `PROSE_RAG_INJECT=1`;

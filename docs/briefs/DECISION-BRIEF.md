@@ -1,46 +1,47 @@
-# Decision Brief: V-model-gated concurrent goal dispatch (I2 / ID-034 + ID-035)
+# Decision Brief: estate seams (ID-646)
 
-Produced by `/kit:think` (dogfooded), 2026-05-22. Supersedes the prior brief (SPEC-004 lane B, shipped). Design source of record: `docs/research/2026-05-22-concurrent-goal-dispatch.md`. This brief locks scope and adds one new decision (convergence-owned shared writes) that the research note did not yet have.
-
-## Verdict: BUILD (scope-locked to the native, non-runtime model)
+## Verdict: BUILD (config seams + one report + two wrap steps; no new manifest format)
 
 ## Core thesis
-After requirement clarification, the maintainer fires N independent specs and tabs away; one autonomous worker per goal builds each in its own background worktree under the kit's V-model gates, escalating only on blockers. Safety comes from worktree isolation + a file-disjointness gate + a lead-owned convergence that integrates every shared surface once, after the workers finish.
+
+The estate is three kits that each install alone: dwarves-kit is the process plane (gates, lanes, ledger, review fleets), context-kit is the data plane (the context tree and recall over it), learning-kit is a study overlay on the engine. Install dependency points at the engine (both overlays require dwarves-kit >= 2.0); data flow points the other way (every kit writes knowledge into the context tree). Those two directions must stay separate, and the only thing the engine may know about an overlay is a config key the overlay fills.
+
+Today three hand-offs are implicit or backwards:
+
+1. `/kit:wrap` runs an operator skill through `wrap.before` that writes `| DEBT |` markers into this kit's gate ledger and gates new-tool candidates through `precedent`. Both are process-plane work; they belong in the command, not in a skill outside the kit.
+2. Nothing tells the engine where the context tree lives. Knowledge writers (the wrap distill step, `memory-tidy`, `stats memory-sweep`) default to whatever the model guesses.
+3. No surface shows an operator which seams are filled. `plugin-check` checks the plugin; the cross-kit wiring is invisible.
 
 ## Strongest argument for
-It delivers fire-and-walk-away multi-goal autonomy on primitives that exist today (`run_in_background` subagents + `isolation: worktree` + `AskUserQuestion`), with no scheduler, no DAG, no runtime. It removes the kit's biggest current limit (one goal at a time, attended) while preserving the bash-and-shallow thesis and the runtime-integration boundary.
+
+Every existing seam (`wrap.before`, `wrap.activity_log`, `precedent.registry`) already follows one rule: a key in the operator `kit.toml`, read with `kit_config_get_root`, never from a project `.kit.toml`. Generalising that rule to a named seam list costs one config key, one read-only report, and prose. It satisfies the standalone-first doctrine (ID-396) without a manifest format nobody maintains.
 
 ## Strongest argument against
-The safety gate is file-disjointness: necessary but not sufficient, and a poor fit for the kit's own shared-surface-heavy work (nearly every kit change touches `tests/test-meta.sh` + `CHANGELOG`). So the speedup mostly accrues to downstream projects, not to dogfooding the kit; and the convergence-write design that fixes this adds real lead-side complexity that, if it ever grows into scheduling, is the exact tripwire back toward the runtime the model swears off.
 
-## The two coupled IDs
-- **ID-034 (the trust contract, load-bearing, build first).** The per-goal V-model lifecycle each worker follows, and the lead-owned convergence point. NOT a relabeling: it is what makes a tab-away worker trustworthy and where shared state safely merges.
-- **ID-035 (the dispatch, rides on ID-034).** The three thin build items: fan-out, the disjointness gate, the blocker contract.
+A `[knowledge] root` key with no engine writer behind it is a promise. Mitigation: the wrap distill step and `memory-tidy` are the first two readers in this spec, and the report marks a filled key whose path does not exist as `unresolved`.
 
 ## Recommended scope for v1
 
 **IN:**
-- **ID-034 lifecycle + convergence:** left arm (brief -> requirement -> solution/test design) | bottom (build) | right arm (verify -> review -> docs -> converge), with the existing `worker -> task-verifier -> fix-agent (<=2)` running inside each worktree as the per-goal gate. The **lead owns the convergence write**: workers touch only their feature files; `CHANGELOG`, `VERSION`, suite counts, `BACKLOG`, `plugin.json` are integrated once by the lead after all workers finish (the right-arm re-convergence). This is the new decision from this think and the seam between ID-034 and ID-035.
-- **ID-035 dispatch:** (1) fan-out dispatch (extend `/kit:execute` or a new `/kit:dispatch`) launching N background worktree subagents from N independent specs; (2) the parallel-safety gate = file-disjointness + dep-tag, with shared surfaces excluded from the disjointness test because the lead owns them at convergence; (3) the blocker-escalation contract in the worker prompt (escalate irreversible/ambiguous, proceed on reversible; port the existing CLAUDE.md Vibe-Coding rubric).
-- **The ADRs (required before merge):** C1 (reword "does NOT cover parallel execution" + "one agent session at a time"; supersede "sequential by design"; explicitly UPHOLD the runtime-integration boundary + "Shallow and wide"). C2 (reword the "8 workflow phases" frame + feature-rejection criterion #2 to the V-model phase set). PHILOSOPHY + `commands/kit-health.md` reject-list updates per the WORKFLOW doc-impact map.
 
-**CUT (the no list, from the research note):**
-- No DAG / topological scheduler. Across independent goals the structure degenerates to a flat set + pairwise disjointness + wait-queue; build the gate, not a graph.
-- No in-kit runtime / state machine (rejected Option 6; that is gsd-2 territory).
-- No cross-session durability. Lead dies -> restart; workers commit frequently so progress survives as branch commits.
-- No Agent Teams. Deferred, not discarded: that is intra-goal collaboration; reconsider only on the intra-spec task-parallelism tripwire.
-- No intra-spec task parallelism **in v1** (deferred, not discarded; refined by a second `/kit:think` pass 2026-05-22). v1's unit is the whole spec: one worker per spec, a spec's own tasks stay sequential. Running one spec's disjoint-file tasks concurrently is a **separate, later initiative**, sequenced after v1's disjointness gate + lead-owned convergence prove out. **Revisit tripwire:** a single spec routinely carries 2+ genuinely disjoint-file tasks AND its serial wall-clock is the felt bottleneck. **Metric for that future initiative:** wall-clock speedup (target ≥40% on a real 2-task spec), with 0 silent merge corruptions as a hard gate; deliberately distinct from this brief's autonomy+safety metric. **Caveat that may sink it:** intra-spec tasks usually share files (test suites, fixtures, `CHANGELOG`), so the disjointness gate will often serialize them anyway, the same shared-surface problem this brief's "strongest argument against" already names for the kit's own work.
+- `[knowledge] root = ""` in kit-root `kit.toml`. Empty means repo-local: `<repo>/.claude/memory/` for repo memory, `docs/retro/` for retros. A filled value is the context tree root; repo knowledge then files under `<root>/projects/<repo>/`. Read with `kit_config_get_root` only.
+- A seam registry: `lib/config/seams.tsv` (or an equivalent single table), one row per seam: key, kind (`skill|path|file|binary`), default, filled-by (which overlay or the operator), reader (which command reads it). Rows at v1: `wrap.before`, `wrap.activity_log`, `precedent.registry`, `knowledge.root`, `prose-rag` (binary on PATH or `PROSE_RAG_BIN`).
+- `plugin-check --seams`: prints the table with the resolved value and a status per row: `default`, `filled`, `unresolved` (filled but the skill/path/binary does not resolve). Read-only, exit 0 always, no JSON needed at v1.
+- `/kit:wrap` gains the process half of session distill, after the `wrap.before` seam and before step 0 or as a named step: (a) if the session was an orchestrated batch (a run id in the gate ledger with dispatched workers, a spec run, a goal run), record the `| DEBT |` marker via `lib/gate/gate-ledger.sh debt`; (b) candidates for a new tool or skill (a procedure run three or more times, a one-off script the operator called recurring) go through `precedent find --surface inventory --quiet` and land as a staging row via the existing staging writer, never a board row; (c) incidents written this session whose `## Root cause` names our own mistake become one repo memory note under the knowledge root. Everything else (til publish, concept flush, research notes) stays outside, behind `wrap.before`.
+- `commands/onboard.md` and `commands/adopt.md`: one short section naming the overlays (context-kit fills `knowledge.root` and the `prose-rag` binary; learning-kit fills `wrap.before` with its concept flush), stating none is required, and pointing at `plugin-check --seams`.
+- `kit.toml` comments for the new key; `docs/FEATURES.md` regenerated.
 
-## Exit criteria (maintainer-chosen)
-- Fire 3 independent specs on a downstream-shaped repo, tab away, get 3 clean PRs: 0 merge conflicts, <=1 blocker-escalation each.
-- A deliberately-overlapping pair of goals is correctly **serialized**, not parallelized (the moat holds).
-- Across ~10 fired goals, >80% of escalations are genuine (not babysitting, not silent-wrong-default).
-- Explicitly NOT judged on wall-clock speed: the win is autonomy + safety, not raw throughput.
+**CUT:**
 
-## Risk tripwires (when to stop and hand off)
-- A real cross-goal ordering chain (C needs A+B merged) -> hand execution to gsd-2; do not build a scheduler.
-- A single spec needing its own tasks to cooperate -> reconsider Agent Teams (intra-goal), not this model.
-- The convergence logic growing into scheduling/state-tracking -> you have crossed into runtime; stop and integrate, do not rebuild.
+- Retiring the vendored prose-rag crate (ID-647, separate row).
+- A per-kit manifest file, a `provides`/`wants` schema, version negotiation. The seam table is the whole mechanism.
+- Any engine writer for the til or memo publish leg.
+- Changes to context-kit or learning-kit (they follow in their own repos once the key name is fixed).
 
-## Build order
-ID-034 (gate + convergence contract) first, because it is the moat and the trust. ID-035 (fan-out + disjointness gate + blocker contract) rides on it. Both are full lane; both need `/kit:spec-validate` (autonomy-gate lens, ID-027, applies directly).
+## Survival scenarios
+
+- Operator with only dwarves-kit: `plugin-check --seams` shows every row `default`; `/kit:wrap` files a memory note under `<repo>/.claude/memory/`; nothing asks for an overlay.
+- Operator with context-kit: `knowledge.root` filled; the wrap note lands under `<root>/projects/<repo>/`; the report shows `filled` with the path.
+- Operator sets `knowledge.root` to a path that does not exist: report says `unresolved`; `/kit:wrap` falls back to repo-local and says so in its report.
+- A project `.kit.toml` sets `knowledge.root`: ignored, the report shows the operator or kit-root value; a test pins this.
+- Session with no batch run and no incident: wrap's new step prints one line saying so and moves on.

@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 # wrap.sh -- the landing step after ship (SPEC-246). One pass over every repo a session
-# touched, with five verbs:
+# touched, with seven verbs:
 #
 #   wrap.sh scan  <repo> [<repo>...]                        report only, exit 0
 #   wrap.sh apply [--apply] [--worktrees] <repo> [...]      dry-run by default
 #   wrap.sh merge [--apply] <repo>                          merges ONE own green PR
 #   wrap.sh log   "<slug>: <one sentence>" [--date YYYY-MM-DD]
 #   wrap.sh default-branch <repo>                           prints the detected name
+#   wrap.sh knowledge-root <repo>                           SPEC-249: the fenced knowledge dir
+#   wrap.sh stage "<title>" "<intent>" "<home>" [--repo <repo>]  SPEC-249: stage a candidate
 #   wrap.sh --help
 #
 #   internal, a test seam: apply --tips-file <path> replaces the run's own tip snapshot
 #
 # The write set is closed: branch delete under two proofs, worktree remove under
-# --worktrees, pull --ff-only on the default branch, the activity-log prepend, and one
-# gh pr merge. Every other action is a report line. The verbs never switch a branch,
-# never touch a dirty file, never force, and never retry a failed git call.
+# --worktrees, pull --ff-only on the default branch, the activity-log prepend, the
+# knowledge-root project directory, the staging-file append, and one gh pr merge. Every
+# other action is a report line. The verbs never switch a branch, never touch a dirty
+# file, never force, and never retry a failed git call.
 #
 # Ported from the operator's repo-wrapup scripts. The default branch is DETECTED, never
 # assumed to be main.
@@ -33,10 +36,13 @@ LOG_LINE_BUDGET=300
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_ROOT="$(cd "$SELF_DIR/.." && pwd)"
+# The one staging-block writer (SPEC-249 TASK-003/004): `stage` shells out to it rather
+# than growing a second copy of the dedupe/render/append grammar in bash.
+STAGING_FORMAT_PY="$LIB_ROOT/learn/staging-format.py"
 # shellcheck source=lib/config/kit-config.sh
 source "$LIB_ROOT/config/kit-config.sh" || { echo "FATAL: lib/config/kit-config.sh missing or unreadable" >&2; exit 1; }
 
-_usage() { sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+_usage() { sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 # --------------------------------------------------------------------------- helpers
 
@@ -503,6 +509,31 @@ _realpath_f() {
   printf '%s/%s\n' "${dir%/}" "$base"
 }
 
+# _home_fence <path> [<label>] -- 0 when <path> is the physical $HOME or sits under it.
+# The fence resolves its own argument: a caller that forgets to resolve first would otherwise
+# fence a string whose parent directory is a symlink pointing anywhere on disk. $HOME itself
+# is accepted so this fence agrees with `_under_home`, the parity `config seams` reports on.
+# Prints the reason and returns 1 otherwise.
+_home_fence() {
+  local p="$1" label="${2:-wrap}" home_real real
+  home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" \
+    || { echo "${label}: cannot resolve HOME" >&2; return 1; }
+  real="$(_realpath_f "$p")" || { echo "${label}: cannot resolve '${p}'" >&2; return 1; }
+  case "$real" in
+    "$home_real"|"$home_real"/*) return 0 ;;
+    *) echo "${label}: '${real}' is outside HOME (${home_real})" >&2; return 1 ;;
+  esac
+}
+
+# _refuse_symlink <path> [<label>] -- 1 when <path> is a symlink. A symlink at a write target
+# redirects the append to whatever it points at, so every write path refuses one.
+_refuse_symlink() {
+  local p="$1" label="${2:-wrap}"
+  [ -L "$p" ] || return 0
+  echo "${label}: '${p}' is a symlink" >&2
+  return 1
+}
+
 # _worktree_copy <file>: the configured log names one fixed file, usually inside a repo's
 # main checkout. A session that works in a git worktree of that same repo cannot commit a
 # line written to the main checkout (its branch is not the session's), so when the current
@@ -518,6 +549,9 @@ _worktree_copy() {
   [ "$fcommon" = "$cur_common" ] || { printf '%s' "$file"; return 0; }
   [ "$ftop" != "$cur_top" ] || { printf '%s' "$file"; return 0; }
   rel="${file#"$ftop"/}"
+  # `[ -f ]` follows symlinks, so this gate accepts a symlink whose target is a regular file
+  # anywhere on disk. The returned path is a NEW path no earlier check saw: every caller must
+  # re-run its symlink refusal and its fence on the value this prints.
   [ -f "$cur_top/$rel" ] || { printf '%s' "$file"; return 0; }
   printf '%s' "$cur_top/$rel"
 }
@@ -567,15 +601,21 @@ cmd_log() {
     *) echo "wrap log: wrap.activity_log must be an absolute or ~-prefixed path, got '${target}'" >&2; return 1 ;;
   esac
 
-  local resolved home_real
+  local resolved
   resolved="$(_realpath_f "$target")" || { echo "wrap log: cannot resolve '${target}'" >&2; return 1; }
-  home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" || { echo "wrap log: cannot resolve HOME" >&2; return 1; }
-  case "$resolved" in
-    "$home_real"/*) ;;
-    *) echo "wrap log: resolved path '${resolved}' is outside HOME (${home_real})" >&2; return 1 ;;
-  esac
+  _home_fence "$resolved" "wrap log" || return 1
   [ -f "$resolved" ] || { echo "wrap log: '${resolved}' is not an existing regular file" >&2; return 1; }
+
+  # The worktree copy is a different path, gated only by `[ -f ]`, so it gets the same
+  # refusal and the same fence before anything is written to it. The refusal covers the leaf;
+  # resolving the whole path covers a symlink at any parent directory, which would otherwise
+  # carry the write outside HOME while the string still reads as being under the worktree.
   resolved="$(_worktree_copy "$resolved")"
+  _refuse_symlink "$resolved" "wrap log" || return 1
+  resolved="$(_realpath_f "$resolved")" \
+    || { echo "wrap log: cannot resolve the worktree copy" >&2; return 1; }
+  _home_fence "$resolved" "wrap log" || return 1
+  [ -f "$resolved" ] || { echo "wrap log: '${resolved}' is not an existing regular file" >&2; return 1; }
 
   local n=${#line}
   [ "$n" -gt "$LOG_LINE_BUDGET" ] && echo "wrap log: note: ${n} chars, over the ${LOG_LINE_BUDGET}-char routine budget" >&2
@@ -589,6 +629,216 @@ cmd_log() {
   mv -f "$tmp" "$resolved"
   printf '%s\n' "$line"
   return 0
+}
+
+# --------------------------------------------------------------------------- knowledge-root
+
+# cmd_knowledge_root <repo> -- SPEC-249 TASK-004. Prints one absolute directory and always
+# exits 0: `knowledge.root` empty or any failure resolving/fencing/creating it falls back to
+# `<repo>/.claude/memory`, never an error. The `<repo>` argument itself is validated (must
+# exist, basename must not be `.`/`..`/empty) and THAT failure is the one case that is a
+# real usage error (exit 64), since there is no repo to fall back under.
+cmd_knowledge_root() {
+  [ $# -eq 1 ] || { echo "usage: wrap.sh knowledge-root <repo>" >&2; return 64; }
+  local repo="$1" repo_real trimmed base
+  repo_real="$(cd "$repo" 2>/dev/null && pwd -P)" \
+    || { echo "usage: wrap.sh knowledge-root <repo>" >&2; return 64; }
+  trimmed="${repo_real%/}"
+  base="${trimmed##*/}"
+  case "$base" in
+    .|..|"") echo "usage: wrap.sh knowledge-root <repo>" >&2; return 64 ;;
+  esac
+
+  local fallback="${repo_real}/.claude/memory"
+  local root; root="$(kit_config_get_root knowledge.root "")"
+  if [ -z "$root" ]; then
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+
+  # Same `~` expansion rule cmd_log applies to wrap.activity_log.
+  case "$root" in
+    "~"/*) root="${HOME}/${root#\~/}" ;;
+  esac
+
+  # The dir variant of _realpath_f: `cd && pwd -P` follows every symlink on the path and
+  # collapses it to the physical directory, or fails when the directory does not exist.
+  local resolved
+  resolved="$(cd "$root" 2>/dev/null && pwd -P)"
+  if [ -z "$resolved" ]; then
+    echo "knowledge-root: '${root}' is not an existing directory, using ${fallback}" >&2
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+
+  if ! _home_fence "$resolved" knowledge-root; then
+    echo "knowledge-root: using ${fallback}" >&2
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+
+  # No `_write_guard` here (unlike `cmd_log`/`cmd_stage`): the only write below is `mkdir -p`
+  # under `<root>/projects/<base>`, which sits OUTSIDE `$repo` entirely -- `_write_guard`
+  # shells out to `git -C "$repo" rev-parse`, which fails on a non-git `<repo>` and reported
+  # the misleading "index.lock held by another writer" for a directory with no lock and no git
+  # dir at all. `<root>` itself is fenced above and re-fenced after the create; that is the
+  # write this verb owes a guard for, and it already has one via `_home_fence`.
+  #
+  # Only `<root>` was fenced above. `mkdir -p` walks through a symlink at `projects` or at the
+  # leaf without complaint, so both are refused before the create, and the created directory is
+  # re-resolved and re-fenced after it.
+  local projects="${resolved}/projects"
+  local target="${projects}/${base}"
+  if ! _refuse_symlink "$projects" knowledge-root || ! _refuse_symlink "$target" knowledge-root; then
+    echo "knowledge-root: using ${fallback}" >&2
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+  if ! mkdir -p "$target" 2>/dev/null; then
+    echo "knowledge-root: could not create '${target}', using ${fallback}" >&2
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+  local target_real
+  target_real="$(cd "$target" 2>/dev/null && pwd -P)"
+  if [ -z "$target_real" ] || ! _home_fence "$target_real" knowledge-root; then
+    echo "knowledge-root: using ${fallback}" >&2
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+  printf '%s\n' "$target_real"
+  return 0
+}
+
+# --------------------------------------------------------------------------- stage
+
+# cmd_stage "<title>" "<intent>" "<home>" [--repo <repo>] -- SPEC-249 TASK-004. Resolves the
+# staging file the same way cmd_log resolves its target (dir realpath, symlink refusal, a
+# HOME/repo fence, `_worktree_copy`), then hands the write itself to the one place the
+# staging-block grammar and its dedupe rule live: `staging-format.py stage`.
+cmd_stage() {
+  local repo="" arg count=0
+  local pos1="" pos2="" pos3=""
+  while [ $# -gt 0 ]; do
+    arg="$1"
+    case "$arg" in
+      --repo)
+        [ $# -ge 2 ] || {
+          echo 'usage: wrap.sh stage "<title>" "<intent>" "<home>" [--repo <repo>]' >&2
+          return 64
+        }
+        repo="$2"; shift 2 ;;
+      *)
+        count=$(( count + 1 ))
+        case "$count" in 1) pos1="$arg" ;; 2) pos2="$arg" ;; 3) pos3="$arg" ;; esac
+        shift ;;
+    esac
+  done
+  [ "$count" -eq 3 ] || {
+    echo 'usage: wrap.sh stage "<title>" "<intent>" "<home>" [--repo <repo>]' >&2
+    return 64
+  }
+  local title="$pos1" intent="$pos2" home="$pos3"
+
+  local repo_top
+  if [ -n "$repo" ]; then
+    repo_top="$(git -C "$repo" rev-parse --show-toplevel 2>/dev/null)"
+  else
+    repo_top="$(git rev-parse --show-toplevel 2>/dev/null)"
+  fi
+  [ -n "$repo_top" ] || {
+    echo 'usage: wrap.sh stage "<title>" "<intent>" "<home>" [--repo <repo>]' >&2
+    return 64
+  }
+  repo_top="$(cd "$repo_top" 2>/dev/null && pwd -P)" \
+    || { echo "wrap stage: cannot resolve the repo toplevel" >&2; return 64; }
+
+  local staging="${BACKLOG_STAGE_STAGING:-${repo_top}/_meta/backlog-staging.md}"
+  local backlog="${BACKLOG_STAGE_BACKLOG:-${repo_top}/_meta/BACKLOG.md}"
+
+  # The staging path's parent directory must resolve. Only the default parent (the repo's
+  # own `_meta/`) is created on demand; an env-override parent must already exist.
+  local staging_dir; staging_dir="$(dirname "$staging")"
+  if [ -z "${BACKLOG_STAGE_STAGING:-}" ]; then
+    mkdir -p "$staging_dir" 2>/dev/null \
+      || { echo "wrap stage: cannot create ${staging_dir}" >&2; return 1; }
+  fi
+  local staging_dir_real
+  staging_dir_real="$(cd "$staging_dir" 2>/dev/null && pwd -P)" \
+    || { echo "wrap stage: '${staging_dir}' does not resolve" >&2; return 1; }
+
+  local leaf; leaf="$(basename "$staging")"
+  local resolved="${staging_dir_real%/}/${leaf}"
+
+  # Never a symlink; absent or an existing regular file only.
+  _refuse_symlink "$resolved" "wrap stage" || return 1
+  if [ -e "$resolved" ] && [ ! -f "$resolved" ]; then
+    echo "wrap stage: '${resolved}' is not a regular file" >&2; return 1
+  fi
+
+  # Inside the repo toplevel by default; under HOME when the env override chose the path. The
+  # override comes from the environment, which a repo `.envrc` writes, so it may only append to
+  # a file that already exists: create-on-absent under HOME would let it seed a new block into
+  # any absent path, an agent instruction file included. Only the repo default creates.
+  if [ -n "${BACKLOG_STAGE_STAGING:-}" ]; then
+    _home_fence "$resolved" "wrap stage" || return 1
+    [ -f "$resolved" ] \
+      || { echo "wrap stage: '${resolved}' is not an existing regular file" >&2; return 1; }
+  else
+    case "$resolved" in
+      "$repo_top"/*) ;;
+      *) echo "wrap stage: '${resolved}' is outside the repo (${repo_top})" >&2; return 1 ;;
+    esac
+  fi
+
+  if ! _write_guard "$repo_top"; then
+    echo "wrap stage: index.lock held by another writer" >&2; return 1
+  fi
+
+  # The worktree copy is a path none of the checks above saw, and `_worktree_copy` gates it
+  # only with `[ -f ]`, which follows a symlink. Re-run the refusal and the fence on it. The
+  # refusal covers the leaf; resolving the whole path covers a symlink at any parent directory
+  # (`<worktree>/_meta` pointing off disk), which the prefix rules below would otherwise pass
+  # because the unresolved string still starts with the worktree toplevel.
+  local pre_copy="$resolved"
+  resolved="$(_worktree_copy "$resolved")"
+  if [ "$resolved" != "$pre_copy" ]; then
+    _refuse_symlink "$resolved" "wrap stage" || return 1
+    resolved="$(_realpath_f "$resolved")" \
+      || { echo "wrap stage: cannot resolve the worktree copy" >&2; return 1; }
+    [ -f "$resolved" ] \
+      || { echo "wrap stage: '${resolved}' is not a regular file" >&2; return 1; }
+    if [ -n "${BACKLOG_STAGE_STAGING:-}" ]; then
+      _home_fence "$resolved" "wrap stage" || return 1
+    else
+      # The copy lives in the CURRENT worktree, which is a different toplevel of the same repo.
+      # Both toplevels are compared as realpaths, matching the resolved copy.
+      local cur_top
+      cur_top="$(git rev-parse --show-toplevel 2>/dev/null)" \
+        && cur_top="$(cd "$cur_top" 2>/dev/null && pwd -P)"
+      case "$resolved" in
+        "$repo_top"/*) ;;
+        "${cur_top:-/dev/null/never}"/*) ;;
+        *) echo "wrap stage: '${resolved}' is outside the repo (${repo_top})" >&2; return 1 ;;
+      esac
+    fi
+  fi
+
+  [ -f "$STAGING_FORMAT_PY" ] \
+    || { echo "wrap stage: staging-format.py missing at ${STAGING_FORMAT_PY}" >&2; return 1; }
+
+  # Build the JSON with sys.argv, never string interpolation: title/intent/home are
+  # session text and must never be able to forge a stdin field.
+  python3 -c '
+import json, sys
+title, intent, home, staging, backlog = sys.argv[1:6]
+json.dump(
+    {"title": title, "intent": intent, "home": home, "staging": staging, "backlog": backlog},
+    sys.stdout,
+)
+' "$title" "$intent" "$home" "$resolved" "$backlog" \
+    | python3 "$STAGING_FORMAT_PY" stage
+  return $?
 }
 
 # --------------------------------------------------------------------------- default-branch
@@ -613,6 +863,8 @@ main() {
     merge)          cmd_merge "$@" ;;
     log)            cmd_log "$@" ;;
     default-branch) cmd_default_branch "$@" ;;
+    knowledge-root) cmd_knowledge_root "$@" ;;
+    stage)          cmd_stage "$@" ;;
     -h|--help|help|"") _usage; return 0 ;;
     *) echo "wrap: unknown verb '$verb' (try: wrap --help)" >&2; return 64 ;;
   esac

@@ -222,6 +222,12 @@ jobs:
       - name: Run config-registry drift + bin/config tests (SPEC-198, harness-loop sub-goal 08)
         run: bash tests/test-config-registry.sh
 
+      - name: Run config resolver selftest (kit-config.sh precedence, comment-strip, defaults)
+        run: bash tests/test-config.sh
+
+      - name: Run config seams report tests (SPEC-249 TASK-002)
+        run: bash tests/test-config-seams.sh
+
       # Quoted: an unquoted YAML scalar containing ": " parses as a mapping and breaks the
       # whole workflow file (which is how this step shipped red on its first push).
       - name: "Run the kit contract (SPEC-200: naming, wiring, docs, currency, root, portability)"
@@ -260,3 +266,6 @@ jobs:
         run: bash tests/test-break-it.sh
       - name: Run wrap verb tests (SPEC-246)
         run: bash tests/test-wrap.sh
+
+      - name: Run staging-format stage verb tests (SPEC-249)
+        run: bash tests/test-staging-stage.sh

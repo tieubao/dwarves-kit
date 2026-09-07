@@ -521,11 +521,262 @@ chk "log from outside the repo prepends to the configured file itself" \
   "$([ "$(head -1 "$LOGREPO/_meta/LOG.md")" = "$(date +%F) · wrap: from outside" ]; echo $?)"
 
 # ===========================================================================
+echo "=== knowledge-root: the key, the HOME fence, and the repo argument ==="
+# ===========================================================================
+KRHOME="$TMPD/kr-home"; mkdir -p "$KRHOME/root-ok"
+KROUTSIDE="$TMPD/kr-outside"; mkdir -p "$KROUTSIDE"
+KRKITROOT="$TMPD/kr-kitroot"; mkdir -p "$KRKITROOT"
+KRREPO="$TMPD/kr-repo"; mkdir -p "$KRREPO"
+git -C "$KRREPO" init -q; gitc "$KRREPO"
+
+set_kr_key() { printf '[knowledge]\nroot = "%s"\n' "$1" > "$KRKITROOT/kit.toml"; }
+kr() { HOME="$KRHOME" KIT_CONFIG_ROOT="$KRKITROOT" "$WRAP" knowledge-root "$@"; }
+
+printf '[knowledge]\n' > "$KRKITROOT/kit.toml"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: key empty exits 0" "$rc"
+chk_has "knowledge-root: key empty prints the repo-local fallback" "$out" "$KRREPO/.claude/memory"
+chk "knowledge-root: key empty creates nothing" "$([ ! -e "$KRREPO/.claude/memory" ]; echo $?)"
+
+set_kr_key "$KRHOME/root-ok"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: filled, under HOME, existing, exits 0" "$rc"
+chk_has "knowledge-root: prints <root>/projects/<basename>" "$out" "root-ok/projects/kr-repo"
+chk "knowledge-root: creates <root>/projects/<basename>" "$([ -d "$KRHOME/root-ok/projects/kr-repo" ]; echo $?)"
+
+set_kr_key "$KRHOME/missing-root"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: filled but missing still exits 0 (fallback, not an error)" "$rc"
+chk_has "knowledge-root: filled but missing falls back on stdout" "$out" "$KRREPO/.claude/memory"
+chk_has "knowledge-root: filled but missing names the reason on stderr" "$out" "knowledge-root:"
+chk "knowledge-root: filled but missing creates nothing under the still-missing root" \
+  "$([ ! -e "$KRHOME/missing-root" ]; echo $?)"
+
+set_kr_key "$KROUTSIDE"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: filled but outside HOME falls back, exit 0" "$rc"
+chk_has "knowledge-root: outside HOME falls back on stdout" "$out" "$KRREPO/.claude/memory"
+chk "knowledge-root: outside HOME creates nothing there" "$([ ! -e "$KROUTSIDE/projects" ]; echo $?)"
+
+ln -s "$KROUTSIDE" "$KRHOME/link-outside"
+set_kr_key "$KRHOME/link-outside"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: a symlink resolving outside HOME falls back, exit 0" "$rc"
+chk_has "knowledge-root: symlink-outside falls back on stdout" "$out" "$KRREPO/.claude/memory"
+chk "knowledge-root: symlink-outside creates nothing under the real target" \
+  "$([ ! -e "$KROUTSIDE/projects" ]; echo $?)"
+
+# The fence resolves `<root>` only. `mkdir -p` walks straight through a symlink at
+# `<root>/projects`, so the created directory lands wherever that symlink points.
+KRESC="$TMPD/kr-escape"; mkdir -p "$KRESC"
+mkdir -p "$KRHOME/root-esc"; ln -s "$KRESC" "$KRHOME/root-esc/projects"
+set_kr_key "$KRHOME/root-esc"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: a symlinked projects dir falls back, exit 0" "$rc"
+chk_has "knowledge-root: symlinked projects falls back on stdout" "$out" "$KRREPO/.claude/memory"
+chk "knowledge-root: creates nothing under the symlink target" \
+  "$([ ! -e "$KRESC/kr-repo" ]; echo $?)"
+
+# `config seams` calls a root equal to $HOME `filled`, so the consumer must accept it too:
+# an advisor that disagrees with the thing it advises on is the bug this closes.
+KRHOME_REAL="$(cd "$KRHOME" && pwd -P)"
+set_kr_key "$KRHOME"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: a root equal to HOME itself exits 0" "$rc"
+chk_has "knowledge-root: HOME-as-root prints <HOME>/projects/<basename>" \
+  "$out" "$KRHOME_REAL/projects/kr-repo"
+chk "knowledge-root: HOME-as-root creates the directory" \
+  "$([ -d "$KRHOME_REAL/projects/kr-repo" ]; echo $?)"
+
+out="$(kr 2>&1)"; rc=$?
+chk "knowledge-root: missing repo argument exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+
+out="$(kr "$KRREPO/no-such-subdir/.." 2>&1)"; rc=$?
+chk "knowledge-root: repo arg ending in /.. exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+
+out="$(kr / 2>&1)"; rc=$?
+chk "knowledge-root: repo arg resolving to / exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+
+# The only write this verb does is `mkdir -p` under `<root>/projects/<base>`, which sits
+# OUTSIDE `<repo>` entirely -- so a `<repo>` with no `.git` at all must not block it. The
+# old `_write_guard "$repo_real"` call shelled out to `git -C "$repo" rev-parse`, which
+# fails on a non-git dir and printed the misleading "index.lock held by another writer".
+KRNONGIT="$TMPD/kr-nongit-repo"; mkdir -p "$KRNONGIT"
+set_kr_key "$KRHOME/root-ok"
+out="$(kr "$KRNONGIT" 2>&1)"; rc=$?
+chk "knowledge-root: non-git repo dir, filled+existing root, exits 0" "$rc"
+chk_has "knowledge-root: non-git repo prints <root>/projects/<basename>" \
+  "$out" "root-ok/projects/kr-nongit-repo"
+chk "knowledge-root: non-git repo creates <root>/projects/<basename>" \
+  "$([ -d "$KRHOME/root-ok/projects/kr-nongit-repo" ]; echo $?)"
+chk_no "knowledge-root: non-git repo never prints the index.lock message" \
+  "$out" "index.lock held by another writer"
+
+# ===========================================================================
+echo "=== stage: default paths, dedupe, the fences, and the worktree copy ==="
+# ===========================================================================
+STAGEHOME="$TMPD/stage-home"; mkdir -p "$STAGEHOME"
+mk_stage_repo() { # mk_stage_repo <name> -- prints the new repo's path
+  local d="$TMPD/stage-$1"
+  mkdir -p "$d"; git -C "$d" init -q; gitc "$d"
+  git -C "$d" commit -q --allow-empty -m init
+  printf '%s' "$d"
+}
+
+R1="$(mk_stage_repo one)"
+out="$(cd "$R1" && "$WRAP" stage "My First Title" "the intent" "the home" 2>&1)"; rc=$?
+chk "stage: default paths exits 0" "$rc"
+chk "stage: creates _meta/backlog-staging.md" "$([ -f "$R1/_meta/backlog-staging.md" ]; echo $?)"
+chk_has "stage: appends the rendered block" "$(cat "$R1/_meta/backlog-staging.md")" "## [staged] My First Title"
+
+out="$(cd "$R1" && "$WRAP" stage "my   FIRST title!!" "x" "y" 2>&1)"; rc=$?
+chk "stage: a dup differing in case/spacing/punctuation exits 0" "$rc"
+chk_has "stage: the dup prints already staged" "$out" "already staged"
+DUP_COUNT="$(grep -c '^## \[staged\]' "$R1/_meta/backlog-staging.md")"
+chk "stage: the dup wrote no second block" "$([ "$DUP_COUNT" -eq 1 ]; echo $?)"
+
+R2="$(mk_stage_repo two)"
+mkdir -p "$STAGEHOME/override-home"
+: > "$STAGEHOME/override-home/staging.md"
+out="$(cd "$R2" && BACKLOG_STAGE_STAGING="$STAGEHOME/override-home/staging.md" HOME="$STAGEHOME" \
+  "$WRAP" stage "Override Path Title" "i" "h" 2>&1)"; rc=$?
+chk "stage: BACKLOG_STAGE_STAGING under HOME honoured, exit 0" "$rc"
+chk_has "stage: writes the overridden path" \
+  "$(cat "$STAGEHOME/override-home/staging.md")" "## [staged] Override Path Title"
+chk "stage: never touches the repo default path" "$([ ! -e "$R2/_meta/backlog-staging.md" ]; echo $?)"
+
+# The override reaches wrap through the environment, which a repo `.envrc` writes. An absent
+# leaf under HOME is exactly the shape that would let it seed a staging block into an agent
+# instruction file, so the override may only append to a file that already exists.
+R2B="$(mk_stage_repo two-b)"
+ABSENT="$STAGEHOME/override-home/absent-instructions.md"
+out="$(cd "$R2B" && BACKLOG_STAGE_STAGING="$ABSENT" HOME="$STAGEHOME" \
+  "$WRAP" stage "Injected Row" "i" "h" 2>&1)"; rc=$?
+chk "stage: an env-override at an absent file refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "stage: names the existing-regular-file rule" "$out" "not an existing regular file"
+chk "stage: the absent override path is still absent" "$([ ! -e "$ABSENT" ]; echo $?)"
+
+R3="$(mk_stage_repo three)"
+mkdir -p "$R3/_meta"; ln -s /etc/hosts "$R3/_meta/backlog-staging.md"
+out="$(cd "$R3" && "$WRAP" stage "T" "i" "h" 2>&1)"; rc=$?
+chk "stage: a symlinked target refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "stage: names the reason on stderr" "$out" "wrap stage:"
+chk "stage: the symlink itself is left alone" "$([ -L "$R3/_meta/backlog-staging.md" ]; echo $?)"
+
+R4="$(mk_stage_repo four)"
+mkdir -p "$STAGEHOME/elsewhere" "$STAGEHOME/some-other-home"
+out="$(cd "$R4" && BACKLOG_STAGE_STAGING="$STAGEHOME/elsewhere/staging.md" HOME="$STAGEHOME/some-other-home" \
+  "$WRAP" stage "T" "i" "h" 2>&1)"; rc=$?
+chk "stage: outside the repo and outside HOME refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk "stage: nothing written outside" "$([ ! -e "$STAGEHOME/elsewhere/staging.md" ]; echo $?)"
+
+out="$("$WRAP" stage "T" "i" "h" --repo "$TMPD/not-a-repo" 2>&1)"; rc=$?
+chk "stage: a non-git --repo exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+
+R5="$(mk_stage_repo five)"
+mkdir -p "$R5/_meta"; : > "$R5/_meta/backlog-staging.md"; chmod 400 "$R5/_meta/backlog-staging.md"
+out="$(cd "$R5" && "$WRAP" stage "T" "i" "h" 2>&1)"; rc=$?
+chk "stage: an unwritable target relays FAILED, exit 2" "$([ "$rc" -eq 2 ]; echo $?)"
+chk_has "stage: relays the FAILED line" "$out" "FAILED"
+chmod 644 "$R5/_meta/backlog-staging.md"
+
+R6MAIN="$TMPD/stage-six"
+git init -q "$R6MAIN" && git -C "$R6MAIN" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+mkdir -p "$R6MAIN/_meta"
+printf '# Backlog staging\n\n' > "$R6MAIN/_meta/backlog-staging.md"
+git -C "$R6MAIN" add _meta/backlog-staging.md
+git -C "$R6MAIN" -c user.name=t -c user.email=t@t commit -q -m stage
+git -C "$R6MAIN" worktree add -q -b stage-side "$TMPD/stage-six-wt"
+out="$(cd "$TMPD/stage-six-wt" && "$WRAP" stage --repo "$R6MAIN" "From The Worktree" "i" "h" 2>&1)"; rc=$?
+chk "stage: run from a worktree exits 0" "$rc"
+chk_has "stage: writes the worktree's own copy" \
+  "$(cat "$TMPD/stage-six-wt/_meta/backlog-staging.md")" "## [staged] From The Worktree"
+chk_no "stage: the main checkout's copy is left alone" \
+  "$(cat "$R6MAIN/_meta/backlog-staging.md")" "## [staged] From The Worktree"
+
+# The checks above run on the path BEFORE `_worktree_copy` swaps in the current worktree's own
+# copy. A symlink at that copy redirects the append anywhere, so the refusal runs again after.
+WTHOME="$TMPD/wt-home"; mkdir -p "$WTHOME"
+CANARY="$TMPD/wt-canary.md"; printf 'canary untouched\n' > "$CANARY"
+R7MAIN="$WTHOME/stage-seven"
+git init -q "$R7MAIN" && git -C "$R7MAIN" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+mkdir -p "$R7MAIN/_meta"
+printf '# Backlog staging\n\n' > "$R7MAIN/_meta/backlog-staging.md"
+git -C "$R7MAIN" add _meta/backlog-staging.md
+git -C "$R7MAIN" -c user.name=t -c user.email=t@t commit -q -m stage
+git -C "$R7MAIN" worktree add -q -b stage-evil "$WTHOME/stage-seven-wt"
+rm -f "$WTHOME/stage-seven-wt/_meta/backlog-staging.md"
+ln -s "$CANARY" "$WTHOME/stage-seven-wt/_meta/backlog-staging.md"
+CANARY_BEFORE="$(shasum -a 256 "$CANARY" | cut -d' ' -f1)"
+out="$(cd "$WTHOME/stage-seven-wt" && HOME="$WTHOME" "$WRAP" stage --repo "$R7MAIN" "Redirected Row" "i" "h" 2>&1)"; rc=$?
+chk "stage: a symlinked worktree copy refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "stage: names the symlink on stderr" "$out" "is a symlink"
+chk "stage: the canary outside HOME is byte-identical" \
+  "$([ "$CANARY_BEFORE" = "$(shasum -a 256 "$CANARY" | cut -d' ' -f1)" ]; echo $?)"
+
+# Same shape for `wrap log`: the configured activity_log is fenced, its worktree copy is not.
+LOGWTKIT="$TMPD/wt-kitroot"; mkdir -p "$LOGWTKIT"
+LOGCANARY="$TMPD/wt-log-canary.md"; printf 'log canary untouched\n' > "$LOGCANARY"
+R8MAIN="$WTHOME/log-eight"
+git init -q "$R8MAIN" && git -C "$R8MAIN" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+mkdir -p "$R8MAIN/_meta"
+printf 'main copy\n' > "$R8MAIN/_meta/LOG.md"
+git -C "$R8MAIN" add _meta/LOG.md
+git -C "$R8MAIN" -c user.name=t -c user.email=t@t commit -q -m log
+git -C "$R8MAIN" worktree add -q -b log-evil "$WTHOME/log-eight-wt"
+rm -f "$WTHOME/log-eight-wt/_meta/LOG.md"
+ln -s "$LOGCANARY" "$WTHOME/log-eight-wt/_meta/LOG.md"
+printf '[wrap]\nactivity_log = "%s"\n' "$R8MAIN/_meta/LOG.md" > "$LOGWTKIT/kit.toml"
+LOGCANARY_BEFORE="$(shasum -a 256 "$LOGCANARY" | cut -d' ' -f1)"
+out="$(cd "$WTHOME/log-eight-wt" && HOME="$WTHOME" KIT_CONFIG_ROOT="$LOGWTKIT" "$WRAP" log "wrap: redirected" 2>&1)"; rc=$?
+chk "log: a symlinked worktree copy refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "log: names the symlink on stderr" "$out" "is a symlink"
+chk "log: the canary outside HOME is byte-identical" \
+  "$([ "$LOGCANARY_BEFORE" = "$(shasum -a 256 "$LOGCANARY" | cut -d' ' -f1)" ]; echo $?)"
+
+# A symlink at a PARENT directory of the worktree copy escapes a leaf-only refusal and a
+# prefix fence run on the unresolved string: `wt/_meta` pointing at a directory outside HOME
+# still leaves `wt/_meta/<file>` looking like a plain file under the worktree. Both verbs must
+# resolve the copied path before they fence it.
+PDHOME="$TMPD/pd-home"; mkdir -p "$PDHOME"
+PDOUT="$TMPD/pd-outside/_meta"; mkdir -p "$PDOUT"
+printf 'staging canary untouched\n' > "$PDOUT/backlog-staging.md"
+printf 'log canary untouched\n' > "$PDOUT/LOG.md"
+R9MAIN="$PDHOME/pd-main"
+git init -q "$R9MAIN" && git -C "$R9MAIN" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+mkdir -p "$R9MAIN/_meta"
+printf '# Backlog staging\n\n' > "$R9MAIN/_meta/backlog-staging.md"
+printf 'main copy\n' > "$R9MAIN/_meta/LOG.md"
+git -C "$R9MAIN" add _meta
+git -C "$R9MAIN" -c user.name=t -c user.email=t@t commit -q -m meta
+git -C "$R9MAIN" worktree add -q -b pd-side "$PDHOME/pd-wt"
+rm -rf "$PDHOME/pd-wt/_meta"
+ln -s "$TMPD/pd-outside/_meta" "$PDHOME/pd-wt/_meta"
+git -C "$PDHOME/pd-wt" add _meta 2>/dev/null
+git -C "$PDHOME/pd-wt" -c user.name=t -c user.email=t@t commit -q -m symlinked-meta 2>/dev/null
+PD_STAGE_BEFORE="$(shasum -a 256 "$PDOUT/backlog-staging.md" | cut -d' ' -f1)"
+PD_LOG_BEFORE="$(shasum -a 256 "$PDOUT/LOG.md" | cut -d' ' -f1)"
+
+out="$(cd "$PDHOME/pd-wt" && HOME="$PDHOME" "$WRAP" stage --repo "$R9MAIN" "Parent Symlink Row" "i" "h" 2>&1)"; rc=$?
+chk "stage: a parent-dir symlink on the worktree copy refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "stage: names a reason on stderr" "$out" "wrap stage:"
+chk "stage: the staging canary outside HOME is byte-identical" \
+  "$([ "$PD_STAGE_BEFORE" = "$(shasum -a 256 "$PDOUT/backlog-staging.md" | cut -d' ' -f1)" ]; echo $?)"
+
+PDKIT="$TMPD/pd-kitroot"; mkdir -p "$PDKIT"
+printf '[wrap]\nactivity_log = "%s"\n' "$R9MAIN/_meta/LOG.md" > "$PDKIT/kit.toml"
+out="$(cd "$PDHOME/pd-wt" && HOME="$PDHOME" KIT_CONFIG_ROOT="$PDKIT" "$WRAP" log "wrap: parent symlink" 2>&1)"; rc=$?
+chk "log: a parent-dir symlink on the worktree copy refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "log: names a reason on stderr" "$out" "wrap log:"
+chk "log: the log canary outside HOME is byte-identical" \
+  "$([ "$PD_LOG_BEFORE" = "$(shasum -a 256 "$PDOUT/LOG.md" | cut -d' ' -f1)" ]; echo $?)"
+
+# ===========================================================================
 echo "=== help and usage ==="
 # ===========================================================================
 out="$("$WRAP" --help 2>&1)"; rc=$?
 chk "--help exits 0" "$rc"
-for verb in scan apply merge log default-branch; do
+for verb in scan apply merge log default-branch knowledge-root stage; do
   chk_has "--help names $verb" "$out" "$verb"
 done
 out="$("$WRAP" scan 2>&1)"; rc=$?
@@ -536,6 +787,10 @@ out="$("$WRAP" merge 2>&1)"; rc=$?
 chk "merge with no repo exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 out="$("$WRAP" log 2>&1)"; rc=$?
 chk "log with no text exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+out="$("$WRAP" knowledge-root 2>&1)"; rc=$?
+chk "knowledge-root with no repo exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+out="$("$WRAP" stage 2>&1)"; rc=$?
+chk "stage with no args exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 out="$("$WRAP" bogus 2>&1)"; rc=$?
 chk "an unknown verb exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 
