@@ -88,7 +88,7 @@ a. DEBT marker.
 rid=$(bash lib/gate/gate-ledger.sh rid)
 ```
 
-An empty `rid` prints `skipped: no run id`. Otherwise resolve the log dir with `bash lib/telemetry/kit-log-dir.sh`; a missing `runs/<rid>.log` prints `skipped: no run log`; a `| DEBT |` line already in it prints `skipped: DEBT marker present`. Otherwise `bash lib/classify/significance-classify.sh record <rid> "<one-line session description>"`; a non-zero exit prints `skipped: classifier failed (rc N)` and the step continues to b.
+An empty `rid` prints `skipped: no run id`. Otherwise resolve the log dir with `logdir=$(bash -c 'source lib/telemetry/kit-log-dir.sh; kit_resolve_log_dir')` (the file is source-only and prints nothing when run as a command); a missing `runs/<rid>.log` prints `skipped: no run log`; a `| DEBT |` line already in it prints `skipped: DEBT marker present`. Otherwise `bash lib/classify/significance-classify.sh record <rid> "<one-line session description>"`; a non-zero exit prints `skipped: classifier failed (rc N)` and the step continues to b.
 
 b. Candidates. A candidate is a manual multi-step procedure this session ran three or more times, or a one-off script the operator called recurring. For each, `bin/precedent find --surface inventory --json "<two or three words>"`: `nothing_matched` true stages it, `bin/wrap stage "<title>" "<intent>" "<home>"` with `<home>` the repo that would own it (`already staged` from the verb needs no bullet); `nothing_matched` false adds no row, only an FYI bullet quoting the top hit line. No candidates: `skipped: no candidates`.
 
@@ -96,7 +96,7 @@ c. Incidents. For every `docs/incidents/*.md` written this session whose `## Roo
 
 ### Step 8: reflect
 
-Resolve the kit log dir (`bash lib/telemetry/kit-log-dir.sh` resolves it) and grep the run ledgers under it for a `| GATE | ship | ran | shipping pr=#<n>` line naming any PR number merged in step 3. Anchor the number so `#7` never matches `#71`: `grep -rE "shipping pr=#<n>([^0-9]|$)" "<log dir>"`. Any hit means run `/kit:retro` now, before the report. No hit means no spec cycle shipped this session; skip retro and say so in the report's FYI line.
+Resolve the kit log dir (`bash -c 'source lib/telemetry/kit-log-dir.sh; kit_resolve_log_dir'` prints it) and grep the run ledgers under it for a `| GATE | ship | ran | shipping pr=#<n>` line naming any PR number merged in step 3. Anchor the number so `#7` never matches `#71`: `grep -rE "shipping pr=#<n>([^0-9]|$)" "<log dir>"`. Any hit means run `/kit:retro` now, before the report. No hit means no spec cycle shipped this session; skip retro and say so in the report's FYI line.
 
 ### Step 9: report
 

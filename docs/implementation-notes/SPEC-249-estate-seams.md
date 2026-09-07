@@ -100,3 +100,12 @@ Why: the acceptance grep only checks the phrase case-insensitively, so either he
 Alternatives: a bare `## Overlays and seams` in onboard.md too. Rejected: it would read as a new top-level stage on par with A-G rather than a note attached to the module-choice step, which is not what the section is.
 Impact: `commands/onboard.md`, `commands/adopt.md`. `docs/FEATURES.md` regenerated via `bash lib/registry/feature-registry.sh generate`; its onboard/adopt row Spec counts bumped by 1 each because SPEC-249 itself names `/kit:onboard` and `/kit:adopt` in TASK-006's text (the exact-token grep over `docs/specs/`), not because of any new reference these edits added. `bash tests/test-meta.sh` (840/840) and `bash tests/test-no-personal-paths.sh` (3/3) both green.
 Open questions: none.
+
+## 2026-09-07 integration pass: log-dir resolver is source-only
+
+Context: the integration verifier ran every command Step 7 names; `bash lib/telemetry/kit-log-dir.sh` prints nothing because the file is a sourced library with an early-return guard, so Step 7a would always print `skipped: no run log`.
+Decision: both mentions in `commands/wrap.md` (Step 7a, and the pre-existing one in the reflect step) now use `bash -c 'source lib/telemetry/kit-log-dir.sh; kit_resolve_log_dir'`.
+Why: every other consumer sources the file; the command prose was the only caller running it.
+Alternatives: add a standalone mode to the library; out of scope for a doc build.
+Impact: the reflect step fix is a pre-existing defect repaired in passing, not a build regression.
+Open questions: `wrap knowledge-root` on a non-git directory falls back with the reason `index.lock held by another writer` because `_write_guard` returns 1 when `git rev-parse` fails; the fallback is right, the reason text is misleading. Left for a follow-up row.
