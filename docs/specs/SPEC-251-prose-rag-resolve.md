@@ -53,18 +53,18 @@ obvious: extract the lookup both readers already do into one sourced function an
 
 ### Phase 1: Foundation
 
-- [ ] TASK-001: the resolver, both readers, and tests. Add `lib/prose-rag/resolve.sh`; `bin/prose-rag` and `lib/config/config.sh` source it; `tests/test-prose-rag-adapter.sh` gains: the kit wrapper alone on a temp PATH → the install hint, exit 1, no loop (under `ulimit -t 10`); the wrapper FIRST and a real stub SECOND on PATH → the stub runs; a symlink named `prose-rag` to this shim on PATH → skipped. `tests/test-config-seams.sh` gains: wrapper alone on PATH → `absent`; wrapper then real stub → `filled` with the stub's path; `PROSE_RAG_BIN` still wins. `tests/test-config-registry.sh` stays green (no new env names). Acceptance: `bash tests/test-prose-rag-adapter.sh && bash tests/test-config-seams.sh && bash tests/test-config-registry.sh && bash tests/test-kit-contract.sh && bash tests/test-meta.sh && bash tests/test-no-personal-paths.sh` green; `docs/FEATURES.md` regenerated if the registry changes; `lib/prose-rag/README.md` names the resolver.
+- [x] TASK-001: DONE (commit: d22d5b1, verified). the resolver, both readers, and tests. Add `lib/prose-rag/resolve.sh`; `bin/prose-rag` and `lib/config/config.sh` source it; `tests/test-prose-rag-adapter.sh` gains: the kit wrapper alone on a temp PATH → the install hint, exit 1, no loop (under `ulimit -t 10`); the wrapper FIRST and a real stub SECOND on PATH → the stub runs; a symlink named `prose-rag` to this shim on PATH → skipped. `tests/test-config-seams.sh` gains: wrapper alone on PATH → `absent`; wrapper then real stub → `filled` with the stub's path; `PROSE_RAG_BIN` still wins. `tests/test-config-registry.sh` stays green (no new env names). Acceptance: `bash tests/test-prose-rag-adapter.sh && bash tests/test-config-seams.sh && bash tests/test-config-registry.sh && bash tests/test-kit-contract.sh && bash tests/test-meta.sh && bash tests/test-no-personal-paths.sh` green; `docs/FEATURES.md` regenerated if the registry changes; `lib/prose-rag/README.md` names the resolver.
 
 ## After state
 
-- [ ] With only the kit wrapper on PATH, `bash bin/config seams` shows `PROSE_RAG_BIN ... absent`. (Today: `filled` with the wrapper path.)
-- [ ] With the wrapper before the real binary on PATH, `bash bin/prose-rag query x` runs the real binary. (Today: the hint.)
-- [ ] `grep -c 'command -v prose-rag' bin/prose-rag lib/config/config.sh` is 0 (both source the resolver).
+- [x] With only the kit wrapper on PATH, `bash bin/config seams` shows `PROSE_RAG_BIN ... absent`. (Today: `filled` with the wrapper path.)
+- [x] With the wrapper before the real binary on PATH, `bash bin/prose-rag query x` runs the real binary. (Today: the hint.)
+- [x] `grep -c 'command -v prose-rag' bin/prose-rag lib/config/config.sh` is 0 (both source the resolver).
 
 ## Acceptance Criteria (global)
 
-- [ ] All tasks pass their acceptance criteria
-- [ ] No regressions in the Verification line
+- [x] All tasks pass their acceptance criteria
+- [x] No regressions in the Verification line
 
 ## Verification
 
