@@ -163,6 +163,13 @@ OUT8="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OP
   bash "$CONFIG_BIN" seams | grep '^PROSE_RAG_BIN')"
 chk_has "PROSE_RAG_BIN set to a non-executable file -> unresolved" "$OUT8" "unresolved"
 
+# --------------------------------------------------------------------------- case 8b: PROSE_RAG_BIN is a directory
+# [ -x ] is true for a searchable directory, so the check must also require a regular file.
+OUT8B="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" PROSE_RAG_BIN="$TMPD" \
+  bash "$CONFIG_BIN" seams | grep '^PROSE_RAG_BIN')"
+chk_has "PROSE_RAG_BIN set to a directory -> unresolved" "$OUT8B" "unresolved"
+
 # --------------------------------------------------------------------------- case 9: prose-rag on PATH
 
 mkdir -p "$TMPD/bin"

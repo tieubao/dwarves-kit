@@ -314,6 +314,10 @@ None below the confidence gate; no validator refuted a finding.
 
 None.
 
+### Battery (fresh-context legs at 02b5a61)
+
+Leg 1 acceptance: PASS on the frozen head (a first run escalated because the lead edited the tree mid-run). Leg 2 static review (opus): FIX THEN SHIP, five items fixed in 02b5a61. Leg 3 advisor: the proof doc had gone stale after the review fixes; refreshed. break-it probe: PROBE 2, a CJK title skipped dedupe (ASCII-only `norm`) and a directory as `PROSE_RAG_BIN` read `filled`; both pinned by tests and fixed. Verdict after fixes: SHIP.
+
 ### TODOs
 
 - Residual by design: `wrap log` fences on HOME only (the spec's rule), so a committed `_meta` symlink pointing INSIDE HOME but outside the repo can redirect the one dated line to a pre-existing file whose leaf name equals the configured log leaf. Low; a repo fence on `wrap log` would close it.

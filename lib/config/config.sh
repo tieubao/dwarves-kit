@@ -294,7 +294,8 @@ _seam_resolve() {
   # binary: "default" never applies (DEC-009); env-set must be executable, else PATH lookup.
   if [ -n "$raw" ]; then
     SEAM_VALUE="$raw"
-    if [ -x "$raw" ]; then SEAM_STATUS="filled"; else SEAM_STATUS="unresolved"; fi
+    # [ -x ] alone is true for a searchable directory; a binary must be a regular file too.
+    if [ -f "$raw" ] && [ -x "$raw" ]; then SEAM_STATUS="filled"; else SEAM_STATUS="unresolved"; fi
     return 0
   fi
   local found

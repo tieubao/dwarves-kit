@@ -168,8 +168,8 @@ def extract_json_array(text):
 
 
 def norm(s):
-    """Normalize a title for dedup: lowercase alphanumeric words."""
-    return " ".join(re.findall(r"[a-z0-9]+", str(s).lower()))
+    """Normalize a title for dedup: casefolded word runs in any script (keep equal to staging-format.norm)."""
+    return " ".join(re.findall(r"[^\W_]+", str(s).casefold()))
 
 
 def existing_titles(backlog, staging):

@@ -85,11 +85,13 @@ def age_days(fields, today=None):
 # --- write side (from SG-05 `learn propose`; unified here per ADR-0034 decision 1:
 # ONE staging-block definition, shared by drain, propose, and the `stage` verb below) ---
 
-_NORM_RE = re.compile(r"[a-z0-9]+")
+# Unicode word runs (letters and digits in any script, underscore excluded): an ASCII-only
+# class turned every CJK title into an empty key that skipped dedupe (battery probe).
+_NORM_RE = re.compile(r"[^\W_]+")
 
 def norm(title):
-    """Normalize a title into a dedup key: lowercase alphanumeric words."""
-    return " ".join(_NORM_RE.findall(str(title).lower()))
+    """Normalize a title into a dedup key: casefolded word runs in any script."""
+    return " ".join(_NORM_RE.findall(str(title).casefold()))
 
 def render_block(candidate):
     """Render one candidate dict as a `## [staged]` block string (trailing blank line).

@@ -165,3 +165,12 @@ Alternatives: for (1), resolving the relative value against a caller-supplied ba
 Impact: `lib/config/config.sh`, `lib/wrap/wrap.sh`, `lib/learn/staging-format.py`, `.github/workflows/test.yml`, `docs/specs/SPEC-249-estate-seams.md` (knowledge-root Interfaces paragraph + Invariants sentence). Test counts: `tests/test-config-seams.sh` 44 (was 37), `tests/test-wrap.sh` 205 (was 201), `tests/test-staging-stage.sh` 27 (was 24). `docs/FEATURES.md` regenerated, byte-identical to the pre-existing committed copy.
 
 Open questions: none.
+
+## 2026-09-07 battery probe fixes
+
+Context: the break-it probe found two inputs the suites did not constrain: a CJK title normalised to an empty dedupe key (the ASCII-only `[a-z0-9]+` class) and skipped dedupe, and a `binary` seam pointing at a directory read `filled` because `[ -x ]` is true for a searchable directory.
+Decision: `norm` now casefolds and matches `[^\W_]+` (word runs in any script) in both `staging-format.py` and the `backlog-stage.py` copy, which the hook's own docstring pins as equal; the binary check requires `-f` with `-x`.
+Why: the kit's operator writes Vietnamese titles; a dedupe key that drops every non-ASCII letter collides Vietnamese titles and empties CJK ones.
+Alternatives: fall back to the raw title when the key is empty (leaves the Vietnamese collision); leave `norm` and guard only `stage` (two grammars).
+Impact: existing staged blocks re-key on read, so no stored key changes; `test-learn-propose` and `test-learn-drain` stay green.
+Open questions: none.

@@ -53,6 +53,27 @@ chk_has "dedupe: prints already staged" "$OUT2" "already staged"
 chk "dedupe: staging file byte-identical" "$([ "$BEFORE" = "$AFTER" ]; echo $?)"
 
 # ============================================================
+echo "== dedupe: a non-ASCII title (Vietnamese, CJK) still dedupes; the key is never empty =="
+# ============================================================
+VN1='{"title":"Ghi chú tài liệu","intent":"x","home":"h","staging":"'"$STAGE"'"}'
+OUTV1="$(printf '%s' "$VN1" | python3 "$SF" stage)"; RCV1=$?
+chk "vn: first call appends (exit 0)" "$([ "$RCV1" -eq 0 ]; echo $?)"
+chk_has "vn: first call prints the staged line" "$OUTV1" "## [staged] Ghi chú tài liệu"
+BEFOREV="$(shasum -a 256 "$STAGE" | cut -d' ' -f1)"
+VN2='{"title":"ghi  CHÚ tài liệu!!","intent":"x","home":"h","staging":"'"$STAGE"'"}'
+OUTV2="$(printf '%s' "$VN2" | python3 "$SF" stage)"; RCV2=$?
+AFTERV="$(shasum -a 256 "$STAGE" | cut -d' ' -f1)"
+chk_has "vn: second call prints already staged" "$OUTV2" "already staged"
+chk "vn: staging file byte-identical" "$([ "$BEFOREV" = "$AFTERV" ]; echo $?)"
+CJ1='{"title":"文档整理","intent":"x","home":"h","staging":"'"$STAGE"'"}'
+printf '%s' "$CJ1" | python3 "$SF" stage >/dev/null
+BEFOREC="$(shasum -a 256 "$STAGE" | cut -d' ' -f1)"
+OUTC2="$(printf '%s' "$CJ1" | python3 "$SF" stage)"
+AFTERC="$(shasum -a 256 "$STAGE" | cut -d' ' -f1)"
+chk_has "cjk: second call prints already staged" "$OUTC2" "already staged"
+chk "cjk: staging file byte-identical" "$([ "$BEFOREC" = "$AFTERC" ]; echo $?)"
+
+# ============================================================
 echo "== board dedupe: a title already on the board (Item cell) is refused the same way =="
 # ============================================================
 BOARD="$TMPD/BACKLOG.md"

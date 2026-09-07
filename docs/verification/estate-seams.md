@@ -103,3 +103,12 @@ Output (excerpt): negctl `Verdict: PASS`; with the fence disabled the outside-HO
 Verdict: RED-as-expected; the shared worktree was never mutated.
 
 Exploit re-verification (security lens, fresh context, temp HOME): forged env-name canary never created through `config seams` or `config list`; worktree leaf symlink, parent-directory symlink outside HOME, parent symlink inside HOME but outside the repo, and a two-hop chain all refused for `stage` with byte-identical canaries; `log` refuses the outside-HOME shapes (its fence is HOME-only by spec); symlinked `<root>/projects` falls back with nothing created; absent env-override staging target refused; symlinked python target `FAILED` exit 2. Record: the spec's `## Review` section.
+
+## BATTERY (fresh-context legs at 02b5a61, probe fixes on top)
+
+Leg 1 acceptance-verifier (first run escalated because the lead edited the tree mid-run; re-run on the frozen head): PASS, 6/6 after-state bullets, edge rows 1, 2, 3, 4, 6, 8, 11, 12, 18 to 22, 25 and the two battery additions reproduced in temp dirs. Leg 2 code-reviewer (opus): FIX THEN SHIP, five items, all fixed in 02b5a61 (relative seam paths unresolved, knowledge-root guard removed, `test-config.sh` registered in the workflow, `--check` fails on a missing seam table, non-object JSON exits 64). Leg 3 advisor: one finding, this proof doc was stale after the review fixes; fixed by the entries above. break-it: PROBE 2 (CJK title skipped dedupe; a directory as `PROSE_RAG_BIN` read `filled`), both pinned by tests that were RED before the fix and fixed in the commit that carries this entry.
+
+Command: `bash tests/test-config-registry.sh && bash tests/test-config.sh && bash tests/test-config-seams.sh && bash tests/test-staging-stage.sh && bash tests/test-wrap.sh && bash tests/test-learn-propose.sh && bash tests/test-learn-drain.sh && bash tests/test-meta.sh && bash tests/test-no-personal-paths.sh`
+Exit: 0
+Output (excerpt): `=== 23/23 passed ===`; `PASS kit-config selftest`; `=== 45/45 passed ===`; `33 run, 33 passed, 0 failed`; `test-wrap: all 205 passed`; `42 run, 42 passed`; `TOTAL: 23 PASS: 23 FAIL: 0`; `Passed: 840 / 840`; `Passed: 3 / 3`.
+Verdict: PASS
