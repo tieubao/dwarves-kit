@@ -59,6 +59,10 @@ make_fixture() {
   mkdir -p "$FIX_REPO/tools/alpha/bin" "$FIX_REPO/scripts" "$FIX_REPO/.claude/memory" \
            "$FIX_REPO/.claude/skills/delta" "$FIX_REPO/docs/specs" "$FIX_REPO/docs/decisions" \
            "$FIX_REPO/experiments/eps"
+  # Restored-iterator fixtures (research records, tool helper dirs, a second experiment whose
+  # subject lives only in `tech:` + the lede, a PEP-723 script, a duplicate skill dir).
+  mkdir -p "$FIX_REPO/research" "$FIX_REPO/tools/alpha/scripts" "$FIX_REPO/tools/alpha/lib" \
+           "$FIX_REPO/experiments/kappa" "$FIX_HOME/.claude/skills/delta"
 
   cat > "$FIX_REPO/tools/alpha/tool.toml" <<'FIX'
 name = "alpha"
@@ -109,6 +113,110 @@ title: notion export experiment
 ---
 # notion export experiment
 FIX
+
+  # The token halves follow the gamma.md technique: each is under the pattern's threshold on
+  # its own, so the contiguous shape never appears in this script's source. It pins that the
+  # restored helper-script surface redacts like every older one.
+  local fake_token_e="ghp_abcdefghij" fake_token_f="klmnopqrstuvwxyz0123456789"
+
+  # Restored iterator 1: a dated research record. Its subject lives in frontmatter
+  # `title:` + `purpose:`, both carrying unique words.
+  cat > "$FIX_REPO/research/2026-01-01-lambdaunique.md" <<'FIX'
+---
+title: lambdaunique estate census
+date: 2026-01-01
+purpose: Census of the muunique reporting paths across the estate.
+---
+
+# lambdaunique estate census
+FIX
+
+  cat > "$FIX_REPO/research/2026-01-02-omeganeue.md" <<FIX
+---
+title: omeganeue census, sample token ${fake_token_e}${fake_token_f}
+date: 2026-01-02
+purpose: A research record whose frontmatter carries a secret shape.
+---
+
+# omeganeue census
+FIX
+
+  # Restored iterator 2: tool helper scripts under scripts/ and lib/, plus a top-level
+  # tools/<x>/*.py entry point. None of these live in tools/alpha/bin/.
+  cat > "$FIX_REPO/tools/alpha/scripts/theta-helper.sh" <<FIX
+#!/usr/bin/env bash
+# theta-helper: nuunique bundle grep, auth sample shape ${fake_token_e}${fake_token_f}
+FIX
+  cat > "$FIX_REPO/tools/alpha/lib/xiunique.sh" <<'FIX'
+#!/usr/bin/env bash
+# shared helper library for the alpha desk
+FIX
+  cat > "$FIX_REPO/tools/alpha/omicron.py" <<'FIX'
+#!/usr/bin/env python3
+"""omicron: piunique report builder."""
+FIX
+
+  # Restored iterator 3: an experiment whose README has no `title:` and no `description:`.
+  # Its subject is only in the `tech:` tag list and the opening paragraph.
+  cat > "$FIX_REPO/experiments/kappa/README.md" <<'FIX'
+---
+slug: kappa
+status: active
+tech: [rhounique, python, launchd]
+---
+
+# kappa
+
+A daily digest posted to the sigmaunique channel.
+FIX
+
+  # Restored iterator 4: a PEP-723 (`uv run`) script. The inline metadata block names a
+  # decoy word; the real subject is in the docstring underneath it.
+  cat > "$FIX_REPO/scripts/tauunique.py" <<'FIX'
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["upsilondecoy"]
+# ///
+"""phiunique: reconcile the payroll ledger."""
+FIX
+
+  # Restored iterator 5: the same skill DIRECTORY name in a second scanned dir (the
+  # operator's ~/.claude/skills), an independent copy rather than a symlink. Exercises the
+  # dir-name arm of the dedupe.
+  cat > "$FIX_HOME/.claude/skills/delta/SKILL.md" <<'FIX'
+---
+name: delta
+description: sync notion pages
+---
+A second copy of the delta skill, living in the operator's home skills dir.
+FIX
+
+  # Realpath arm of the same dedupe: a differently-named dir symlinked at the SAME skill.
+  # Its dir name never collides, so only the resolved real path can collapse it.
+  ln -s "$FIX_REPO/.claude/skills/delta" "$FIX_HOME/.claude/skills/delta-alias"
+
+  # Exclusion fixtures for the helper-script filter. None of these three may ever surface:
+  # a non-executable file with no .sh/.py name, a `test`-prefixed helper, and a research
+  # README (the index file for the research dir, not a record).
+  cat > "$FIX_REPO/tools/alpha/bin/notes.txt" <<'FIX'
+# psiunique notes, not a runnable script
+FIX
+  chmod 644 "$FIX_REPO/tools/alpha/bin/notes.txt"
+  cat > "$FIX_REPO/tools/alpha/scripts/test-chiunique.sh" <<'FIX'
+#!/usr/bin/env bash
+# test harness for chiunique, not a helper
+FIX
+  cat > "$FIX_REPO/research/README.md" <<'FIX'
+---
+title: omegaunique research index
+---
+
+# research
+FIX
+
+  # Crash guard: a stray non-directory entry beside the tool dirs.
+  printf 'stray\n' > "$FIX_REPO/tools/.DS_Store"
 
   cat > "$FIX_REPO/docs/specs/SPEC-001-notion-sync.md" <<'FIX'
 # Spec: notion sync
@@ -845,6 +953,178 @@ if ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q '^## recor
 else
   assert "empty records surface: no ## records header under --quiet" 1
   echo "$OUT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------------------
+# Restored iterator 1: `research/*.md` records are indexed by frontmatter title + purpose.
+# The port dropped this source entirely; the query hits only through `purpose:`.
+# ---------------------------------------------------------------------------
+OUT="$("$PRECEDENT_BIN" find "muunique reporting" --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'research/2026-01-01-lambdaunique.md'; then
+  assert "research records: a frontmatter purpose hit surfaces the research file" 0
+else
+  assert "research records: a frontmatter purpose hit surfaces the research file" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------------------
+# Restored iterator 2: tool helper scripts under tools/<x>/scripts/ and tools/<x>/lib/, plus
+# a top-level tools/<x>/*.py. The port read tool.toml and tools/<x>/bin/* only.
+# ---------------------------------------------------------------------------
+OUT="$("$PRECEDENT_BIN" find "nuunique bundle" --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'tools/alpha/scripts/theta-helper.sh'; then
+  assert "tool helpers: a tools/<x>/scripts/ helper surfaces" 0
+else
+  assert "tool helpers: a tools/<x>/scripts/ helper surfaces" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+OUT="$("$PRECEDENT_BIN" find xiunique --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'tools/alpha/lib/xiunique.sh'; then
+  assert "tool helpers: a tools/<x>/lib/ helper surfaces" 0
+else
+  assert "tool helpers: a tools/<x>/lib/ helper surfaces" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+OUT="$("$PRECEDENT_BIN" find "piunique report" --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'tools/alpha/omicron.py'; then
+  assert "tool helpers: a top-level tools/<x>/*.py entry point surfaces" 0
+else
+  assert "tool helpers: a top-level tools/<x>/*.py entry point surfaces" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------------------
+# Restored iterator 3: an experiment README with no `title:` and no `description:` is still
+# searchable by its `tech:` tag list and by its opening paragraph.
+# ---------------------------------------------------------------------------
+OUT="$("$PRECEDENT_BIN" find rhounique --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'experiments/kappa/'; then
+  assert "experiments: a frontmatter tech: tag is searchable" 0
+else
+  assert "experiments: a frontmatter tech: tag is searchable" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+OUT="$("$PRECEDENT_BIN" find "sigmaunique channel" --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'experiments/kappa/'; then
+  assert "experiments: the README lede is searchable" 0
+else
+  assert "experiments: the README lede is searchable" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------------------
+# Restored iterator 4: a PEP-723 inline metadata block is skipped, so the script indexes on
+# its docstring and never on its dependency list.
+# ---------------------------------------------------------------------------
+OUT="$("$PRECEDENT_BIN" find "phiunique payroll" --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'tauunique.py'; then
+  assert "PEP-723: the docstring under a # /// script block is indexed" 0
+else
+  assert "PEP-723: the docstring under a # /// script block is indexed" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+OUT="$("$PRECEDENT_BIN" find upsilondecoy --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'tauunique.py'; then
+  assert "PEP-723: the inline dependency list is not indexed" 0
+else
+  assert "PEP-723: the inline dependency list is not indexed" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------------------
+# Restored iterator 5: one skill present in two scanned dirs prints once, not twice.
+# ---------------------------------------------------------------------------
+DELTA_COUNT="$("$PRECEDENT_BIN" find "sync notion" --surface inventory --limit 50 2>&1 \
+  | grep -c 'skill delta' || true)"
+if [ "$DELTA_COUNT" -eq 1 ]; then
+  assert "skills dedupe: a skill copied into two scanned dirs prints exactly one label" 0
+else
+  assert "skills dedupe: a skill copied into two scanned dirs prints exactly one label" 1
+  echo "count=$DELTA_COUNT" | sed 's/^/      /'
+fi
+
+# The realpath arm of the same dedupe: ~/.claude/skills/delta-alias is a symlink at the repo's
+# own delta skill. Its DIRECTORY name never collides, so only the resolved real path collapses
+# it. With the dir-name arm alone the count above would be 2.
+ALIAS_JSON="$("$PRECEDENT_BIN" find "sync notion" --surface inventory --limit 50 --json 2>&1)"
+ALIAS_COUNT="$(printf '%s' "$ALIAS_JSON" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+hits = d.get("skills", {}).get("hits", [])
+print(sum(1 for h in hits if h.startswith("skill delta")))
+' 2>/dev/null)"
+if [ "$ALIAS_COUNT" = "1" ]; then
+  assert "skills dedupe: a symlinked skill dir under another name collapses by real path" 0
+else
+  assert "skills dedupe: a symlinked skill dir under another name collapses by real path" 1
+  echo "count=$ALIAS_COUNT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------------------
+# Exclusions the widened helper scan must keep: a non-executable file with no .sh/.py name,
+# a `test`-prefixed helper, and the research dir's own README index file.
+# ---------------------------------------------------------------------------
+OUT="$("$PRECEDENT_BIN" find psiunique --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'notes.txt'; then
+  assert "tool helpers: a non-executable, non-script file under bin/ is not indexed" 0
+else
+  assert "tool helpers: a non-executable, non-script file under bin/ is not indexed" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+OUT="$("$PRECEDENT_BIN" find chiunique --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'test-chiunique.sh'; then
+  assert "tool helpers: a test-prefixed helper is not indexed" 0
+else
+  assert "tool helpers: a test-prefixed helper is not indexed" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+OUT="$("$PRECEDENT_BIN" find omegaunique --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'research/README.md'; then
+  assert "research records: the dir's own README index is not indexed as a record" 0
+else
+  assert "research records: the dir's own README index is not indexed as a record" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------------------
+# Crash guard: a stray non-directory entry under tools/ (a .DS_Store) must not abort the
+# scan. Without the guard os.listdir raises NotADirectoryError and every query dies.
+# ---------------------------------------------------------------------------
+OUT="$("$PRECEDENT_BIN" find alpha --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'tools/alpha/' \
+   && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'Traceback'; then
+  assert "a stray non-directory entry under tools/ does not abort the scan" 0
+else
+  assert "a stray non-directory entry under tools/ does not abort the scan" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------------------
+# Redaction reaches the restored sources too: a secret shape in a research record's
+# frontmatter and in a tool helper's comment header both print as [redacted].
+# ---------------------------------------------------------------------------
+OUT="$("$PRECEDENT_BIN" find "omeganeue census" --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q '\[redacted\]' \
+   && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'ghp_abcdefghij'; then
+  assert "redaction reaches a research record's frontmatter" 0
+else
+  assert "redaction reaches a research record's frontmatter" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
+fi
+
+OUT="$("$PRECEDENT_BIN" find "nuunique bundle" --surface inventory 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q '\[redacted\]' \
+   && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'ghp_abcdefghij'; then
+  assert "redaction reaches a tool helper script's comment header" 0
+else
+  assert "redaction reaches a tool helper script's comment header" 1
+  echo "rc=$RC out=$OUT" | sed 's/^/      /'
 fi
 
 echo

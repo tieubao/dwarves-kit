@@ -45,9 +45,10 @@ bin/precedent ──exec──▶ lib/precedent/precedent.sh
                  │ (bash, unchanged)          │ python3 lib/precedent/inventory.py
                  ▼                            ▼
    docs/specs  docs/decisions        built-in defaults           registry file
-   docs/retro  docs/verification     · this repo: tools/ scripts/ bin/ cli/ _meta/
-   $LOG_DIR/runs/*.log                 .claude/memory .claude/skills docs/FEATURES.md
-                                       experiments/*/README.md
+   docs/retro  docs/verification     · this repo: tools/ (tool.toml + bin/ scripts/ lib/
+   $LOG_DIR/runs/*.log                   + top-level *.sh|*.py) scripts/ bin/ cli/ _meta/
+                                       .claude/memory .claude/skills docs/FEATURES.md
+                                       experiments/*/README.md  research/*.md
                                      · the kit: bin/ + lib/** usage lines, skills/,
                                        docs/FEATURES.md
                                      · ~/.claude/skills, ~/.local/bin
@@ -119,7 +120,7 @@ Registry file: whitespace-delimited `<kind> <path>` rows, `#` comments, `~` expa
 
 | Kind | Scans |
 |---|---|
-| `repo <root>` | the same set the current repo gets by default: `tools/*/tool.toml` + `tools/*/bin/*`, `scripts/*`, `bin/*`, `cli/*`, `_meta/*` executables, `experiments/*/README.md`, `.claude/memory/*.md`, `.claude/skills/*/SKILL.md`, `docs/FEATURES.md` |
+| `repo <root>` | the same set the current repo gets by default: `tools/*/tool.toml` + every runnable script under `tools/*/{bin,scripts,lib}/` and at `tools/*/*.sh|*.py`, `scripts/*`, `bin/*`, `cli/*`, `_meta/*` executables, `experiments/*/README.md` (frontmatter, `tech:` tags and lede), `research/*.md` (frontmatter title, purpose, description), `.claude/memory/*.md`, `.claude/skills/*/SKILL.md`, `docs/FEATURES.md` |
 | `scripts <dir>` | every text file in the dir; summary = first comment block or docstring |
 | `skills <dir>` | `*/SKILL.md`, name + description from frontmatter, body as a low-rank haystack |
 | `crons <dir>` | every `wrangler.jsonc` under the dir: worker name + cron expressions |
@@ -195,7 +196,7 @@ bin/precedent find "board set" | grep -E '^precedent: [0-9]+ record matches'
 ## Out of Scope
 - Retiring `repo-sweep whathas` in ops-toolkit and pointing the operator's global instructions at `precedent find --surface inventory`: a follow-up ops-toolkit PR after this ships.
 - Renaming the `whathas` gate phase the dotfiles `new-tool-gate` hook reads: a dotfiles follow-up.
-- The house-CLI table and the git-native-features table from whathas: estate-specific and static; not ported.
+- The house-CLI table and the git-native-features table from whathas: estate-specific and static; both dropped on purpose, and this port never restores them.
 - Embeddings, an index, or a daemon: grep-class scan by design, as `lib/precedent.sh` already states.
 
 ## Decision Log
@@ -204,6 +205,7 @@ bin/precedent find "board set" | grep -E '^precedent: [0-9]+ record matches'
 - DEC-003: Registry kinds are a closed set with an exit-64 on unknown kinds, so a misspelled row never scans nothing silently.
 - DEC-004: Third copy of the redaction regex, pinned equal to `session_recall.py` by a test, instead of a shared import across two lib dirs. A shared module would be the right move at the fourth copy.
 - DEC-005: `lib/precedent.sh` is removed rather than left as a forwarder. It has two in-repo callers and no external adopters (research: no bin entry, no FEATURES row); a forwarder would keep the orphan alive.
+- DEC-006: memory notes are searched by BODY here, a deliberate widening over whathas's frontmatter-only scan, so a fact buried a few lines into a note still surfaces.
 
 ## Review
 

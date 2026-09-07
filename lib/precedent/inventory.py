@@ -120,6 +120,14 @@ def script_summary(fp: str):
     i = 0
     if i < len(lines) and lines[i].startswith("#!"):
         i += 1
+    # PEP 723 inline metadata: a `uv run` script opens with a `# /// script` block holding
+    # its dependencies. Skip it, or the script indexes on its package list instead of its
+    # docstring. Ported from repo-sweep `_script_summary`.
+    if i < len(lines) and lines[i].strip() == "# /// script":
+        i += 1
+        while i < len(lines) and lines[i].strip() != "# ///":
+            i += 1
+        i += 1
     while i < len(lines) and not lines[i].strip():
         i += 1
     if i >= len(lines):
@@ -154,6 +162,7 @@ def script_summary(fp: str):
 FRONTMATTER_NAME_RE = re.compile(r'^name:\s*(.+?)\s*$', re.MULTILINE)
 FRONTMATTER_DESC_RE = re.compile(r'^description:\s*(.+?)\s*$', re.MULTILINE)
 FRONTMATTER_TITLE_RE = re.compile(r'^title:\s*(.+?)\s*$', re.MULTILINE)
+FRONTMATTER_PURPOSE_RE = re.compile(r'^purpose:\s*(.+?)\s*$', re.MULTILINE)
 
 
 def skill_frontmatter(fp: str):
@@ -199,9 +208,11 @@ def note_frontmatter(fp: str):
     return stem, desc or "", body_flat
 
 
-def is_executable_or_shell(fp: str, name: str) -> bool:
+def is_executable_or_shell(fp: str, name: str, exts=(".sh",)) -> bool:
+    """One definition of "this file is a runnable script". `_meta/*` counts an executable bit
+    or a `.sh` name; a tool's helper dirs count `.py` too."""
     try:
-        return bool(os.stat(fp).st_mode & stat.S_IXUSR) or name.endswith(".sh")
+        return bool(os.stat(fp).st_mode & stat.S_IXUSR) or name.endswith(exts)
     except OSError:
         return False
 
@@ -399,6 +410,8 @@ def scan_repo_tools(root: str, label_prefix: str, terms, sections: Sections, tit
     sections.ensure(title)
     for name in sorted(os.listdir(tools_dir)):
         tdir = os.path.join(tools_dir, name)
+        if not os.path.isdir(tdir):
+            continue  # a stray file beside the tool dirs (.DS_Store, a README)
         toml_fp = os.path.join(tdir, "tool.toml")
         if os.path.isfile(toml_fp):
             desc, systems = "", ""
@@ -411,18 +424,29 @@ def scan_repo_tools(root: str, label_prefix: str, terms, sections: Sections, tit
                 systems = m.group(1)
             s = score(terms, name, f"{desc} {systems}")
             sections.add(title, s, f"{label_prefix}tools/{name}/" + suffix(desc))
-        bin_dir = os.path.join(tdir, "bin")
-        if os.path.isdir(bin_dir):
-            for fn in sorted(os.listdir(bin_dir)):
-                fp = os.path.join(bin_dir, fn)
-                if not os.path.isfile(fp):
-                    continue
-                got = script_summary(fp)
-                if got is None:
-                    continue
-                summary, searchable = got
-                s = score(terms, fn, searchable)
-                sections.add(title, s, f"{label_prefix}tools/{name}/bin/{fn}" + suffix(summary))
+        # bin/ is the CLI surface; scripts/ and lib/ hold the helpers a duplicate candidate
+        # usually overlaps with, and some tools keep a top-level *.sh / *.py entry point.
+        # Indexing bin/ alone made a session declare an existing helper missing.
+        cands = []
+        for sub in ("bin", "scripts", "lib"):
+            subdir = os.path.join(tdir, sub)
+            if os.path.isdir(subdir):
+                cands += [(f"tools/{name}/{sub}/{fn}", os.path.join(subdir, fn))
+                          for fn in sorted(os.listdir(subdir))]
+        cands += [(f"tools/{name}/{fn}", os.path.join(tdir, fn))
+                  for fn in sorted(os.listdir(tdir)) if fn.endswith((".sh", ".py"))]
+        for rel, fp in cands:
+            fn = os.path.basename(fp)
+            if not os.path.isfile(fp) or fn.startswith(".") or fn.startswith("test"):
+                continue
+            if not is_executable_or_shell(fp, fn, (".sh", ".py")):
+                continue
+            got = script_summary(fp)
+            if got is None:
+                continue
+            summary, searchable = got
+            s = score(terms, fn, searchable)
+            sections.add(title, s, f"{label_prefix}{rel}" + suffix(summary))
 
 
 def scan_repo_experiments(root: str, label_prefix: str, terms, sections: Sections, title: str):
@@ -440,8 +464,41 @@ def scan_repo_experiments(root: str, label_prefix: str, terms, sections: Section
         if not title_or_desc:
             m = re.search(r'^#\s*(.+)$', body, re.MULTILINE)
             title_or_desc = m.group(1).strip() if m else ""
-        s = score(terms, slug, title_or_desc)
+        # Most experiment READMEs carry neither `title:` nor `description:`; their subject
+        # lives in the `tech:` tag list and the opening paragraph. Search both, display the
+        # title/desc only. Ported from repo-sweep `_iter_experiments`.
+        m = re.search(r'^tech:\s*\[(.*)\]\s*$', fm, re.MULTILINE)
+        tech = m.group(1) if m else ""
+        lede = " ".join(ln.strip("# >*") for ln in body.strip().splitlines()[:12] if ln.strip())
+        s = score(terms, slug, f"{title_or_desc} {tech} {lede}")
         sections.add(title, s, f"{label_prefix}experiments/{slug}/" + suffix(title_or_desc))
+
+
+def scan_repo_research(root: str, label_prefix: str, terms, sections: Sections, title: str):
+    """`research/*.md` reference snapshots, indexed by frontmatter title + purpose +
+    description. A dated research record is often the earliest written home of a capability,
+    and the surface this port lost entirely."""
+    d = os.path.join(root, "research")
+    if not os.path.isdir(d):
+        return
+    sections.ensure(title)
+    for fn in sorted(os.listdir(d)):
+        fp = os.path.join(d, fn)
+        if not fn.endswith(".md") or not os.path.isfile(fp) or fn.startswith("README"):
+            continue
+        text = read_head(fp)
+        if text is None:
+            continue
+        fm, _body = split_frontmatter(text)
+        fields = []
+        for rx in (FRONTMATTER_TITLE_RE, FRONTMATTER_PURPOSE_RE, FRONTMATTER_DESC_RE):
+            m = rx.search(fm)
+            if m:
+                fields.append(m.group(1).strip().strip('"'))
+        head_field = fields[0] if fields else ""
+        stem = os.path.splitext(fn)[0]
+        s = score(terms, stem, " ".join(fields))
+        sections.add(title, s, f"{label_prefix}research/{fn}" + suffix(head_field))
 
 
 def add_memory_entries(sections: Sections, title: str, dirpath: str, label_prefix: str, terms):
@@ -477,25 +534,43 @@ def add_memory_entries(sections: Sections, title: str, dirpath: str, label_prefi
     return True
 
 
-def add_skill_entries(sections: Sections, title: str, dirpath: str, terms, label_tag: str = ""):
+def add_skill_entries(sections: Sections, title: str, dirpath: str, terms, label_tag: str = "",
+                      seen=None):
     """<dirpath>/*/SKILL.md. A name/description hit scores double; a body-only hit ranks a
-    flat 1, strictly below any description hit."""
+    flat 1, strictly below any description hit.
+
+    `seen` is a dict shared across every skills dir of one run. The same skill reaches this
+    scan from more than one dir (a repo's `.claude/skills` and the operator's
+    `~/.claude/skills` hold copies of the same skill, sometimes symlinked), and printing it
+    twice under an identical bare label tells the reader nothing. The first dir scanned wins,
+    keyed on the resolved real path (catches a symlinked copy) and on the DIRECTORY name
+    (catches an independent copy, whose real path differs). The key is deliberately not the
+    frontmatter `name:`, which the scanned repo controls: keying on it would let a repo-local
+    skill in any directory suppress the operator's own skill of that name from a digest whose
+    whole job is naming what already exists."""
     if not os.path.isdir(dirpath):
         return False
+    if seen is None:
+        seen = {}
     sections.ensure(title)
     for name in sorted(os.listdir(dirpath)):
         fp = os.path.join(dirpath, name, "SKILL.md")
         if not os.path.isfile(fp):
             continue
+        real = os.path.realpath(fp)
+        dir_key = ("dir", name)
+        if real in seen or dir_key in seen:
+            continue
         got = skill_frontmatter(fp)
         if got is None:
             continue
+        seen[real] = seen[dir_key] = True
         skill_name, desc, body = got
         skill_name = skill_name or name
+        label = f"skill {label_tag}{skill_name}" if label_tag else f"skill {skill_name}"
         head_score = score(terms, skill_name, desc)
         s = 2 * head_score if head_score else (1 if score(terms, "", body) else 0)
         if s:
-            label = f"skill {label_tag}{skill_name}" if label_tag else f"skill {skill_name}"
             sections.add(title, s, label + suffix(first_sentence(desc)))
     return True
 
@@ -545,7 +620,7 @@ def add_feature_registry(sections: Sections, title: str, fp: str, owner: str, te
     return True
 
 
-def scan_repo(sections: Sections, path: str, tag: str, terms):
+def scan_repo(sections: Sections, path: str, tag: str, terms, skills_seen=None):
     """One `repo` location (the built-in ROOT, or a registry `repo <path>` row). tag is ""
     for ROOT (bare section titles: "tools", "scripts", ...) or basename(path) for any other
     repo location (tagged titles: "<tag> tools", ...). memory/skills/feature-registry
@@ -562,10 +637,11 @@ def scan_repo(sections: Sections, path: str, tag: str, terms):
     scan_repo_files(os.path.join(path, "cli"), f"{label_prefix}cli/", terms, sections, "cli")
     scan_repo_meta(os.path.join(path, "_meta"), f"{label_prefix}_meta/", terms, sections, "meta scripts")
     scan_repo_experiments(path, label_prefix, terms, sections, "experiments")
+    scan_repo_research(path, label_prefix, terms, sections, "research")
     add_memory_entries(sections, "memory", os.path.join(path, ".claude", "memory"),
                         f"{label_prefix}.claude/memory/", terms)
     add_skill_entries(sections, "skills", os.path.join(path, ".claude", "skills"), terms,
-                       label_tag=f"{tag}/" if tag else "")
+                       label_tag=f"{tag}/" if tag else "", seen=skills_seen)
     add_feature_registry(sections, "feature registries", os.path.join(path, "docs", "FEATURES.md"),
                           tag or "repo", terms)
 
@@ -699,7 +775,8 @@ def build_sections(root: str, kit_root: str, home: str, registry_rows, terms) ->
     sections = Sections()
 
     seen_repo_paths = {os.path.realpath(root)}
-    scan_repo(sections, root, "", terms)
+    skills_seen = {}
+    scan_repo(sections, root, "", terms, skills_seen)
 
     repo_tag_counts = {}
     for kind, path in registry_rows:
@@ -714,16 +791,16 @@ def build_sections(root: str, kit_root: str, home: str, registry_rows, terms) ->
         repo_tag_counts[tag] = n + 1
         if n:
             tag = f"{tag}-{n + 1}"
-        scan_repo(sections, path, tag, terms)
+        scan_repo(sections, path, tag, terms, skills_seen)
 
     # kit at KIT_ROOT: verbs, skills, feature registry -- built-in, always attempted.
     scan_kit_verbs(sections, kit_root, terms)
-    add_skill_entries(sections, "skills", os.path.join(kit_root, "skills"), terms)
+    add_skill_entries(sections, "skills", os.path.join(kit_root, "skills"), terms, seen=skills_seen)
     add_feature_registry(sections, "feature registries", os.path.join(kit_root, "docs", "FEATURES.md"),
                           "kit", terms)
 
     # $HOME/.claude/skills
-    add_skill_entries(sections, "skills", os.path.join(home, ".claude", "skills"), terms)
+    add_skill_entries(sections, "skills", os.path.join(home, ".claude", "skills"), terms, seen=skills_seen)
 
     # Registry-only kinds: scripts/skills/memory fold into their shared global section;
     # crons has no repo-kind equivalent, so it is a section on its own.
@@ -741,7 +818,7 @@ def build_sections(root: str, kit_root: str, home: str, registry_rows, terms) ->
                 continue
             scan_repo_files(path, "", terms, sections, disamb_title)
         elif kind == "skills":
-            ok = add_skill_entries(sections, title, path, terms)
+            ok = add_skill_entries(sections, title, path, terms, seen=skills_seen)
             if not ok:
                 sections.set_skip(title, skip_note(path))
         elif kind == "memory":
