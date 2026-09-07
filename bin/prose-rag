@@ -1,18 +1,28 @@
 #!/usr/bin/env bash
-# bin/prose-rag -- STABLE consumer entrypoint (SPEC-184). Rust engine only
-# (the Python/fastembed engine was dropped at the fold: the Rust engine is
-# strictly better on every axis and one engine is one truth).
-# Build once: (cd lib/prose-rag/rust && cargo build --release
-#              && cp target/release/prose-rag ../bin/prose-rag-rs)
-# `hook` with no engine built exits 0: a recall hook must never break a prompt.
+# bin/prose-rag -- STABLE consumer entrypoint (SPEC-184), an ADAPTER since SPEC-250.
+# context-kit owns the engine; `cargo install --path src/prose-rag` in a context-kit
+# checkout puts the binary on PATH. This shim only RESOLVES it, in the order
+# `config seams` reports for the PROSE_RAG_BIN row: $PROSE_RAG_BIN (a regular
+# executable file), then `prose-rag` on PATH. It never builds and never looks
+# under lib/.
+# `hook` with no engine exits 0: a recall hook must never break a prompt.
 set -euo pipefail
-SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PR="$SELF_DIR/../lib/prose-rag"
-if [ -x "$PR/bin/prose-rag-rs" ]; then
-  exec "$PR/bin/prose-rag-rs" "$@"
-elif [ -x "$PR/rust/target/release/prose-rag" ]; then
-  exec "$PR/rust/target/release/prose-rag" "$@"
+
+# A consumer may put THIS shim on PATH as `prose-rag`; the lookup below would then
+# exec it forever. The marker survives exec, so a second entry skips resolution and
+# falls through to the no-engine contract instead of recursing.
+if [ -z "${PROSE_RAG_SHIM_ACTIVE:-}" ]; then
+  export PROSE_RAG_SHIM_ACTIVE=1
+  bin="${PROSE_RAG_BIN:-}"
+  # [ -x ] alone is true for a searchable directory; a binary must be a regular file too.
+  if [ -n "$bin" ] && [ -f "$bin" ] && [ -x "$bin" ]; then
+    exec "$bin" "$@"
+  fi
+  if bin="$(command -v prose-rag 2>/dev/null)" && [ -n "$bin" ]; then
+    exec "$bin" "$@"
+  fi
 fi
+
 [ "${1:-}" = "hook" ] && exit 0
 # `index` with no corpus configured = an unconfigured consumer (the shipped
 # kit-weekly job): skip clean, same contract as the engine's own guard. An
@@ -21,5 +31,5 @@ if [ "${1:-}" = "index" ] && [ -z "${PROSE_RAG_CORPUS:-}" ] && [[ "$*" != *"--co
   echo "prose-rag: no corpus configured (set PROSE_RAG_CORPUS or pass --corpus); nothing indexed"
   exit 0
 fi
-echo "prose-rag: engine not built. Run: (cd $PR/rust && cargo build --release && cp target/release/prose-rag ../bin/prose-rag-rs)" >&2
+echo "prose-rag: engine not installed; install context-kit's binary: cargo install --path <context-kit>/src/prose-rag (or set PROSE_RAG_BIN)" >&2
 exit 1

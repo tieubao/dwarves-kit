@@ -139,9 +139,9 @@ echo "== C2 wiring: every module executable is reachable from an operator surfac
 # listed skill-improve, skill-review and cc-improve here, and they were reachable from NOTHING:
 # the exempt list had become a laundering mechanism for the exact bug C2 exists to catch
 # (advisor finding 2). They now have bin/ shims and are gone from this list. What remains is
-# only the session family (dispatched by lib/session/session.sh, asserted below), add-backlog
-# (called by board.sh), and prose-rag-rs (the Rust binary bin/prose-rag wraps).
-WIRING_EXEMPT='session-observe|session-report|session-semantic|session-intel|session-recall|session-audit|add-backlog|prose-rag-rs'
+# only the session family (dispatched by lib/session/session.sh, asserted below) and
+# add-backlog (called by board.sh).
+WIRING_EXEMPT='session-observe|session-report|session-semantic|session-intel|session-recall|session-audit|add-backlog'
 unwired=""
 while IFS= read -r exe; do
   base="$(basename "$exe")"
@@ -166,7 +166,6 @@ for exe in lib/session/*/bin/session-*; do
   grep -qE "^[[:space:]]+$v\)" lib/session/session.sh || undispatched="$undispatched session:$v"
 done
 grep -q 'add-backlog' lib/board/board.sh 2>/dev/null || undispatched="$undispatched board:add-backlog"
-grep -rq 'prose-rag-rs' bin/prose-rag lib/prose-rag/*.sh 2>/dev/null || undispatched="$undispatched prose-rag:prose-rag-rs"
 chk "every EXEMPT executable is really dispatched (no laundering)" "$undispatched"
 
 # ---------------------------------------------------------------- C3 docs
@@ -290,7 +289,7 @@ echo "== C10 exec: every module executable declares its interpreter =="
 # An executable with no shebang (or no +x) forces the caller to GUESS the interpreter, and a
 # wrong guess fails ugly: `bash session-audit` (a python script) died with a shell syntax error
 # on a docstring line, 2026-07-15. The script must say what runs it; the caller must not have to.
-# Compiled binaries (prose-rag-rs) legitimately have neither: skip anything not a text file.
+# A compiled binary legitimately has neither: skip anything not a text file.
 noshebang=""
 while IFS= read -r f; do
   file "$f" 2>/dev/null | grep -qiE 'text|script' || continue     # skip compiled binaries
