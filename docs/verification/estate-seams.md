@@ -80,3 +80,26 @@ Exit: 0
 Output (excerpt): first pass FAIL:fixable, one wiring gap (Step 7a ran the source-only `kit-log-dir.sh` as a command, so the step could never reach the classifier); fixed in a933149; second pass PASS: 5/5 components reach their activation point, 4/4 chains connected, seven suites green, seams prints five rows, knowledge-root falls back to `<worktree>/.claude/memory`, 7a on this run would call `significance-classify.sh record estate-seams`.
 Verdict: PASS
 Re-audit: folded into the battery (acceptance-verifier re-executes the suite and the After-state commands in fresh context).
+
+## REVIEW FIX BATCH (4b32c0c, 9fd15ee, 79e2b5c): green run at d97b1fe
+
+The three review-team fix commits changed `lib/config/config.sh` and `lib/wrap/wrap.sh` under the earlier entries, so the run above is superseded by this one.
+
+Command: `bash tests/test-config-registry.sh && bash tests/test-config.sh && bash tests/test-config-seams.sh && bash tests/test-staging-stage.sh && bash tests/test-wrap.sh && bash tests/test-meta.sh && bash tests/test-no-personal-paths.sh`
+Exit: 0
+Output (excerpt): `=== 23/23 passed ===`; `PASS kit-config selftest`; `=== 37/37 passed ===`; `24 run, 24 passed, 0 failed`; `test-wrap: all 201 passed`; `Passed: 840 / 840`; `Passed: 3 / 3`.
+Verdict: PASS
+
+## NEGATIVE CONTROL (lead, throwaway worktree at d97b1fe, removed after)
+
+Command: `bash lib/gate/negctl.sh <throwaway> "bash tests/test-config-seams.sh" "<sed that widens _env_val's identifier guard to accept any non-empty name>"`
+Exit: 0 green before; 1 under mutation; 0 after `git checkout HEAD -- lib/config/config.sh`
+Output (excerpt): negctl `Verdict: PASS`; with the guard widened the forged-registry canary cases and the malformed-row cases go red.
+Verdict: RED-as-expected
+
+Command: `bash lib/gate/negctl.sh <throwaway> "bash tests/test-wrap.sh" "<sed that makes _home_fence return 0 for every path>"`
+Exit: 0 green before; 1 under mutation; 0 after restore
+Output (excerpt): negctl `Verdict: PASS`; with the fence disabled the outside-HOME knowledge-root cases and the parent-symlink worktree cases for `stage` and `log` go red.
+Verdict: RED-as-expected; the shared worktree was never mutated.
+
+Exploit re-verification (security lens, fresh context, temp HOME): forged env-name canary never created through `config seams` or `config list`; worktree leaf symlink, parent-directory symlink outside HOME, parent symlink inside HOME but outside the repo, and a two-hop chain all refused for `stage` with byte-identical canaries; `log` refuses the outside-HOME shapes (its fence is HOME-only by spec); symlinked `<root>/projects` falls back with nothing created; absent env-override staging target refused; symlinked python target `FAILED` exit 2. Record: the spec's `## Review` section.
