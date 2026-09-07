@@ -71,7 +71,10 @@ classify_is "add a pre-commit git hook to run lint"               normal "hook-s
 classify_is "change the ship-gate PreToolUse hook"                full   "hook-scope ship-gate hook still full"
 classify_is "edit the kit's gate-ledger hook"                     full   "hook-scope kit's gate-ledger hook still full"
 classify_is "add a new hook to hooks/ that blocks force-push"     full   "hook-scope hooks/ directory mention still full"
-classify_is "modify the kit's safety-gate hook to add a new check" full  "hook-scope kit's safety-gate hook still full"
+# NB: deliberately not a real hooks/*.sh basename (avoid tripping the feature-registry's
+# exact-token caller scan across tests/*.sh, SPEC-219) -- this AC is only proving the
+# "the kit ... hook" pattern matches a gate name that is not in the explicit alternation list.
+classify_is "modify the kit's own pre-flight hook to add a new check" full  "hook-scope kit's own (unlisted-gate-name) hook still full"
 
 # CI regression (PR #514 review): the first cut of the hook-term scoping was noun-only
 # (kit/machinery/gate-ledger/...) and missed the ADJECTIVE+VERB intent-to-weaken-a-guard
