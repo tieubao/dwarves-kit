@@ -195,7 +195,12 @@ def cmd_stage():
 
     header = "" if os.path.isfile(staging) else "# Backlog staging\n\n"
     try:
-        with open(staging, "a", encoding="utf-8") as fh:
+        # O_NOFOLLOW closes the window between the caller's symlink check and this append: a
+        # symlink swapped in after that check raises ELOOP here instead of redirecting the write.
+        fd = os.open(
+            staging, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o644
+        )
+        with os.fdopen(fd, "a", encoding="utf-8") as fh:
             fh.write(header + block)
     except OSError as e:
         print(f"FAILED: {e}")

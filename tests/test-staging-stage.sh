@@ -93,6 +93,22 @@ chk_has "unwritable path-under-file: prints FAILED" "$OUT5" "FAILED"
 chk "unwritable path-under-file: nothing written" "$([ ! -f "$TARGET5" ]; echo $?)"
 
 # ============================================================
+echo "== a symlinked target prints FAILED, exit 2, and the link target is unchanged =="
+# ============================================================
+# The caller checks for a symlink before it hands the path over. This case is the window
+# between that check and the append: the writer opens O_NOFOLLOW, so a symlink cannot redirect
+# the write no matter when it appeared.
+LINKTARGET="$TMPD/link-target.md"; printf 'link target untouched\n' > "$LINKTARGET"
+LINKED="$TMPD/linked-staging.md"; ln -s "$LINKTARGET" "$LINKED"
+BEFORE7="$(shasum -a 256 "$LINKTARGET" | cut -d' ' -f1)"
+IN7='{"title":"A row aimed through a symlink","intent":"x","home":"h","staging":"'"$LINKED"'"}'
+OUT7="$(printf '%s' "$IN7" | python3 "$SF" stage)"; RC7=$?
+AFTER7="$(shasum -a 256 "$LINKTARGET" | cut -d' ' -f1)"
+chk "symlinked target: exit 2" "$([ "$RC7" -eq 2 ]; echo $?)"
+chk_has "symlinked target: prints FAILED" "$OUT7" "FAILED"
+chk "symlinked target: the link target is byte-identical" "$([ "$BEFORE7" = "$AFTER7" ]; echo $?)"
+
+# ============================================================
 echo "== malformed JSON on stdin exits non-zero with a usage-style message =="
 # ============================================================
 OUT6="$(echo 'not json at all' | python3 "$SF" stage 2>&1)"; RC6=$?

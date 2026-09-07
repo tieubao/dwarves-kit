@@ -509,6 +509,27 @@ _realpath_f() {
   printf '%s/%s\n' "${dir%/}" "$base"
 }
 
+# _home_fence <path> [<label>] -- 0 when <path> sits under the physical $HOME. <path> must
+# already be resolved by the caller. Prints the reason and returns 1 otherwise.
+_home_fence() {
+  local p="$1" label="${2:-wrap}" home_real
+  home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" \
+    || { echo "${label}: cannot resolve HOME" >&2; return 1; }
+  case "$p" in
+    "$home_real"/*) return 0 ;;
+    *) echo "${label}: '${p}' is outside HOME (${home_real})" >&2; return 1 ;;
+  esac
+}
+
+# _refuse_symlink <path> [<label>] -- 1 when <path> is a symlink. A symlink at a write target
+# redirects the append to whatever it points at, so every write path refuses one.
+_refuse_symlink() {
+  local p="$1" label="${2:-wrap}"
+  [ -L "$p" ] || return 0
+  echo "${label}: '${p}' is a symlink" >&2
+  return 1
+}
+
 # _worktree_copy <file>: the configured log names one fixed file, usually inside a repo's
 # main checkout. A session that works in a git worktree of that same repo cannot commit a
 # line written to the main checkout (its branch is not the session's), so when the current
@@ -524,6 +545,9 @@ _worktree_copy() {
   [ "$fcommon" = "$cur_common" ] || { printf '%s' "$file"; return 0; }
   [ "$ftop" != "$cur_top" ] || { printf '%s' "$file"; return 0; }
   rel="${file#"$ftop"/}"
+  # `[ -f ]` follows symlinks, so this gate accepts a symlink whose target is a regular file
+  # anywhere on disk. The returned path is a NEW path no earlier check saw: every caller must
+  # re-run its symlink refusal and its fence on the value this prints.
   [ -f "$cur_top/$rel" ] || { printf '%s' "$file"; return 0; }
   printf '%s' "$cur_top/$rel"
 }
@@ -573,15 +597,17 @@ cmd_log() {
     *) echo "wrap log: wrap.activity_log must be an absolute or ~-prefixed path, got '${target}'" >&2; return 1 ;;
   esac
 
-  local resolved home_real
+  local resolved
   resolved="$(_realpath_f "$target")" || { echo "wrap log: cannot resolve '${target}'" >&2; return 1; }
-  home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" || { echo "wrap log: cannot resolve HOME" >&2; return 1; }
-  case "$resolved" in
-    "$home_real"/*) ;;
-    *) echo "wrap log: resolved path '${resolved}' is outside HOME (${home_real})" >&2; return 1 ;;
-  esac
+  _home_fence "$resolved" "wrap log" || return 1
   [ -f "$resolved" ] || { echo "wrap log: '${resolved}' is not an existing regular file" >&2; return 1; }
+
+  # The worktree copy is a different path, gated only by `[ -f ]`, so it gets the same
+  # refusal and the same fence before anything is written to it.
   resolved="$(_worktree_copy "$resolved")"
+  _refuse_symlink "$resolved" "wrap log" || return 1
+  _home_fence "$resolved" "wrap log" || return 1
+  [ -f "$resolved" ] || { echo "wrap log: '${resolved}' is not an existing regular file" >&2; return 1; }
 
   local n=${#line}
   [ "$n" -gt "$LOG_LINE_BUDGET" ] && echo "wrap log: note: ${n} chars, over the ${LOG_LINE_BUDGET}-char routine budget" >&2
@@ -637,19 +663,11 @@ cmd_knowledge_root() {
     return 0
   fi
 
-  local home_real
-  home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" || {
-    echo "knowledge-root: cannot resolve HOME, using ${fallback}" >&2
+  if ! _home_fence "$resolved" knowledge-root; then
+    echo "knowledge-root: using ${fallback}" >&2
     printf '%s\n' "$fallback"
     return 0
-  }
-  case "$resolved" in
-    "$home_real"/*) ;;
-    *)
-      echo "knowledge-root: '${resolved}' is outside HOME (${home_real}), using ${fallback}" >&2
-      printf '%s\n' "$fallback"
-      return 0 ;;
-  esac
+  fi
 
   if ! _write_guard "$repo_real"; then
     echo "knowledge-root: index.lock held by another writer, using ${fallback}" >&2
@@ -657,13 +675,29 @@ cmd_knowledge_root() {
     return 0
   fi
 
-  local target="${resolved}/projects/${base}"
+  # Only `<root>` was fenced above. `mkdir -p` walks through a symlink at `projects` or at the
+  # leaf without complaint, so both are refused before the create, and the created directory is
+  # re-resolved and re-fenced after it.
+  local projects="${resolved}/projects"
+  local target="${projects}/${base}"
+  if ! _refuse_symlink "$projects" knowledge-root || ! _refuse_symlink "$target" knowledge-root; then
+    echo "knowledge-root: using ${fallback}" >&2
+    printf '%s\n' "$fallback"
+    return 0
+  fi
   if ! mkdir -p "$target" 2>/dev/null; then
     echo "knowledge-root: could not create '${target}', using ${fallback}" >&2
     printf '%s\n' "$fallback"
     return 0
   fi
-  printf '%s\n' "$target"
+  local target_real
+  target_real="$(cd "$target" 2>/dev/null && pwd -P)"
+  if [ -z "$target_real" ] || ! _home_fence "$target_real" knowledge-root; then
+    echo "knowledge-root: using ${fallback}" >&2
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+  printf '%s\n' "$target_real"
   return 0
 }
 
@@ -728,22 +762,19 @@ cmd_stage() {
   local resolved="${staging_dir_real%/}/${leaf}"
 
   # Never a symlink; absent or an existing regular file only.
-  if [ -L "$resolved" ]; then
-    echo "wrap stage: '${resolved}' is a symlink" >&2; return 1
-  fi
+  _refuse_symlink "$resolved" "wrap stage" || return 1
   if [ -e "$resolved" ] && [ ! -f "$resolved" ]; then
     echo "wrap stage: '${resolved}' is not a regular file" >&2; return 1
   fi
 
-  # Inside the repo toplevel by default; under HOME when the env override chose the path.
+  # Inside the repo toplevel by default; under HOME when the env override chose the path. The
+  # override comes from the environment, which a repo `.envrc` writes, so it may only append to
+  # a file that already exists: create-on-absent under HOME would let it seed a new block into
+  # any absent path, an agent instruction file included. Only the repo default creates.
   if [ -n "${BACKLOG_STAGE_STAGING:-}" ]; then
-    local home_real
-    home_real="$(cd "$HOME" 2>/dev/null && pwd -P)" \
-      || { echo "wrap stage: cannot resolve HOME" >&2; return 1; }
-    case "$resolved" in
-      "$home_real"/*) ;;
-      *) echo "wrap stage: '${resolved}' is outside HOME (${home_real})" >&2; return 1 ;;
-    esac
+    _home_fence "$resolved" "wrap stage" || return 1
+    [ -f "$resolved" ] \
+      || { echo "wrap stage: '${resolved}' is not an existing regular file" >&2; return 1; }
   else
     case "$resolved" in
       "$repo_top"/*) ;;
@@ -754,7 +785,29 @@ cmd_stage() {
   if ! _write_guard "$repo_top"; then
     echo "wrap stage: index.lock held by another writer" >&2; return 1
   fi
+
+  # The worktree copy is a path none of the checks above saw, and `_worktree_copy` gates it
+  # only with `[ -f ]`, which follows a symlink. Re-run the refusal and the fence on it.
+  local pre_copy="$resolved"
   resolved="$(_worktree_copy "$resolved")"
+  if [ "$resolved" != "$pre_copy" ]; then
+    _refuse_symlink "$resolved" "wrap stage" || return 1
+    [ -f "$resolved" ] \
+      || { echo "wrap stage: '${resolved}' is not a regular file" >&2; return 1; }
+    if [ -n "${BACKLOG_STAGE_STAGING:-}" ]; then
+      _home_fence "$resolved" "wrap stage" || return 1
+    else
+      # The copy lives in the CURRENT worktree, which is a different toplevel of the same repo.
+      local cur_top
+      cur_top="$(git rev-parse --show-toplevel 2>/dev/null)" \
+        && cur_top="$(cd "$cur_top" 2>/dev/null && pwd -P)"
+      case "$resolved" in
+        "$repo_top"/*) ;;
+        "${cur_top:-/dev/null/never}"/*) ;;
+        *) echo "wrap stage: '${resolved}' is outside the repo (${repo_top})" >&2; return 1 ;;
+      esac
+    fi
+  fi
 
   [ -f "$STAGING_FORMAT_PY" ] \
     || { echo "wrap stage: staging-format.py missing at ${STAGING_FORMAT_PY}" >&2; return 1; }
