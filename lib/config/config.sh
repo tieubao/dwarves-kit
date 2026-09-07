@@ -23,6 +23,14 @@ CONFIG_SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REGISTRY_FILE="${CONFIG_REGISTRY_FILE:-$CONFIG_SELF/module-registry.md}"
 # shellcheck source=lib/config/kit-config.sh
 source "$CONFIG_SELF/kit-config.sh" || { echo "config: lib/config/kit-config.sh missing or unreadable" >&2; exit 1; }
+# The binary seam's PATH lookup is the SAME contract bin/prose-rag execs (SPEC-251): one
+# resolver, so a stale kit wrapper on PATH cannot read `filled` here while the shim
+# correctly reports no engine.
+# The readability test comes first: bash 3.2 exits the whole shell on a `source` it cannot
+# find, so a `||` message would never print.
+[ -r "$CONFIG_SELF/../prose-rag/resolve.sh" ] || { echo "config: lib/prose-rag/resolve.sh missing or unreadable" >&2; exit 1; }
+# shellcheck source=lib/prose-rag/resolve.sh
+source "$CONFIG_SELF/../prose-rag/resolve.sh"
 
 # _env_val <name> -- the value of env var <name>, and ONLY when <name> is a syntactically
 # valid shell identifier ([A-Za-z_][A-Za-z0-9_]*). Prints nothing and returns 1 otherwise.
@@ -299,7 +307,7 @@ _seam_resolve() {
     return 0
   fi
   local found
-  found="$(command -v "$defaultval" 2>/dev/null || true)"
+  found="$(prose_rag_resolve "$defaultval" || true)"
   if [ -n "$found" ]; then SEAM_VALUE="$found"; SEAM_STATUS="filled"
   else SEAM_VALUE="(not on PATH)"; SEAM_STATUS="absent"
   fi

@@ -28,6 +28,15 @@ reports for the `PROSE_RAG_BIN` row:
 1. `$PROSE_RAG_BIN`, when it names a regular executable file (context-kit fills this).
 2. `prose-rag` on PATH.
 
+One function answers that question for both readers: `prose_rag_resolve` in
+`resolve.sh` (SPEC-251), sourced by `bin/prose-rag` and by `lib/config/config.sh`'s
+binary seam, so the shim and `bash bin/config seams` can never disagree about
+whether an engine exists. It walks PATH and skips two impostors: a candidate whose
+first 200 bytes carry install.sh's `dwarves-kit CLI shim` marker (that wrapper only
+execs this shim, it serves no recall), and a candidate whose real path is this shim
+itself (a copy or symlink of `bin/prose-rag` on PATH). It resolves only; it never
+executes a candidate.
+
 With neither, `hook` exits 0 (a recall hook must never break a prompt), `index`
 with no corpus configured prints "nothing indexed" and exits 0 (the shipped
 kit-weekly job stays silent-green), and any other verb prints the install hint on

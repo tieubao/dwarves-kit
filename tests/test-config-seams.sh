@@ -184,6 +184,33 @@ OUT9="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OP
 chk_has "a fake executable prose-rag on the temp PATH -> filled" "$OUT9" "filled"
 chk_has "prose-rag VALUE is the PATH-resolved binary" "$OUT9" "$TMPD/bin/prose-rag"
 
+# ------------------------------------------------------- case 9b: the kit wrapper on PATH
+# install.sh writes ~/.local/bin/prose-rag as a wrapper that only execs the kit shim. It
+# serves no recall, so the seam must read absent (SPEC-251), not filled with its path.
+mkdir -p "$TMPD/wrapbin"
+printf '#!/usr/bin/env bash\n# dwarves-kit CLI shim (installed by install.sh; re-run install.sh to refresh)\nexec "%s" "$@"\n' \
+  "$KIT_DIR/bin/prose-rag" > "$TMPD/wrapbin/prose-rag"
+chmod +x "$TMPD/wrapbin/prose-rag"
+OUT9B="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" env -u PROSE_RAG_BIN PATH="$TMPD/wrapbin:/usr/bin:/bin" \
+  bash "$CONFIG_BIN" seams | grep '^PROSE_RAG_BIN')"
+chk_has "the kit wrapper alone on PATH -> absent" "$OUT9B" "absent"
+chk_no "the kit wrapper alone on PATH: its path is never reported as the engine" "$OUT9B" "$TMPD/wrapbin"
+
+# ------------------------------------------------------- case 9c: wrapper before the real binary
+OUT9C="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" env -u PROSE_RAG_BIN PATH="$TMPD/wrapbin:$TMPD/bin:/usr/bin:/bin" \
+  bash "$CONFIG_BIN" seams | grep '^PROSE_RAG_BIN')"
+chk_has "wrapper before the real binary -> filled" "$OUT9C" "filled"
+chk_has "wrapper before the real binary: VALUE is the real binary" "$OUT9C" "$TMPD/bin/prose-rag"
+
+# ------------------------------------------------------- case 9d: PROSE_RAG_BIN still wins
+OUT9D="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" PROSE_RAG_BIN="$TMPD/bin/prose-rag" PATH="$TMPD/wrapbin:/usr/bin:/bin" \
+  bash "$CONFIG_BIN" seams | grep '^PROSE_RAG_BIN')"
+chk_has "an executable PROSE_RAG_BIN wins over PATH -> filled" "$OUT9D" "filled"
+chk_has "an executable PROSE_RAG_BIN wins over PATH: VALUE is the env value" "$OUT9D" "$TMPD/bin/prose-rag"
+
 # --------------------------------------------------------------------------- case 10: project .kit.toml ignored
 
 printf '[knowledge]\nroot = "/tmp/never"\n' > "$PROJ_DIR/.kit.toml"

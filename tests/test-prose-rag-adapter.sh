@@ -105,9 +105,13 @@ chk_has "index --corpus without an engine: the install hint" "$OUT9" "engine not
 # ============================================================
 echo "== the shim is an adapter: it never reaches into lib/ and never builds =="
 # ============================================================
-LIBREFS="$(grep -c 'lib/prose-rag' "$SHIM" || true)"
-chk "no reference to lib/prose-rag (grep -c is 0, got $LIBREFS)" "$([ "$LIBREFS" -eq 0 ]; echo $?)"
+# The one allowed lib/ reference is the shared resolver (SPEC-251); the engine itself is
+# still never reached for under lib/.
+LIBREFS="$(grep 'lib/prose-rag' "$SHIM" | grep -cv 'lib/prose-rag/resolve.sh' || true)"
+chk "no reference to lib/prose-rag beyond the resolver (grep -c is 0, got $LIBREFS)" "$([ "$LIBREFS" -eq 0 ]; echo $?)"
 chk_lacks "no build command in the shim" "$(cat "$SHIM")" "cargo build"
+chk "the shim no longer runs its own PATH lookup" \
+    "$([ "$(grep -c 'command -v prose-rag' "$SHIM" || true)" -eq 0 ]; echo $?)"
 
 # ============================================================
 echo "== the shim on PATH as \`prose-rag\` resolves once, it does not exec itself forever =="
@@ -119,6 +123,34 @@ cp "$SHIM" "$TMPD/shimbin/prose-rag"
 OUT10="$( (ulimit -t 10; PATH="$TMPD/shimbin:$SYSPATH" bash "$SHIM" query x) 2>&1 )"; RC10=$?
 chk "shim on PATH: exit 1, no exec loop" "$([ "$RC10" -eq 1 ]; echo $?)"
 chk_has "shim on PATH: falls through to the install hint" "$OUT10" "engine not installed"
+
+# ============================================================
+echo "== the install.sh wrapper on PATH is skipped, not taken (SPEC-251) =="
+# ============================================================
+# The exact bytes kit_write_cli_shim writes, marker line included: the wrapper only execs
+# the shim, so taking it means the operator gets a `filled` engine that serves nothing.
+mkdir -p "$TMPD/wrapbin" "$TMPD/linkbin"
+printf '#!/usr/bin/env bash\n# dwarves-kit CLI shim (installed by install.sh; re-run install.sh to refresh)\nexec "%s" "$@"\n' \
+  "$SHIM" > "$TMPD/wrapbin/prose-rag"
+chmod +x "$TMPD/wrapbin/prose-rag"
+
+OUT11="$( (ulimit -t 10; PATH="$TMPD/wrapbin:$SYSPATH" bash "$SHIM" query x) 2>&1 )"; RC11=$?
+chk "kit wrapper alone on PATH: exit 1, no exec loop" "$([ "$RC11" -eq 1 ]; echo $?)"
+chk_has "kit wrapper alone on PATH: the install hint, not a silent success" "$OUT11" "engine not installed"
+
+OUT12="$(PATH="$TMPD/wrapbin:$TMPD/pathbin:$SYSPATH" bash "$SHIM" query x 2>&1)"; RC12=$?
+chk "wrapper first, real binary second: exit 0" "$([ "$RC12" -eq 0 ]; echo $?)"
+chk_has "wrapper first, real binary second: the real binary ran" "$OUT12" "PATHSTUB argv:query x"
+
+# A symlink named prose-rag pointing at this shim carries no marker line; the realpath
+# rule is what catches it.
+ln -sf "$SHIM" "$TMPD/linkbin/prose-rag"
+OUT13="$( (ulimit -t 10; PATH="$TMPD/linkbin:$SYSPATH" bash "$SHIM" query x) 2>&1 )"; RC13=$?
+chk "a symlink to this shim on PATH: exit 1, no exec loop" "$([ "$RC13" -eq 1 ]; echo $?)"
+chk_has "a symlink to this shim on PATH: falls through to the install hint" "$OUT13" "engine not installed"
+
+OUT14="$(PATH="$TMPD/linkbin:$TMPD/pathbin:$SYSPATH" bash "$SHIM" query x 2>&1)"
+chk_has "symlink first, real binary second: the real binary ran" "$OUT14" "PATHSTUB argv:query x"
 
 # ============================================================
 echo "== NEGATIVE CONTROL: the resolution assertions fail on a wrong binary =="

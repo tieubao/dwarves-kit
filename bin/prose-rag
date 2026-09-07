@@ -6,19 +6,30 @@
 # executable file), then `prose-rag` on PATH. It never builds and never looks
 # under lib/.
 # `hook` with no engine exits 0: a recall hook must never break a prompt.
+# The lookup itself is `lib/prose-rag/resolve.sh` (SPEC-251), shared with
+# `config seams` so the two readers cannot drift.
 set -euo pipefail
 
-# A consumer may put THIS shim on PATH as `prose-rag`; the lookup below would then
-# exec it forever. The marker survives exec, so a second entry skips resolution and
-# falls through to the no-engine contract instead of recursing.
+_PROSE_RAG_SHIM_SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# A COPY of this file outside a kit checkout has no lib/ beside it. It still owes the
+# documented exits, so a missing resolver degrades to "no engine". The readability test
+# comes FIRST because bash 3.2 (Apple's /bin/bash) exits the whole shell when `source`
+# cannot find the file, `if !` or no `if !`.
+_PROSE_RAG_RESOLVER="$_PROSE_RAG_SHIM_SELF/../lib/prose-rag/resolve.sh"
+if [ -r "$_PROSE_RAG_RESOLVER" ]; then
+  # shellcheck source=lib/prose-rag/resolve.sh
+  source "$_PROSE_RAG_RESOLVER"
+else
+  prose_rag_resolve() { return 1; }
+fi
+
+# A consumer may put THIS shim on PATH as `prose-rag`; the resolver skips it by realpath,
+# and a kit wrapper by its marker line. The marker below is the second line of defence:
+# it survives exec, so a second entry skips resolution and falls through to the no-engine
+# contract instead of recursing.
 if [ -z "${PROSE_RAG_SHIM_ACTIVE:-}" ]; then
   export PROSE_RAG_SHIM_ACTIVE=1
-  bin="${PROSE_RAG_BIN:-}"
-  # [ -x ] alone is true for a searchable directory; a binary must be a regular file too.
-  if [ -n "$bin" ] && [ -f "$bin" ] && [ -x "$bin" ]; then
-    exec "$bin" "$@"
-  fi
-  if bin="$(command -v prose-rag 2>/dev/null)" && [ -n "$bin" ]; then
+  if bin="$(prose_rag_resolve)" && [ -n "$bin" ]; then
     exec "$bin" "$@"
   fi
 fi
