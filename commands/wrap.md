@@ -70,7 +70,7 @@ Re-run the step 0 check first. Then: `bin/wrap scan <repo>` again to see the cur
 
 - `bin/wrap apply` without `--apply` changes nothing; always read its dry-run SKIP lines before adding `--apply`.
 - Pull on the default branch is `--ff-only`; off the default branch, `apply` fetches the default branch into itself instead and reports a refusal as `FAILED`, never forced.
-- A worktree behind a squash-merged PR that the operator opened via `EnterWorktree` gets `ExitWorktree keep`, never a raw `git worktree remove` and never a discard, unless the operator confirms removal in this session. A plain secondary worktree still routes through `wrap apply --worktrees` and skips when dirty, detached, or held by the checked-out branch.
+- The session's own `EnterWorktree` worktree, once `wrap scan` proves its branch squash-merged (tip matches the PR head) and the worktree is clean, is removed: `ExitWorktree remove` with `discard_changes: true` (the squashed commits are not ancestors of the default branch, so the tool asks; the proof is the confirmation), then `git branch -D <branch>`. The operator gave that confirmation once, as a standing rule, and a worktree whose PR merged this session is finished work, never something to keep. `ExitWorktree keep` only when the worktree is dirty, the branch is not proven merged, or the proof is unavailable (no `gh`); say which in `Left alone`. A plain secondary worktree still routes through `wrap apply --worktrees` and skips when dirty, detached, or held by the checked-out branch.
 - Never remove a dirty or foreign worktree, under `--worktrees` or otherwise.
 - Never force-push and never rewrite history to make a delete or a pull succeed.
 
