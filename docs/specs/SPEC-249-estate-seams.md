@@ -1,6 +1,7 @@
 # Spec: estate seams
 Generated: 2026-09-07
 Status: VALIDATED
+Lane: full
 References: `lib/config/module-registry.md` §wrap and §precedent (the existing `[consumer]` key rows; a seam is one of those rows plus a kind and a filler); `lib/config/config.sh` `cmd_list` (the column-report style `config seams` imitates) and `_registry_rows` (the parser window the seam table must stay OUT of); `lib/wrap/wrap.sh` `cmd_log` (the `_realpath_f` + HOME fence + `_worktree_copy` + `_write_guard` chain every wrap writer runs); `lib/classify/significance-classify.sh record` (the one writer of a run's DEBT marker); `lib/learn/staging-format.py` `norm`, `existing_keys`, `render_block` (the one dedupe rule and the one block grammar; the new `stage` verb composes them); `commands/wrap.md` Step -1 (a step that reads a root-only key and prints one "skipped" line when empty).
 
 ## Problem
