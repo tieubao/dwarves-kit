@@ -10,7 +10,9 @@ Python engine (fastembed bge-small + sqlite-vec, floors 0.55/0.62, ~250ms hook, 
 re-embed per index). The canonical engine is now the Rust one in `rust/` (model2vec
 static embeddings, incremental index, floors 0.32/0.40, ~29ms hook): see `README.md`
 for the current contract and `docs/implementation-notes/rust-port.md` for the port
-story. The CLI shape, chunking rules, corpus, recall gate, and opt-in hook design below
+story. Both engines have since left the kit: SPEC-250 retired the vendored crate and
+`bin/prose-rag` is an adapter over context-kit's binary (`cargo install --path
+src/prose-rag`). The CLI shape, chunking rules, corpus, recall gate, and opt-in hook design below
 hold for both engines. `tests/smoke.sh` has since grown to 11 checks (was 7); the Rust
 engine's acceptance record is `docs/proof-of-done.md` feature 2.
 **Audience**: implementer + future me

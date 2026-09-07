@@ -568,7 +568,7 @@ each in its own repo with its own version, and each stays optional:
 
 | Kit | Plane | Relationship to the engine |
 |---|---|---|
-| context-kit (horizontal) | data: the user's context tree (`self/ people/ projects/ topics/ journal/`), recall, export | requires nothing; fills `[knowledge] root` (through `ctx adopt`) and puts `prose-rag` on PATH; the engine's `lib/prose-rag` copy is a thin adapter on its way out (ID-647) |
+| context-kit (horizontal) | data: the user's context tree (`self/ people/ projects/ topics/ journal/`), recall, export | requires nothing; fills `[knowledge] root` (through `ctx adopt`) and puts `prose-rag` on PATH, which `bin/prose-rag` resolves; the vendored engine copy is gone (SPEC-250) |
 | learning-kit (vertical) | study skills, presets, a `study` lane, a concept ledger | requires the engine (floor 2.0); overlays skills and a `lanes.d` plan, writes the same ledger with `lane=study`, fills `[wrap] before` with its concept flush |
 
 The only runtime coupling is a **seam**: a key in the operator `kit.toml` that the

@@ -39,3 +39,15 @@ Why: the spec's TASK-001 acceptance requires the contract green "after its refer
 Impact: `bash tests/test-kit-contract.sh` stays at 25 passed, 0 failed.
 
 Open questions: none.
+
+## 2026-09-07 23:55 TASK-002 also clears the module gitignore and the SPEC banner
+
+Context: the spec names README.md, SPEC.md, kit.toml, the changelog, the verification sentences, the registry row, and the regenerated feature registry.
+
+Decision: two files outside that list changed as well. `lib/prose-rag/.gitignore` loses its `rust/target/` and `bin/prose-rag-rs` entries, and the `SPEC.md` supersession banner gains one sentence pointing at context-kit.
+
+Why: both named the deleted crate. An ignore rule for a path that cannot exist is a fossil, and the banner already carries the engine's supersession history.
+
+Impact: no behavior. `git grep prose-rag-rs` now finds only this spec and this note.
+
+Open questions: none.

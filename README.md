@@ -112,7 +112,7 @@ Layered by design: the SPINE installs unconditionally (six hooks guarding push, 
 | `bridge` | FOLDED INTO `sync` 2026-07-16. The git↔Hermes cockpit mirror/writeback verbs (`board.sh mirror/status/writeback`, `bridge=on` rows in `boards.txt`) remain runnable as the legacy engine until the SPEC-002 P2 port (kit ID-290) re-lands them as a sync edge | absorbed |
 | `worktree` | `worktree-provision` on PATH (manual worktree env-symlink + install provisioner, `lib/worktree-provision/`) | hookless (CLI) |
 | `money_gate` | `money-gate` (PreToolUse Edit/Write guard for money-touching edits; inert until you set `MONEY_GATE_REPOS`) | 1 hook |
-| `prose_rag` | `prose-rag` recall inject (UserPromptSubmit, dormant until `PROSE_RAG_INJECT=1`) + the `prose-rag` CLI on PATH (`lib/prose-rag/`, Rust engine) | 1 hook + 1 CLI |
+| `prose_rag` | `prose-rag` recall inject (UserPromptSubmit, dormant until `PROSE_RAG_INJECT=1`) + the `prose-rag` CLI adapter over context-kit's engine binary (`lib/prose-rag/`) | 1 hook + 1 CLI |
 | `sync` | `board sync` two-way spoke mirror (BACKLOG.md ⇄ Apple Reminders / Notion / Hermes kanban; engine `lib/sync/`, per-repo `.kit.toml [sync]` config), inert without `[sync] sources` | hookless (lib) |
 
 `team_mode` is a reserved, not-yet-installable slot (parked, see `docs/PHILOSOPHY.md` "Team mode: parked, not absent"); naming it in `--with` errors on purpose.
