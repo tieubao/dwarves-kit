@@ -1,6 +1,6 @@
 # Spec: prose-rag resolve, one resolver that skips the kit's own wrapper
 Generated: 2026-09-08
-Status: APPROVED
+Status: SHIPPED (dwarves-kit #519)
 Lane: normal
 References: `bin/prose-rag` (SPEC-250 adapter; keep its exit contract and the `PROSE_RAG_SHIM_ACTIVE` guard); `lib/config/config.sh` `_seam_resolve` binary branch (the second reader of the same order); `install.sh` `kit_write_cli_shim` (writes `~/.local/bin/prose-rag` with the marker line `# dwarves-kit CLI shim`, the wrapper both readers must skip).
 
