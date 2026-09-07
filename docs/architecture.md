@@ -561,6 +561,27 @@ Two paths, do not run both. See ADR-0009.
 1. **Plugin install** (recommended): `/plugin marketplace add dwarvesf/dwarves-kit` + `/plugin install kit@dwarves-marketplace`. Uses `.claude-plugin/plugin.json` + `hooks/hooks.json` with `${CLAUDE_PLUGIN_ROOT}` references. No `statusLine` (v1 plugin schema gap).
 2. **Bash install** (alternative): `bash install.sh`. Uses root `settings.json` with absolute paths. Configures `statusLine`. Requires `jq`, `git`, `bash`.
 
+## The estate (overlays and seams)
+
+This kit is the engine of a small estate and installs alone. Two other kits pair with it,
+each in its own repo with its own version, and each stays optional:
+
+| Kit | Plane | Relationship to the engine |
+|---|---|---|
+| context-kit (horizontal) | data: the user's context tree (`self/ people/ projects/ topics/ journal/`), recall, export | requires nothing; fills `[knowledge] root` (through `ctx adopt`) and puts `prose-rag` on PATH; the engine's `lib/prose-rag` copy is a thin adapter on its way out (ID-647) |
+| learning-kit (vertical) | study skills, presets, a `study` lane, a concept ledger | requires the engine (floor 2.0); overlays skills and a `lanes.d` plan, writes the same ledger with `lane=study`, fills `[wrap] before` with its concept flush |
+
+The only runtime coupling is a **seam**: a key in the operator `kit.toml` that the
+engine reads with `kit_config_get_root` (operator file, then kit root, never a project
+`.kit.toml`) and an overlay fills at install. `bin/config seams [--check]` lists every
+seam as `default | filled | unresolved | absent`; the table and its rules are
+`lib/config/module-registry.md` `## Seams` (SPEC-249). Install and data point in
+opposite directions: overlays install on the engine, every kit writes knowledge into
+the tree. The engine never calls an overlay and never branches on a kit name; a vertical
+feature that needs engine code becomes an absorption row. The cross-repo map, the
+install matrix, and the release policy live in the forge program repo
+(`docs/ARCHITECTURE.md`, `docs/design/kit-distribution.md`, `docs/design/kit-versioning.md`).
+
 ## SDLC state machine
 
 The "## State model" above is the *data* state (the three stores). This is the *process*
