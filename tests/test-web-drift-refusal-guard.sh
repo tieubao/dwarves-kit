@@ -45,7 +45,7 @@ BOARDED="$(_mk)"; mkdir -p "$BOARDED/_meta"
 printf '# BACKLOG\n\n| ID | Item | Notes & source | Status |\n|---|---|---|---|\n' > "$BOARDED/_meta/BACKLOG.md"
 OUT1="$(cd "$BOARDED" && eval "$GUARD_LINE" 2>&1)"; rc1=$?
 [ "$rc1" -eq 0 ] && assert "C1 boarded consumer: guard passes (exit 0)" 0 || assert "C1 boarded consumer: guard passes (rc=$rc1)" 1
-echo "$OUT1" | grep -q REFUSE && assert "C1 boarded consumer: no REFUSE line" 1 || assert "C1 boarded consumer: no REFUSE line" 0
+{ trap '' PIPE; echo "$OUT1" 2>/dev/null || :; } | grep -q REFUSE && assert "C1 boarded consumer: no REFUSE line" 1 || assert "C1 boarded consumer: no REFUSE line" 0
 
 # ---------------------------------------------------------------------------
 # C2 NEGATIVE CONTROL: a target repo with NO _meta/BACKLOG.md refuses (exit 1) and names the fix.
@@ -53,8 +53,8 @@ echo "$OUT1" | grep -q REFUSE && assert "C1 boarded consumer: no REFUSE line" 1 
 BOARDLESS="$(_mk)"
 OUT2="$(cd "$BOARDLESS" && eval "$GUARD_LINE" 2>&1)"; rc2=$?
 [ "$rc2" -eq 1 ] && assert "C2 NC: boardless consumer refuses the run (exit 1)" 0 || assert "C2 NC: boardless consumer refuses (rc=$rc2)" 1
-echo "$OUT2" | grep -q '^REFUSE:' && assert "C2 NC: refusal names REFUSE + the fix" 0 || assert "C2 NC: refusal names REFUSE (got: $OUT2)" 1
-echo "$OUT2" | grep -q "bin/board init" && assert "C2 NC: refusal names the fix (bin/board init)" 0 || assert "C2 NC: refusal names the fix" 1
+{ trap '' PIPE; echo "$OUT2" 2>/dev/null || :; } | grep -q '^REFUSE:' && assert "C2 NC: refusal names REFUSE + the fix" 0 || assert "C2 NC: refusal names REFUSE (got: $OUT2)" 1
+{ trap '' PIPE; echo "$OUT2" 2>/dev/null || :; } | grep -q "bin/board init" && assert "C2 NC: refusal names the fix (bin/board init)" 0 || assert "C2 NC: refusal names the fix" 1
 
 echo ""
 echo "=== $PASS/$TOTAL passed, $FAIL failed ==="

@@ -29,7 +29,7 @@ lint_agent_frontmatter() {
   [ "$name" = "1" ];  chk "$label: has name field" $?
   [ "$desc" = "1" ];  chk "$label: has description field" $?
   [ "$tools" = "1" ]; chk "$label: has tools field" $?
-  echo "$model" | grep -qE '^(sonnet|haiku|opus)$'; chk "$label: model is sonnet|haiku|opus ($model)" $?
+  { trap '' PIPE; echo "$model" 2>/dev/null || :; } | grep -qE '^(sonnet|haiku|opus)$'; chk "$label: model is sonnet|haiku|opus ($model)" $?
   # minimal tools: never a bare unscoped Bash entry
   if printf '%s\n' "$body" | awk '/^---$/{c++; if(c==2)exit} c==1' | grep -qE '^[[:space:]]*-[[:space:]]*Bash[[:space:]]*$'; then
     bad "$label: tools are minimal (no bare 'Bash')"

@@ -37,14 +37,14 @@ echo "=== config-stamp (ID-420 AC1-AC6) ==="
 new_log
 gl config c1 model=opus effort=high kit_version=9.9.9 modules=board,stats lane=full task_type=spec-feature suite_hash=abc123 session_id=sess-1 >/dev/null 2>&1
 LINE="$(gl show c1 2>&1 | grep '| CONFIG |')"
-echo "$LINE" | grep -q 'model=opus'          && assert "AC1 model round-trips"          0 || assert "AC1 model round-trips (got '$LINE')"          1
-echo "$LINE" | grep -q 'effort=high'         && assert "AC1 effort round-trips"         0 || assert "AC1 effort round-trips"         1
-echo "$LINE" | grep -q 'kit_version=9.9.9'   && assert "AC1 kit_version round-trips"    0 || assert "AC1 kit_version round-trips"    1
-echo "$LINE" | grep -q 'modules=board,stats' && assert "AC1 modules round-trips"        0 || assert "AC1 modules round-trips"        1
-echo "$LINE" | grep -q 'lane=full'           && assert "AC1 lane round-trips"           0 || assert "AC1 lane round-trips"           1
-echo "$LINE" | grep -q 'task_type=spec-feature' && assert "AC1 task_type round-trips"   0 || assert "AC1 task_type round-trips"      1
-echo "$LINE" | grep -q 'suite_hash=abc123'   && assert "AC1 suite_hash round-trips"     0 || assert "AC1 suite_hash round-trips"     1
-echo "$LINE" | grep -q 'session_id=sess-1'   && assert "AC1 session_id round-trips"     0 || assert "AC1 session_id round-trips"     1
+{ trap '' PIPE; echo "$LINE" 2>/dev/null || :; } | grep -q 'model=opus'          && assert "AC1 model round-trips"          0 || assert "AC1 model round-trips (got '$LINE')"          1
+{ trap '' PIPE; echo "$LINE" 2>/dev/null || :; } | grep -q 'effort=high'         && assert "AC1 effort round-trips"         0 || assert "AC1 effort round-trips"         1
+{ trap '' PIPE; echo "$LINE" 2>/dev/null || :; } | grep -q 'kit_version=9.9.9'   && assert "AC1 kit_version round-trips"    0 || assert "AC1 kit_version round-trips"    1
+{ trap '' PIPE; echo "$LINE" 2>/dev/null || :; } | grep -q 'modules=board,stats' && assert "AC1 modules round-trips"        0 || assert "AC1 modules round-trips"        1
+{ trap '' PIPE; echo "$LINE" 2>/dev/null || :; } | grep -q 'lane=full'           && assert "AC1 lane round-trips"           0 || assert "AC1 lane round-trips"           1
+{ trap '' PIPE; echo "$LINE" 2>/dev/null || :; } | grep -q 'task_type=spec-feature' && assert "AC1 task_type round-trips"   0 || assert "AC1 task_type round-trips"      1
+{ trap '' PIPE; echo "$LINE" 2>/dev/null || :; } | grep -q 'suite_hash=abc123'   && assert "AC1 suite_hash round-trips"     0 || assert "AC1 suite_hash round-trips"     1
+{ trap '' PIPE; echo "$LINE" 2>/dev/null || :; } | grep -q 'session_id=sess-1'   && assert "AC1 session_id round-trips"     0 || assert "AC1 session_id round-trips"     1
 
 # ---------------------------------------------------------------------------
 # AC2: kit_version defaults to $KIT_ROOT/VERSION when the caller omits it.
@@ -53,7 +53,7 @@ new_log
 gl config c2 model=sonnet >/dev/null 2>&1
 LINE="$(gl show c2 2>&1 | grep '| CONFIG |')"
 REAL_VER="$(cat "$KIT_DIR/VERSION" 2>/dev/null)"
-echo "$LINE" | grep -q "kit_version=$REAL_VER" && assert "AC2 kit_version defaults to VERSION file" 0 || assert "AC2 kit_version defaults to VERSION file (got '$LINE', want '$REAL_VER')" 1
+{ trap '' PIPE; echo "$LINE" 2>/dev/null || :; } | grep -q "kit_version=$REAL_VER" && assert "AC2 kit_version defaults to VERSION file" 0 || assert "AC2 kit_version defaults to VERSION file (got '$LINE', want '$REAL_VER')" 1
 
 # ---------------------------------------------------------------------------
 # AC3: suite_hash is never invented -- absent unless the caller passes it.

@@ -452,7 +452,7 @@ for AGENT_FILE in "$KIT_DIR/agents/"*.md; do
   # presence isn't enough, the value has to be in the real model surface.
   MODEL_VAL=$(awk -F': *' '/^---$/{c++; if(c==2)exit} c==1 && /^model:/{print $2; exit}' "$AGENT_FILE" | tr -d '[:space:]')
   TOTAL=$((TOTAL + 1))
-  if echo "$MODEL_VAL" | grep -qE '^(sonnet|haiku|opus)$'; then
+  if { trap '' PIPE; echo "$MODEL_VAL" 2>/dev/null || :; } | grep -qE '^(sonnet|haiku|opus)$'; then
     echo -e "  ${GREEN}PASS${NC} agent $AGENT model is sonnet|haiku|opus ($MODEL_VAL)"
     PASS=$((PASS + 1))
   else
@@ -1516,7 +1516,7 @@ while IFS= read -r phase; do
   # to "UI design (opt-in)"); all other names match verbatim.
   trimmed=$(echo "$phase" | sed 's/, downstream//')
   TOTAL=$((TOTAL + 1))
-  if echo "$LENS_SECTION" | grep -qF "$trimmed"; then
+  if { trap '' PIPE; echo "$LENS_SECTION" 2>/dev/null || :; } | grep -qF "$trimmed"; then
     echo -e "  ${GREEN}PASS${NC} V-model lens references cycle phase '$phase'"
     PASS=$((PASS + 1))
   else
@@ -1550,7 +1550,7 @@ while IFS= read -r entry; do
   # Strip wildcard suffix for matching (docs/retro/v*.md -> docs/retro/)
   base=$(echo "$entry" | sed 's/\*\.md[^)]*$//' | sed 's/v\*$//')
   TOTAL=$((TOTAL + 1))
-  if echo "$DOC_IMPACT_BLOCK" | grep -qF "$base"; then
+  if { trap '' PIPE; echo "$DOC_IMPACT_BLOCK" 2>/dev/null || :; } | grep -qF "$base"; then
     echo -e "  ${GREEN}PASS${NC} hands-off entry '$entry' appears in doc-impact map (SPEC-031)"
     PASS=$((PASS + 1))
   else
@@ -1617,7 +1617,7 @@ TOTAL=$((TOTAL + 1))
 MISSING_LEG_MODULES=""
 while IFS= read -r m; do
   [ -n "$m" ] || continue
-  echo "$FIVE_LEG_BLOCK" | grep -q "\`$m\`" || MISSING_LEG_MODULES="$MISSING_LEG_MODULES $m"
+  { trap '' PIPE; echo "$FIVE_LEG_BLOCK" 2>/dev/null || :; } | grep -q "\`$m\`" || MISSING_LEG_MODULES="$MISSING_LEG_MODULES $m"
 done <<< "$REGISTRY_MODULES"
 if [ -z "$MISSING_LEG_MODULES" ]; then
   echo -e "  ${GREEN}PASS${NC} README five-stage table covers every module-registry stage row"
@@ -2302,7 +2302,7 @@ GL_BADCELLS=$(awk '
 assert_eq "lane×phase matrix cells are all measure-twice|run-lite|skip" "0" "$GL_BADCELLS"
 
 GL_REQ="$(bash "$KIT_DIR/lib/gate/gate-ledger.sh" required normal 2>/dev/null | tr '\n' ' ')"
-assert_true "gate-ledger required(normal) derives spec+build+ship from the matrix" "$(echo "$GL_REQ" | grep -q 'spec' && echo "$GL_REQ" | grep -q 'build' && echo "$GL_REQ" | grep -q 'ship' && echo 0 || echo 1)"
+assert_true "gate-ledger required(normal) derives spec+build+ship from the matrix" "$({ trap '' PIPE; echo "$GL_REQ" 2>/dev/null || :; } | grep -q 'spec' && { trap '' PIPE; echo "$GL_REQ" 2>/dev/null || :; } | grep -q 'build' && { trap '' PIPE; echo "$GL_REQ" 2>/dev/null || :; } | grep -q 'ship' && echo 0 || echo 1)"
 assert_true "WORKFLOW documents the gate-ledger + ship-enforcement convention" "$(grep -q 'Gate ledger and ship enforcement' "$KIT_DIR/docs/WORKFLOW.md" && echo 0 || echo 1)"
 assert_true "ship.md records the Ship gate + names the override path" "$(grep -q 'gate-ledger.sh' "$KIT_DIR/commands/ship.md" && echo 0 || echo 1)"
 assert_true "AGENTS operate-contract points at the gate-ledger convention" "$(grep -q 'gate-ledger' "$KIT_DIR/AGENTS.md" && echo 0 || echo 1)"
@@ -2396,7 +2396,7 @@ assert_true "lib/gate/proof-gate.sh exists and is executable" \
   "$([ -x "$KIT_DIR/lib/gate/proof-gate.sh" ] && echo 0 || echo 1)"
 
 assert_true "proof-gate names the three proof classes (stateful, behavioral, inert)" \
-  "$(out=$(bash "$KIT_DIR/lib/gate/proof-gate.sh" classes 2>/dev/null); echo "$out" | grep -q stateful && echo "$out" | grep -q behavioral && echo "$out" | grep -q inert && echo 0 || echo 1)"
+  "$(out=$(bash "$KIT_DIR/lib/gate/proof-gate.sh" classes 2>/dev/null); { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q stateful && { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q behavioral && { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q inert && echo 0 || echo 1)"
 
 assert_true "convention defines the risk-class gate (stateful/behavioral/inert + proof-gate)" \
   "$(grep -qi 'proof class' "$KIT_DIR/docs/verification/README.md" && grep -q 'proof-gate.sh' "$KIT_DIR/docs/verification/README.md" && echo 0 || echo 1)"
@@ -3046,7 +3046,7 @@ assert_true "feature-registry generator is deterministic (double run byte-identi
 # (cap_list caps the shown names at 3 alphabetically then "+N" for the rest, so a fourth
 # dispatcher pushes the last name into the overflow count rather than dropping it silently).
 ASROW=$(grep -E '^\| `audit-scanner` ' "$KIT_DIR/docs/FEATURES.md")
-RC=0; { echo "$ASROW" | grep -q 'doc-drift (skill)' && echo "$ASROW" | grep -q 'ci-drift (skill)' && echo "$ASROW" | grep -qE '\+[0-9]+ *\|'; } || RC=1
+RC=0; { { trap '' PIPE; echo "$ASROW" 2>/dev/null || :; } | grep -q 'doc-drift (skill)' && { trap '' PIPE; echo "$ASROW" 2>/dev/null || :; } | grep -q 'ci-drift (skill)' && { trap '' PIPE; echo "$ASROW" 2>/dev/null || :; } | grep -qE '\+[0-9]+ *\|'; } || RC=1
 assert_eq "audit-scanner dispatched-by names doc-drift + ci-drift, overflow count covers the rest" 0 $RC
 rm -f "$REG_TMP" "$REG_TMP2"
 

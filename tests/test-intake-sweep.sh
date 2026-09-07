@@ -68,7 +68,7 @@ assert_true "command-adapter item staged" "$(grep -q '## \[staged\] Saved tab ab
 assert_true "NC: skip-verdict item NOT staged" "$(! grep -q 'skip-me' "$S"; echo $?)"
 assert_true "NC: board-title dup NOT staged" "$(! grep -q '## \[staged\] Already on the board' "$S"; echo $?)"
 assert_true "NC: staging-url dup NOT staged" "$(! grep -q 'Renamed since staged' "$S"; echo $?)"
-assert_true "summary line printed" "$(echo "$out" | grep -q 'intake-sweep: staged 2 candidate'; echo $?)"
+assert_true "summary line printed" "$({ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'intake-sweep: staged 2 candidate'; echo $?)"
 
 echo "== idempotence: a second forced run stages nothing new =="
 before="$(grep -c '^## \[staged\]' "$S")"
@@ -120,19 +120,19 @@ cat > "$R5/_meta/intake-sources.json" <<'EOF'
 ]}
 EOF
 err="$(REPO_ROOT="$R5" INTAKE_SWEEP_STATE_DIR="$R5/state" python3 "$SWEEP" --force 2>&1 >/dev/null)"
-assert_true "unknown kind warns on stderr" "$(echo "$err" | grep -q "typo-kind.*unknown kind 'jsonlines'"; echo $?)"
+assert_true "unknown kind warns on stderr" "$({ trap '' PIPE; echo "$err" 2>/dev/null || :; } | grep -q "typo-kind.*unknown kind 'jsonlines'"; echo $?)"
 assert_true "the good source still stages despite a broken sibling" \
   "$(grep -q 'Item A' "$R5/_meta/backlog-staging.md"; echo $?)"
 out="$(REPO_ROOT="$R5" INTAKE_SWEEP_STATE_DIR="$R5/state" python3 "$SWEEP" --check 2>&1)"; rc=$?
 assert_true "--check exits 0" "$rc"
-assert_true "--check reports the good source's raw yield" "$(echo "$out" | grep -qE 'ok +good \(jsonl\): 1 item'; echo $?)"
-assert_true "--check FAILs the unknown kind" "$(echo "$out" | grep -q 'FAIL typo-kind'; echo $?)"
-assert_true "--check WARNs the dead path (0 items)" "$(echo "$out" | grep -q 'WARN dead-path'; echo $?)"
-assert_true "--check counts what needs attention" "$(echo "$out" | grep -q '3 source(s), 2 needing attention'; echo $?)"
+assert_true "--check reports the good source's raw yield" "$({ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -qE 'ok +good \(jsonl\): 1 item'; echo $?)"
+assert_true "--check FAILs the unknown kind" "$({ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'FAIL typo-kind'; echo $?)"
+assert_true "--check WARNs the dead path (0 items)" "$({ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'WARN dead-path'; echo $?)"
+assert_true "--check counts what needs attention" "$({ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q '3 source(s), 2 needing attention'; echo $?)"
 assert_true "NC: --check stages nothing (report-only)" \
   "$(! grep -q 'dead-path\|typo-kind' "$R5/_meta/backlog-staging.md"; echo $?)"
 out="$(REPO_ROOT="$R2" INTAKE_SWEEP_STATE_DIR="$R2/state" python3 "$SWEEP" --check 2>&1)"
-assert_true "--check says so when no sources are configured" "$(echo "$out" | grep -q 'no sources configured'; echo $?)"
+assert_true "--check says so when no sources are configured" "$({ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'no sources configured'; echo $?)"
 
 echo "== surface wiring: backlog-stage.sh --surface runs the sweep then surfaces =="
 R4="$(mkrepo)"
@@ -147,7 +147,7 @@ out="$(REPO_ROOT="$R4" INTAKE_SWEEP_STATE_DIR="$R4/state" \
       bash "$KIT_DIR/hooks/backlog-stage.sh" --surface 2>&1)"; rc=$?
 assert_true "backlog-stage.sh --surface exits 0" "$rc"
 assert_true "sweep ran on the surface pass" "$(grep -q 'Via surface' "$R4/_meta/backlog-staging.md"; echo $?)"
-assert_true "surfaced count includes the swept candidate" "$(echo "$out" | grep -q '1 backlog candidate'; echo $?)"
+assert_true "surfaced count includes the swept candidate" "$({ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q '1 backlog candidate'; echo $?)"
 
 echo
 echo "intake-sweep: $PASS passed, $FAIL failed"

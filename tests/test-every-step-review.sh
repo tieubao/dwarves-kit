@@ -25,7 +25,7 @@ for pair in "spec-validate" "review-team" "task-verifier" "integration-verifier"
 done
 # no review-bearing full-lane phase is skip: every 'required full' phase resolves in the plan
 REQ=$(bash "$GL" required full 2>/dev/null | tr '\n' ' ')
-[ -n "$REQ" ] && echo "$REQ" | grep -q 'spec' && echo "$REQ" | grep -q 'review' && echo "$REQ" | grep -q 'ship'
+[ -n "$REQ" ] && { trap '' PIPE; echo "$REQ" 2>/dev/null || :; } | grep -q 'spec' && { trap '' PIPE; echo "$REQ" 2>/dev/null || :; } | grep -q 'review' && { trap '' PIPE; echo "$REQ" 2>/dev/null || :; } | grep -q 'ship'
 assert "AC1: full lane's required set includes spec+review+ship (no review phase skipped)" $?
 
 # --- AC2 [NEGATIVE CONTROL]: ship-gate (gate-ledger check) BLOCKS a missing required review ---

@@ -100,9 +100,9 @@ sed -n '/## Lens escalation/,/^## /p' "$BAT" | grep -q 'break-it'
 assert "T2-AC1: the escalation table carries a break-it row" $?
 grep -q '## Probe rung' "$BAT"; assert "T2-AC2: commands/battery.md has a '## Probe rung' section" $?
 PROBE_SEC=$(sed -n '/## Probe rung/,/^## /p' "$BAT")
-echo "$PROBE_SEC" | grep -q 'mutation-smoke'; assert "T2-AC2: the probe rung names mutation-smoke as the next rung" $?
-echo "$PROBE_SEC" | grep -q '/kit:verify'; assert "T2-AC2: the probe rung names /kit:verify as mutation-smoke's owner" $?
-echo "$PROBE_SEC" | grep -qi 'stops the ladder'; assert "T2-AC2: a PROBE finding stops the ladder (DEC-005)" $?
+{ trap '' PIPE; echo "$PROBE_SEC" 2>/dev/null || :; } | grep -q 'mutation-smoke'; assert "T2-AC2: the probe rung names mutation-smoke as the next rung" $?
+{ trap '' PIPE; echo "$PROBE_SEC" 2>/dev/null || :; } | grep -q '/kit:verify'; assert "T2-AC2: the probe rung names /kit:verify as mutation-smoke's owner" $?
+{ trap '' PIPE; echo "$PROBE_SEC" 2>/dev/null || :; } | grep -qi 'stops the ladder'; assert "T2-AC2: a PROBE finding stops the ladder (DEC-005)" $?
 sed -n '/## After the legs return/,$p' "$BAT" | grep -q 'break-it'
 assert "T2-AC3: the after-the-legs step tells the lead to decide per probe finding" $?
 
@@ -240,9 +240,9 @@ grep -q '`break-it`' "$KIT_DIR/docs/architecture.md"; assert "T5-AC1: docs/archi
 # AC2: the three rungs appear in WORKFLOW.md's ladder paragraph, in ladder order.
 LADDER=$(sed -n '/three-rung ladder/,/^$/p' "$WF" | tr '\n' ' ')
 [ -n "$LADDER" ]; assert "T5-AC2: docs/WORKFLOW.md has a three-rung ladder paragraph" $?
-echo "$LADDER" | grep -q 'coverage.*probe.*mutation'
+{ trap '' PIPE; echo "$LADDER" 2>/dev/null || :; } | grep -q 'coverage.*probe.*mutation'
 assert "T5-AC2: the ladder names coverage, then probe, then mutation, in order" $?
-echo "$LADDER" | grep -qi 'stated, not enforced'
+{ trap '' PIPE; echo "$LADDER" 2>/dev/null || :; } | grep -qi 'stated, not enforced'
 assert "T5-AC2: the ladder states the order is not enforced (open question 1)" $?
 
 # --- TASK-004 AC5 [closing move]: the effectiveness gate ---------------------

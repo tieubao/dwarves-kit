@@ -36,11 +36,11 @@ gl record r1 build ran >/dev/null 2>&1
 gl record r1 review skipped >/dev/null 2>&1
 
 OUT="$(gl report --period week)"
-echo "$OUT" | grep -q '^| rid | lane | repo | gates_ran | gates_skipped |$' \
+{ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '^| rid | lane | repo | gates_ran | gates_skipped |$' \
   && assert "C1 markdown table header" 0 || assert "C1 markdown table header (got: $(echo "$OUT" | sed -n '3p'))" 1
-echo "$OUT" | grep -q '^| r1 | full | dwarves-kit | 2 | 1 |$' \
+{ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '^| r1 | full | dwarves-kit | 2 | 1 |$' \
   && assert "C1 r1 row: 2 ran 1 skipped" 0 || assert "C1 r1 row (got: $(echo "$OUT" | grep '| r1 |'))" 1
-echo "$OUT" | grep -q '\*\*Totals:\*\* 1 runs, 2 gates ran, 1 gates skipped' \
+{ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '\*\*Totals:\*\* 1 runs, 2 gates ran, 1 gates skipped' \
   && assert "C1 totals line" 0 || assert "C1 totals line (got: $(echo "$OUT" | grep Totals))" 1
 
 # ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ echo "$OUT" | grep -q '\*\*Totals:\*\* 1 runs, 2 gates ran, 1 gates skipped' \
 gl start r2 study study lesson lesson learning-kit >/dev/null 2>&1
 gl record r2 study ran >/dev/null 2>&1
 FULL="$(gl report --period week --lane full)"
-echo "$FULL" | grep -q '| r1 |' && [ -z "$(echo "$FULL" | grep '| r2 |')" ] \
+{ trap '' PIPE; echo "$FULL" 2>/dev/null || :; } | grep -q '| r1 |' && [ -z "$(echo "$FULL" | grep '| r2 |')" ] \
   && assert "C2 --lane full excludes r2 (study)" 0 || assert "C2 --lane full excludes r2" 1
 
 # ---------------------------------------------------------------------------
@@ -61,7 +61,7 @@ gl record rold spec ran >/dev/null 2>&1
 OLD_ISO="$(date -v-40d -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '-40 days' +%Y-%m-%dT%H:%M:%SZ)"
 sed -i.bak "1s/^[^ ]*/$OLD_ISO/" "$LOGD/runs/rold.log" && rm -f "$LOGD/runs/rold.log.bak"
 OUT3="$(gl report --period month)"
-echo "$OUT3" | grep -q 'No runs in this window' \
+{ trap '' PIPE; echo "$OUT3" 2>/dev/null || :; } | grep -q 'No runs in this window' \
   && assert "C3 40-day-old run excluded from a 30-day window" 0 || assert "C3 40-day-old run excluded (got: $OUT3)" 1
 
 # ---------------------------------------------------------------------------
@@ -69,8 +69,8 @@ echo "$OUT3" | grep -q 'No runs in this window' \
 # ---------------------------------------------------------------------------
 new_log
 EMPTY="$(gl report --period month)"
-echo "$EMPTY" | grep -q '^# Gate-ledger report (month, since' \
-  && echo "$EMPTY" | grep -q 'No runs in this window' \
+{ trap '' PIPE; echo "$EMPTY" 2>/dev/null || :; } | grep -q '^# Gate-ledger report (month, since' \
+  && { trap '' PIPE; echo "$EMPTY" 2>/dev/null || :; } | grep -q 'No runs in this window' \
   && assert "C4 empty dir -> honest-empty report" 0 || assert "C4 empty dir -> honest-empty report (got: $EMPTY)" 1
 
 # ---------------------------------------------------------------------------

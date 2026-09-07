@@ -39,30 +39,30 @@ gl start r2 study study lesson lesson learning-kit >/dev/null 2>&1
 gl record r2 study ran >/dev/null 2>&1
 
 OUT="$(gl history)"
-echo "$OUT" | grep -q '^rid,lane,repo,first_ts,last_ts,gates_ran,gates_skipped$' \
+{ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '^rid,lane,repo,first_ts,last_ts,gates_ran,gates_skipped$' \
   && assert "C1 CSV header" 0 || assert "C1 CSV header (got: $(echo "$OUT" | head -1))" 1
-echo "$OUT" | grep -q '^r1,full,dwarves-kit,.*,2,1$' \
+{ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '^r1,full,dwarves-kit,.*,2,1$' \
   && assert "C1 r1 row: lane=full, 2 ran 1 skipped" 0 || assert "C1 r1 row (got: $(echo "$OUT" | grep '^r1,'))" 1
-echo "$OUT" | grep -q '^r2,study,learning-kit,.*,1,0$' \
+{ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '^r2,study,learning-kit,.*,1,0$' \
   && assert "C1 r2 row: lane=study, 1 ran 0 skipped" 0 || assert "C1 r2 row (got: $(echo "$OUT" | grep '^r2,'))" 1
 
 # ---------------------------------------------------------------------------
 # C2: --lane filters to that lane only.
 # ---------------------------------------------------------------------------
 FULL="$(gl history --lane full)"
-echo "$FULL" | grep -q '^r1,' && [ -z "$(echo "$FULL" | grep '^r2,')" ] \
+{ trap '' PIPE; echo "$FULL" 2>/dev/null || :; } | grep -q '^r1,' && [ -z "$(echo "$FULL" | grep '^r2,')" ] \
   && assert "C2 --lane full excludes r2 (study)" 0 || assert "C2 --lane full excludes r2" 1
 STUDY="$(gl history --lane study)"
-echo "$STUDY" | grep -q '^r2,' && [ -z "$(echo "$STUDY" | grep '^r1,')" ] \
+{ trap '' PIPE; echo "$STUDY" 2>/dev/null || :; } | grep -q '^r2,' && [ -z "$(echo "$STUDY" | grep '^r1,')" ] \
   && assert "C2 --lane study excludes r1 (full)" 0 || assert "C2 --lane study excludes r1" 1
 
 # ---------------------------------------------------------------------------
 # C3: --json emits a JSON array with the same fields.
 # ---------------------------------------------------------------------------
 J="$(gl history --json)"
-echo "$J" | grep -q '"rid":"r1"' && echo "$J" | grep -q '"lane":"full"' \
-  && echo "$J" | grep -q '"repo":"dwarves-kit"' && echo "$J" | grep -q '"gates_ran":2' \
-  && echo "$J" | grep -q '"gates_skipped":1' \
+{ trap '' PIPE; echo "$J" 2>/dev/null || :; } | grep -q '"rid":"r1"' && { trap '' PIPE; echo "$J" 2>/dev/null || :; } | grep -q '"lane":"full"' \
+  && { trap '' PIPE; echo "$J" 2>/dev/null || :; } | grep -q '"repo":"dwarves-kit"' && { trap '' PIPE; echo "$J" 2>/dev/null || :; } | grep -q '"gates_ran":2' \
+  && { trap '' PIPE; echo "$J" 2>/dev/null || :; } | grep -q '"gates_skipped":1' \
   && assert "C3 JSON carries rid/lane/repo/counts" 0 || assert "C3 JSON fields (got: $J)" 1
 
 # ---------------------------------------------------------------------------
@@ -70,7 +70,7 @@ echo "$J" | grep -q '"rid":"r1"' && echo "$J" | grep -q '"lane":"full"' \
 # ---------------------------------------------------------------------------
 new_log
 EMPTY="$(gl history)"
-[ -n "$EMPTY" ] && echo "$EMPTY" | grep -q '^rid,lane,repo,first_ts,last_ts,gates_ran,gates_skipped$' \
+[ -n "$EMPTY" ] && { trap '' PIPE; echo "$EMPTY" 2>/dev/null || :; } | grep -q '^rid,lane,repo,first_ts,last_ts,gates_ran,gates_skipped$' \
   && assert "C4 empty dir -> header only (honest-empty)" 0 || assert "C4 empty dir -> header only" 1
 EJ="$(gl history --json)"
 [ "$(printf '%s' "$EJ" | tr -d '\n\t ')" = "[]" ] && assert "C4 empty dir --json -> []" 0 || assert "C4 empty dir --json -> [] (got: $EJ)" 1

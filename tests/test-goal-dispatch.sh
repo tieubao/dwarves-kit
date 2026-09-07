@@ -97,7 +97,7 @@ else
   chmod 000 "$d/goal-drafts.sh"
   out="$(bash "$d/goal.sh" draft dir 2>&1)"; ec=$?
   assert "row12: unreadable sibling surfaces bash's own 'Permission denied', exit 126" \
-    "$(echo "$out" | grep -q 'Permission denied' && [ "$ec" -eq 126 ] && echo 0 || echo 1)"
+    "$({ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'Permission denied' && [ "$ec" -eq 126 ] && echo 0 || echo 1)"
   rm -rf "$d"; trap - EXIT
 fi
 

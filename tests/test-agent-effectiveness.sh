@@ -41,8 +41,8 @@ if [ "${1:-}" != "" ] && [ -f "${1:-}" ]; then
   echo "=== agent-effectiveness GATE: $A ==="
   [ -z "$(tools_violation "$A")" ]; assert "gate: $N declares read-only tools only" $?
   MODEL=$(awk -F': *' '/^---$/{c++; if(c==2)exit} c==1 && /^model:/{print $2; exit}' "$A" | tr -d '[:space:]')
-  echo "$MODEL" | grep -qE '^(sonnet|haiku|opus)$'; assert "gate: $N model tier valid ($MODEL)" $?
-  if echo "$N" | grep -qE -- '-checker$|-auditor$|^reviewer$|-validate$'; then
+  { trap '' PIPE; echo "$MODEL" 2>/dev/null || :; } | grep -qE '^(sonnet|haiku|opus)$'; assert "gate: $N model tier valid ($MODEL)" $?
+  if { trap '' PIPE; echo "$N" 2>/dev/null || :; } | grep -qE -- '-checker$|-auditor$|^reviewer$|-validate$'; then
     assert "gate: $N name is not a retired review suffix" 1
   else
     assert "gate: $N name is not a retired review suffix" 0
