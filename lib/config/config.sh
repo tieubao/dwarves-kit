@@ -276,6 +276,17 @@ _seam_resolve() {
       return 0
     fi
     SEAM_VALUE="$raw"
+    # A `file`/`dir` value that is not absolute (and was not `~`-prefixed above) must never be
+    # resolved against this process's cwd: `_seam_target_resolves` shells out to `cd
+    # "$(dirname "$val")"`, which for a relative value silently resolves against wherever
+    # `config seams` happens to be invoked from -- a raw operator value like "notes.md" could
+    # then read `filled` purely by accident of cwd. Reject it here before that call.
+    if [ "$kind" = "file" ] || [ "$kind" = "dir" ]; then
+      case "$raw" in
+        /*) ;;
+        *) SEAM_STATUS="unresolved"; return 0 ;;
+      esac
+    fi
     if _seam_target_resolves "$kind" "$raw"; then SEAM_STATUS="filled"; else SEAM_STATUS="unresolved"; fi
     return 0
   fi
@@ -363,7 +374,7 @@ cmd_explain() {
 }
 
 cmd_seams() {
-  local check=0 srow any_unresolved=0
+  local check=0 srow any_unresolved=0 rows=0
   while [ $# -gt 0 ]; do
     case "$1" in
       --check) check=1; shift ;;
@@ -373,10 +384,19 @@ cmd_seams() {
   printf '%-30s %-10s %-30s %-15s %s\n' "KEY" "KIND" "VALUE" "STATUS" "FILLED-BY"
   while IFS= read -r srow; do
     [ -n "$srow" ] || continue
+    rows=$((rows + 1))
     _seam_resolve "$srow"
     printf '%-30s %-10s %-30s %-15s %s\n' "$SEAM_KEY" "$SEAM_KIND" "$SEAM_VALUE" "$SEAM_STATUS" "$SEAM_FILLEDBY"
     [ "$SEAM_STATUS" = "unresolved" ] && any_unresolved=1
   done < <(_seam_rows)
+  # A missing or empty "## Seams" heading otherwise printed just the header and exited 0,
+  # silently reporting nothing wrong -- indistinguishable from a registry with every seam
+  # genuinely filled. Say so explicitly, and let --check treat it as the failure it is.
+  if [ "$rows" -eq 0 ]; then
+    echo "(no seam rows: ## Seams table missing or empty)"
+    [ "$check" = 1 ] && return 1
+    return 0
+  fi
   [ "$check" = 1 ] && [ "$any_unresolved" = 1 ] && return 1
   return 0
 }

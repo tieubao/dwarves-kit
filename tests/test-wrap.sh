@@ -597,6 +597,21 @@ chk "knowledge-root: repo arg ending in /.. exits 64" "$([ "$rc" -eq 64 ]; echo 
 out="$(kr / 2>&1)"; rc=$?
 chk "knowledge-root: repo arg resolving to / exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 
+# The only write this verb does is `mkdir -p` under `<root>/projects/<base>`, which sits
+# OUTSIDE `<repo>` entirely -- so a `<repo>` with no `.git` at all must not block it. The
+# old `_write_guard "$repo_real"` call shelled out to `git -C "$repo" rev-parse`, which
+# fails on a non-git dir and printed the misleading "index.lock held by another writer".
+KRNONGIT="$TMPD/kr-nongit-repo"; mkdir -p "$KRNONGIT"
+set_kr_key "$KRHOME/root-ok"
+out="$(kr "$KRNONGIT" 2>&1)"; rc=$?
+chk "knowledge-root: non-git repo dir, filled+existing root, exits 0" "$rc"
+chk_has "knowledge-root: non-git repo prints <root>/projects/<basename>" \
+  "$out" "root-ok/projects/kr-nongit-repo"
+chk "knowledge-root: non-git repo creates <root>/projects/<basename>" \
+  "$([ -d "$KRHOME/root-ok/projects/kr-nongit-repo" ]; echo $?)"
+chk_no "knowledge-root: non-git repo never prints the index.lock message" \
+  "$out" "index.lock held by another writer"
+
 # ===========================================================================
 echo "=== stage: default paths, dedupe, the fences, and the worktree copy ==="
 # ===========================================================================

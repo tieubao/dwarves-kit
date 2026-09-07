@@ -173,6 +173,14 @@ def cmd_stage():
             "({title, intent, home, staging, backlog?})\n"
         )
         return 64
+    # Valid JSON but not an object (a list, string, number, or null) is the same usage
+    # error, not an AttributeError from `.get()` on the wrong type a few lines down.
+    if not isinstance(data, dict):
+        sys.stderr.write(
+            "usage: staging-format.py stage: expects one JSON object on stdin "
+            "({title, intent, home, staging, backlog?})\n"
+        )
+        return 64
 
     title = data.get("title", "")
     staging = data.get("staging", "")

@@ -335,6 +335,61 @@ HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" 
 chk "a forged env-var cell never executes its subscript during config list" \
   "$([ -e "$CANARY" ] && echo 1 || echo 0)"
 
+# --------------------------------------------------------------------------- case 20: relative seam path never resolves against cwd
+
+# A `file`/`dir` seam value that is not absolute and not `~`-prefixed must never be
+# resolved against the invoking shell's cwd: `_seam_target_resolves` shells out to `cd
+# "$(dirname "$val")"`, which for a relative value used to resolve against wherever
+# `config seams` happened to be invoked from -- a raw operator value like "sub/rel.md"
+# could then read `filled` purely by accident of cwd. Put the target file under HOME so
+# the buggy cwd-relative resolution would ALSO pass the HOME fence and read `filled`;
+# otherwise this case would pass for the wrong reason (the HOME fence rejecting it).
+CWD_A="$HOME_DIR/cwd-a"; mkdir -p "$CWD_A/sub"; : > "$CWD_A/sub/rel.md"
+CWD_B="$HOME_DIR/cwd-b"; mkdir -p "$CWD_B/sub"; : > "$CWD_B/sub/rel.md"
+write_root_toml '[wrap]
+activity_log = "sub/rel.md"'
+OUT20A="$(cd "$CWD_A" && HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" bash "$CONFIG_BIN" seams | grep '^wrap.activity_log')"
+chk_has "a relative seam value from cwd A never resolves against cwd -> unresolved" "$OUT20A" "unresolved"
+chk_has "the raw relative value is reported verbatim, not a cwd-resolved path" "$OUT20A" "sub/rel.md"
+
+OUT20B="$(cd "$CWD_B" && HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OPERATOR" \
+  KIT_PROJECT_ROOT="$PROJ_DIR" bash "$CONFIG_BIN" seams | grep '^wrap.activity_log')"
+chk_has "the same relative value from a DIFFERENT cwd still reads unresolved" "$OUT20B" "unresolved"
+STATUS20A="$(printf '%s' "$OUT20A" | awk '{print $4}')"
+STATUS20B="$(printf '%s' "$OUT20B" | awk '{print $4}')"
+chk "status is identical across the two cwds" "$([ "$STATUS20A" = "$STATUS20B" ] && echo 0 || echo 1)"
+write_root_toml ""
+
+# --------------------------------------------------------------------------- case 21: zero seam rows
+
+# A registry with the "## Seams" heading missing entirely (or present but empty) used to
+# print just the header and exit 0 under --check -- silently indistinguishable from "every
+# seam resolved". `_seam_rows` yields nothing for a registry with no such heading.
+NO_SEAMS_REGISTRY="$TMPD/no-seams-registry.md"
+cat > "$NO_SEAMS_REGISTRY" <<'EOF'
+# fixture module-registry.md with no ## Seams heading
+
+## Env <-> key registry
+
+### test
+
+| Env var | kit.toml key | Default | Status | Module | Doc |
+|---|---|---|---|---|---|
+| - | test.key | `""` | [consumer] | test | fixture key. |
+
+## Allowlist
+
+| Token | Why excluded |
+|---|---|
+EOF
+OUT21="$(CONFIG_REGISTRY_FILE="$NO_SEAMS_REGISTRY" bash "$CONFIG_BIN" seams)"
+chk "zero seam rows: exits 0 without --check" "$?"
+chk_has "zero seam rows: prints the explicit no-rows line" "$OUT21" "(no seam rows: ## Seams table missing or empty)"
+
+CONFIG_REGISTRY_FILE="$NO_SEAMS_REGISTRY" bash "$CONFIG_BIN" seams --check >/dev/null 2>&1
+chk "zero seam rows: --check exits 1" "$([ $? -eq 1 ] && echo 0 || echo 1)"
+
 # --------------------------------------------------------------------------- bonus: unknown flag
 
 bash "$CONFIG_BIN" seams --bogus >/dev/null 2>&1

@@ -677,12 +677,13 @@ cmd_knowledge_root() {
     return 0
   fi
 
-  if ! _write_guard "$repo_real"; then
-    echo "knowledge-root: index.lock held by another writer, using ${fallback}" >&2
-    printf '%s\n' "$fallback"
-    return 0
-  fi
-
+  # No `_write_guard` here (unlike `cmd_log`/`cmd_stage`): the only write below is `mkdir -p`
+  # under `<root>/projects/<base>`, which sits OUTSIDE `$repo` entirely -- `_write_guard`
+  # shells out to `git -C "$repo" rev-parse`, which fails on a non-git `<repo>` and reported
+  # the misleading "index.lock held by another writer" for a directory with no lock and no git
+  # dir at all. `<root>` itself is fenced above and re-fenced after the create; that is the
+  # write this verb owes a guard for, and it already has one via `_home_fence`.
+  #
   # Only `<root>` was fenced above. `mkdir -p` walks through a symlink at `projects` or at the
   # leaf without complaint, so both are refused before the create, and the created directory is
   # re-resolved and re-fenced after it.

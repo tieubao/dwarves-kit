@@ -115,6 +115,16 @@ OUT6="$(echo 'not json at all' | python3 "$SF" stage 2>&1)"; RC6=$?
 chk "malformed JSON: exit non-zero" "$([ "$RC6" -ne 0 ]; echo $?)"
 chk_has "malformed JSON: usage-style message" "$OUT6" "usage:"
 
+# ============================================================
+echo "== valid JSON that is not an object exits 64 with a usage message, no traceback =="
+# ============================================================
+# json.load("[]") succeeds (a list is valid JSON); a naive .get() call on it a few lines
+# down raises AttributeError instead of the same usage refusal a malformed payload gets.
+OUT8="$(echo '[]' | python3 "$SF" stage 2>&1)"; RC8=$?
+chk "non-object JSON (list): exit 64" "$([ "$RC8" -eq 64 ]; echo $?)"
+chk_has "non-object JSON (list): usage-style message" "$OUT8" "usage:"
+chk "non-object JSON (list): no traceback" "$(printf '%s' "$OUT8" | grep -qF 'Traceback' && echo 1 || echo 0)"
+
 echo ""
 echo "== $TOTAL run, $PASS passed, $FAIL failed =="
 [ "$FAIL" -eq 0 ]

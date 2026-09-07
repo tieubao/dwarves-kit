@@ -222,6 +222,9 @@ jobs:
       - name: Run config-registry drift + bin/config tests (SPEC-198, harness-loop sub-goal 08)
         run: bash tests/test-config-registry.sh
 
+      - name: Run config resolver selftest (kit-config.sh precedence, comment-strip, defaults)
+        run: bash tests/test-config.sh
+
       - name: Run config seams report tests (SPEC-249 TASK-002)
         run: bash tests/test-config-seams.sh
 
