@@ -118,7 +118,7 @@ GENERATED , do not hand-edit. Regenerate: `bash lib/registry/feature-registry.sh
 | `context-hints.sh` | `[E]` | UserPromptSubmit | UserPromptSubmit hook, function-named port of ops-toolkit's | - | test-adopt.sh, test-install-modules.sh, test-kit-foldin-hooks.sh |
 | `context-readiness.sh` | `[E]` | SessionStart | SessionStart hook | SPEC-003, SPEC-005, SPEC-010 +7 | test-adopt.sh, test-hooks.sh, test-install-modules.sh +1 |
 | `harvest.sh` | `[E]` | PreCompact | PreCompact / SessionEnd hook, function-named port of ops-toolkit's | SPEC-194, SPEC-196, SPEC-245 +1 | test-install-modules.sh, test-kit-foldin-hooks.sh |
-| `intake-sweep.sh` | `[E]` | - | thin shim over intake-sweep.py (backlog-stage.sh precedent). | SPEC-200 | test-intake-sweep.sh |
+| `intake-sweep.sh` | `[E]` | - | thin shim over intake-sweep.py (backlog-stage.sh precedent). | SPEC-200 | test-board-promote.sh, test-intake-sweep.sh |
 | `money-gate.sh` | `[E]` | PreToolUse | PreToolUse(Edit\|Write\|MultiEdit) hook, function-named port of | SPEC-232 | test-install-clis.sh, test-install-modules.sh, test-learn-propose.sh +1 |
 | `notification.sh` | `[E]` | Notification | Notification hook | SPEC-032, SPEC-084, SPEC-196 +1 | test-hooks.sh, test-install-modules.sh |
 | `output-offload.sh` | `[E]` | PostToolUse | PostToolUse. When a tool returns more than ~OFFLOAD_MAX_TOKENS tokens, | - | test-hooks.sh, test-install-modules.sh |

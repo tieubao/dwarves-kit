@@ -77,6 +77,26 @@ def clean(s):
     return s.replace("|", "/").strip()
 
 
+def _norm_url(s):
+    """Collapse whitespace and drop one trailing slash, so two renderings of
+    the same URL compare equal."""
+    return re.sub(r"\s+", " ", s.strip()).rstrip("/")
+
+
+def judgment_free(b):
+    """True when a block's Intent is nothing but its own source URL: the
+    auto-sweep pipeline (intake-sweep) puts the raw link in Approach for
+    URL-shaped candidates, so no human reasoning ever went into Intent.
+    Checks Source too for well-formed blocks that put the URL there."""
+    intent = _norm_url(b["fields"].get("Intent", ""))
+    if not intent.startswith(("http://", "https://")):
+        return False
+    return intent in (
+        _norm_url(b["fields"].get("Source", "")),
+        _norm_url(b["fields"].get("Approach", "")),
+    )
+
+
 def make_row(cid, b):
     f = b["fields"]
     notes = (
@@ -153,6 +173,16 @@ def main(argv):
         open(STAGING, "w", encoding="utf-8").write(text)
         print(f"rejected {len(chosen)} candidate(s).")
         return 0
+
+    refused = [b for b in chosen if judgment_free(b)]
+    for b in refused:
+        print(f"refused {b['title']!r}: Intent is nothing but the source URL, "
+              "no judgment was exercised; route it through the digest / "
+              "work-intake intake door instead of board promote.", file=sys.stderr)
+    refused_ids = {id(b) for b in refused}
+    chosen = [b for b in chosen if id(b) not in refused_ids]
+    if not chosen:
+        return 1
 
     if not os.path.isfile(BACKLOG):
         print(f"board not found: {BACKLOG}", file=sys.stderr)
