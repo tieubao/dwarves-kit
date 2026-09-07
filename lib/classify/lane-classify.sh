@@ -57,7 +57,7 @@ _hard_re=(
   'external (api|provider|service)|payment|billing|webhook|provider sdk|\bqueue(s)?\b|email send'
   'api contract|response envelope|public (api|contract)|client[ -]visible|breaking change'
   'weaken[s]? .*validation|remove[s]? .*validation|disabl[a-z]* .*(check|guard|validation)'
-  '\bhook(s)?\b|gate-ledger|ship-gate|lane-classify|lane-telemetry|mega-merge|stack-merge|proof-ledger|kit-log-dir|orchestrate\.sh|role-classify|goal-drafts|proof-gate|task-type-classify|backlog\.sh|goal-registry|dispatch-gate|install\.sh|adopt\.sh|workflow\.md|adopt @|/?kit:adopt|adopt(s|ed|ing)? .{0,30}(agents?\.md|contract|kit|loader|marker|workflow|gate)|gate machinery|the kit.{0,12}(lane|gate|machinery|classifier)'
+  'hooks/|hooks\.json|\bhook(s)?\b.{0,30}(kit|machinery|enforcement|gate-ledger|ship-gate|lane-classify)|the kit.{0,30}\bhook(s)?\b|gate-ledger|ship-gate|lane-classify|lane-telemetry|mega-merge|stack-merge|proof-ledger|kit-log-dir|orchestrate\.sh|role-classify|goal-drafts|proof-gate|task-type-classify|backlog\.sh|goal-registry|dispatch-gate|install\.sh|adopt\.sh|workflow\.md|adopt @|/?kit:adopt|adopt(s|ed|ing)? .{0,30}(agents?\.md|contract|kit|loader|marker|workflow|gate)|gate machinery|the kit.{0,12}(lane|gate|machinery|classifier)'
 )
 # Soft flags (counted; 4+ -> full, 2-3 -> normal-noted). name <-> regex, index-aligned.
 _soft_name=(cross-platform existing-behavior weak-proof multi-domain concurrency)
