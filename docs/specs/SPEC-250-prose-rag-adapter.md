@@ -1,6 +1,6 @@
 # Spec: prose-rag adapter
 Generated: 2026-09-07
-Status: APPROVED
+Status: SHIPPED (dwarves-kit #516)
 Lane: normal
 References: `bin/prose-rag` (the stable consumer entrypoint whose resolution order changes; keep every exit contract it states in its header); `lib/config/config.sh` `_seam_target_resolves` binary kind (the same `PROSE_RAG_BIN` then `command -v prose-rag` order the seams report already uses, DEC-009/DEC-010 of SPEC-249); context-kit `src/prose-rag` (the crate this adapter now points at; CK-7).
 
