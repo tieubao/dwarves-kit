@@ -72,3 +72,11 @@ Output (excerpt): negctl `Verdict: PASS`; with the fence disabled the outside-HO
 Verdict: RED-as-expected; the shared worktree was never mutated.
 
 Proof class: behavioral (`config seams`, `wrap knowledge-root`, `wrap stage`, `staging-format.py stage` change what the kit does); the green run above exercises the primary flows directly, the negative controls bite on both the config and the wrap side.
+
+## INTEGRATION (a933149)
+
+Command: the spec's `## Verification` line verbatim, plus `grep -n 'kit-log-dir' commands/wrap.md`, `bash bin/config seams`, `bash bin/wrap knowledge-root .`, and the Step 7a walk (rid, log dir, run log, DEBT grep)
+Exit: 0
+Output (excerpt): first pass FAIL:fixable, one wiring gap (Step 7a ran the source-only `kit-log-dir.sh` as a command, so the step could never reach the classifier); fixed in a933149; second pass PASS: 5/5 components reach their activation point, 4/4 chains connected, seven suites green, seams prints five rows, knowledge-root falls back to `<worktree>/.claude/memory`, 7a on this run would call `significance-classify.sh record estate-seams`.
+Verdict: PASS
+Re-audit: folded into the battery (acceptance-verifier re-executes the suite and the After-state commands in fresh context).
