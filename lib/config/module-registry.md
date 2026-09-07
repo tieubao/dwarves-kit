@@ -252,6 +252,7 @@ single-reader fence). No env vars; per-repo values live in `.kit.toml [sync]`.
 | PROSE_RAG_INJECT | env-only | unset (hook inert) | [impl] | prose_rag | The engine's own opt-in master switch for the recall-inject hook , deliberately NOT `modules.prose_rag` (that toggle only gates hook *install*, this gates whether the installed hook actually fires). |
 | PROSE_RAG_CORPUS | env-only | unset (index skips clean) | [impl] | prose_rag | Colon-separated corpus dirs/files for `prose-rag index` (adapter-default invariant: no personal path in the kit). Unset with no `--corpus` = unconfigured consumer -> `index` exits 0, db untouched (the shipped kit-weekly `prose-rag-index` job stays silent-green). Under launchd, supplied via `~/.config/kit-weekly/env`. |
 | MONEY_GATE_REPOS | env-only | (unset) | [impl] | money_gate | Colon-separated list of repo names the guard treats as financial; hook is inert (exits 0) without it. |
+| PROSE_RAG_BIN | env-only | `prose-rag` on PATH | [consumer] | prose_rag | Path to the `prose-rag` binary (context-kit fills this). `config seams` resolves the `binary` kind: `${PROSE_RAG_BIN:-}` if set must be executable, else `command -v prose-rag`. Unset with nothing on PATH means the overlay is not installed, not an error. |
 
 ### precedent (`precedent find` inventory surface, no install module)
 
@@ -265,6 +266,13 @@ single-reader fence). No env vars; per-repo values live in `.kit.toml [sync]`.
 |---|---|---|---|---|---|
 | - | wrap.activity_log | `""` | [consumer] | wrap | Absolute or `~`-prefixed path to the operator's own activity-log file, resolved with `kit_config_get_root` (the operator `kit.toml` or the kit-root `kit.toml` ONLY; a project `.kit.toml` is never read for this key because it names a file the kit writes to, `kit-config.sh:75-90`). Its resolved realpath must sit under `$HOME`'s realpath and name an existing regular file, else `wrap log` exits 1 naming the resolved path. Empty means `wrap log` prints the line and reports that nothing was written, exit 0. |
 | - | wrap.before | `""` | [consumer] | wrap | Name of a skill `/kit:wrap` invokes FIRST, before step 0, resolved with `kit_config_get_root` (the operator `kit.toml` or the kit-root `kit.toml` ONLY; a project `.kit.toml` is never read for this key because it names code the command runs and a project toml rides inside an untrusted PR, `kit-config.sh:75-90`). The skill's report lines fold into the wrap report after its `FYI` line. Empty means no skill runs. |
+| KIT_SKILL_DIRS | env-only | `$HOME/.claude/skills` plus `${CLAUDE_PLUGIN_ROOT:-}/skills` when set | [consumer] | wrap | Colon-separated list of skill directories `config seams` searches for a `skill` kind row's `SKILL.md` (e.g. `wrap.before`). Entries whose realpath does not sit under `$HOME` are dropped, because a repo `.envrc` can set this. Not read by any code yet; `config seams` (TASK-002) is the first consumer. |
+
+### knowledge (context tree root, no install module)
+
+| Env var | kit.toml key | Default | Status | Module | Doc |
+|---|---|---|---|---|---|
+| - | knowledge.root | `""` | [consumer] | wrap | Absolute or `~`-prefixed path to the context tree root (context-kit fills this), resolved with `kit_config_get_root` (the operator `kit.toml` or the kit-root `kit.toml` ONLY; a project `.kit.toml` is never read for this key because it names a tree outside the repo, `kit-config.sh:75-90`). Empty means repo-local: knowledge notes stay under `<repo>/.claude/memory/`. Filled, repo knowledge files land under `<root>/projects/<repo-basename>/`. |
 
 ### web_drift (skill knob, no install module)
 
@@ -338,6 +346,22 @@ against any of these bare tokens as covered without a registry row.
 | QUEUE_SH | `lib/queue/watch-board.sh`: computed `$WATCH_DIR/queue.sh`, script-local sibling path, never env-read (same shape as `MEGA_SH`). |
 | PANE_VIEWER_ALLOWED | `lib/queue/orchestrate.sh`: a hardcoded allowlist string, not itself env-read; it validates `PANE_VIEWER`. |
 | STATS_DB_REMOVED | Dead/vestigial test-fixture token, see its row above , no product reader exists. Kept OUT of the drift-fail set (registered above instead of silently dropped, per the scope fence) but also allowlisted so the lint does not double-count it as a live undocumented knob. |
+
+## Seams
+
+The cross-kit hand-off points: existing `[consumer]` registry rows above, each tagged
+with a resolution kind and the overlay expected to fill it. This table sits OUTSIDE
+`_registry_rows`' window (it ends at `## Allowlist`), so it never doubles as a fake
+registry row. `bin/config seams` resolves each row and reports its state; the default,
+module, and description come from the registry rows above and are not repeated here.
+
+| Key | Kind | Filled by |
+|---|---|---|
+| wrap.before | skill | learning-kit concept flush, or the operator |
+| wrap.activity_log | file | operator |
+| precedent.registry | file | operator |
+| knowledge.root | dir | context-kit |
+| PROSE_RAG_BIN | binary | context-kit |
 
 ## Known gaps (documented, not enforced by this lint , out of this sub-goal's scope)
 

@@ -189,3 +189,14 @@ before = ""                     # [consumer] name of a skill `/kit:wrap` invokes
                                  #        this key, because it names code the command runs. The
                                  #        skill's report lines fold into the wrap report after its
                                  #        `FYI` line. Empty = no skill runs, which is the default.
+
+[knowledge]                     # context tree root for repo knowledge notes (context-kit fills this)
+root = ""                       # [consumer] absolute or ~-prefixed path to the context tree
+                                 #        root. Read from the operator `kit.toml` or the
+                                 #        KIT-ROOT `kit.toml` ONLY; a project `.kit.toml` is
+                                 #        never read for this key, because it names a tree
+                                 #        outside the repo. Empty means repo-local: knowledge
+                                 #        notes stay under `<repo>/.claude/memory/`, same as a
+                                 #        dwarves-kit-only install today. Filled, repo knowledge
+                                 #        files land under `<root>/projects/<repo-basename>/`.
+                                 #        `~` expands the same way `wrap.activity_log` does.
