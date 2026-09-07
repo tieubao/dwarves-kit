@@ -81,7 +81,7 @@ echo '{"window":{"days":30,"megas":null,"rids":[],"n_rids":0},"signals":[]}' > "
 mock_interp '[{"title":"should not appear","intent":"x","approach":"y","u":"lo","f":"lo","home":"","signal":"S1"}]'
 OUT="$(python3 "$PROPOSE" --aggregate-file "$AGG" 2>&1)"; RC=$?
 assert_true "honest-empty: exit 0" "$([ $RC -eq 0 ]; echo $?)"
-assert_true "honest-empty: prints 0 candidates" "$(echo "$OUT" | grep -q '0 candidates'; echo $?)"
+assert_true "honest-empty: prints 0 candidates" "$({ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '0 candidates'; echo $?)"
 assert_true "honest-empty: staging file NOT created" "$([ ! -f "$STAGING" ]; echo $?)"
 
 # ============================================================
@@ -95,7 +95,7 @@ OUT="$(python3 "$PROPOSE" --aggregate-file "$AGG" 2>&1)"
 N2="$(grep -c '## \[staged\]' "$STAGING")"
 assert_true "idempotency: first run staged exactly 1" "$([ "$N1" -eq 1 ]; echo $?)"
 assert_true "idempotency: second run added nothing" "$([ "$N1" -eq "$N2" ]; echo $?)"
-assert_true "idempotency: re-run reports duplicate drop" "$(echo "$OUT" | grep -q 'duplicate'; echo $?)"
+assert_true "idempotency: re-run reports duplicate drop" "$({ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q 'duplicate'; echo $?)"
 
 # ============================================================
 echo "== grounding drop: a hypothesis citing an unknown signal id is dropped =="
@@ -104,7 +104,7 @@ setup
 mock_interp '[{"title":"Ungrounded proposal","intent":"x","approach":"y","u":"lo","f":"lo","home":"","signal":"S99"}]'
 OUT="$(python3 "$PROPOSE" --aggregate-file "$AGG" 2>&1)"
 assert_true "grounding: ungrounded proposal NOT staged" "$([ ! -f "$STAGING" ] || ! grep -q 'Ungrounded proposal' "$STAGING"; echo $?)"
-assert_true "grounding: reports ungrounded drop" "$(echo "$OUT" | grep -q '1 ungrounded'; echo $?)"
+assert_true "grounding: reports ungrounded drop" "$({ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '1 ungrounded'; echo $?)"
 
 # ============================================================
 echo "== adversarial drop: a REFUTED hypothesis is dropped (fail-closed also drops garbled) =="
@@ -114,7 +114,7 @@ mock_interp '[{"title":"Refuted proposal","intent":"x","approach":"y","u":"mid",
 export LEARN_PROPOSE_VERIFIER="$TD/verify-refute.sh"
 OUT="$(python3 "$PROPOSE" --aggregate-file "$AGG" 2>&1)"
 assert_true "adversarial: REFUTED proposal NOT staged" "$([ ! -f "$STAGING" ] || ! grep -q 'Refuted proposal' "$STAGING"; echo $?)"
-assert_true "adversarial: reports refuted drop" "$(echo "$OUT" | grep -q '1 refuted'; echo $?)"
+assert_true "adversarial: reports refuted drop" "$({ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '1 refuted'; echo $?)"
 setup
 mock_interp '[{"title":"Garbled-verdict proposal","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"}]'
 export LEARN_PROPOSE_VERIFIER="$TD/verify-garbled.sh"
@@ -173,9 +173,9 @@ python3 "$SF" render > "$TD/block.md" <<'EOF'
 {"title":"Round trip","intent":"i","approach":"a","u":"hi","f":"lo","home":"h","source":"learn propose 2026-07-12 | lens=L figure=\"F\" rids=r1"}
 EOF
 PARSED="$(python3 "$SF" parse "$TD/block.md" 2>&1)"
-assert_true "round-trip: state is staged" "$(echo "$PARSED" | grep -q '\"state\": \"staged\"'; echo $?)"
-assert_true "round-trip: title recovered" "$(echo "$PARSED" | grep -q '\"title\": \"Round trip\"'; echo $?)"
-assert_true "round-trip: Source field recovered" "$(echo "$PARSED" | grep -q 'lens=L figure'; echo $?)"
+assert_true "round-trip: state is staged" "$({ trap '' PIPE; echo "$PARSED" 2>/dev/null || :; } | grep -q '\"state\": \"staged\"'; echo $?)"
+assert_true "round-trip: title recovered" "$({ trap '' PIPE; echo "$PARSED" 2>/dev/null || :; } | grep -q '\"title\": \"Round trip\"'; echo $?)"
+assert_true "round-trip: Source field recovered" "$({ trap '' PIPE; echo "$PARSED" 2>/dev/null || :; } | grep -q 'lens=L figure'; echo $?)"
 
 # ============================================================
 echo "== add-backlog compatibility: a staged block parses under the (unmodified) reader =="
@@ -184,7 +184,7 @@ setup
 mock_interp '[{"title":"Compat check","intent":"i","approach":"a","u":"mid","f":"mid","home":"dwarves-kit","signal":"S1"}]'
 python3 "$PROPOSE" --aggregate-file "$AGG" >/dev/null 2>&1
 LIST="$(BACKLOG_STAGE_STAGING="$STAGING" BACKLOG_STAGE_BACKLOG="$BACKLOG" python3 "$KIT_DIR/lib/board/bin/add-backlog" 2>&1)"
-assert_true "compat: add-backlog lists the staged block as a promotable row" "$(echo "$LIST" | grep -q 'Compat check'; echo $?)"
+assert_true "compat: add-backlog lists the staged block as a promotable row" "$({ trap '' PIPE; echo "$LIST" 2>/dev/null || :; } | grep -q 'Compat check'; echo $?)"
 
 # ============================================================
 echo "== rid fallback: TOKENS still land when the gate-rid call fails (master/detached) =="
@@ -204,7 +204,7 @@ print(rid)
 print("OK" if rid == "learn-propose-" + datetime.date.today().isoformat() else "BAD")
 PY
 )"
-assert_true "rid: falls back to a date slug when gate-rid is unavailable" "$(echo "$RID_OUT" | grep -q '^OK$'; echo $?)"
+assert_true "rid: falls back to a date slug when gate-rid is unavailable" "$({ trap '' PIPE; echo "$RID_OUT" 2>/dev/null || :; } | grep -q '^OK$'; echo $?)"
 
 # ============================================================
 echo "== empty-figure grounding: a signal present but with an empty figure is not evidence =="
@@ -214,7 +214,7 @@ echo '{"window":{"days":30,"megas":null,"rids":["r1"],"n_rids":1},"signals":[{"i
 mock_interp '[{"title":"Empty-figure proposal","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"}]'
 OUT="$(python3 "$PROPOSE" --aggregate-file "$AGG" 2>&1)"
 assert_true "empty-figure: a hypothesis citing an empty-figure signal is dropped ungrounded" "$([ ! -f "$STAGING" ] || ! grep -q 'Empty-figure proposal' "$STAGING"; echo $?)"
-assert_true "empty-figure: reported as ungrounded" "$(echo "$OUT" | grep -q '1 ungrounded'; echo $?)"
+assert_true "empty-figure: reported as ungrounded" "$({ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '1 ungrounded'; echo $?)"
 
 # ============================================================
 echo "== figure sanitization: a multi-line / pipe-laden figure stays one Source line =="

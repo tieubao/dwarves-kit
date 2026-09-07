@@ -89,10 +89,10 @@ assert "the understanding-axis section names ADR-0031" $RC
 
 RC=0
 SECTION="$(grep -A60 -E '^## The understanding axis' "$WORKFLOW")"
-echo "$SECTION" | grep -qiE 'design record'      || RC=1
-echo "$SECTION" | grep -qiE 'explain'            || RC=1
-echo "$SECTION" | grep -qiE 'quiz-gate|quiz'     || RC=1
-echo "$SECTION" | grep -qiE 'weekend.?batch'     || RC=1
+{ trap '' PIPE; echo "$SECTION" 2>/dev/null || :; } | grep -qiE 'design record'      || RC=1
+{ trap '' PIPE; echo "$SECTION" 2>/dev/null || :; } | grep -qiE 'explain'            || RC=1
+{ trap '' PIPE; echo "$SECTION" 2>/dev/null || :; } | grep -qiE 'quiz-gate|quiz'     || RC=1
+{ trap '' PIPE; echo "$SECTION" 2>/dev/null || :; } | grep -qiE 'weekend.?batch'     || RC=1
 assert "section covers design-record + explain + quiz-gate + weekend-batch (BEFORE + AFTER + debt-budget model)" $RC
 
 RC=0; grep -qiE 'ADR-0031' "$AGENTS" && grep -qiE 'advisory' "$AGENTS" || RC=1

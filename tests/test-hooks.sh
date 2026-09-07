@@ -37,7 +37,7 @@ assert_exit() {
 assert_output_contains() {
   local NAME="$1" EXPECTED="$2" ACTUAL="$3"
   TOTAL=$((TOTAL + 1))
-  if echo "$ACTUAL" | grep -q "$EXPECTED"; then
+  if { trap '' PIPE; echo "$ACTUAL" 2>/dev/null || :; } | grep -q "$EXPECTED"; then
     echo -e "  ${GREEN}PASS${NC} $NAME"
     PASS=$((PASS + 1))
   else
@@ -49,7 +49,7 @@ assert_output_contains() {
 assert_output_not_contains() {
   local NAME="$1" UNEXPECTED="$2" ACTUAL="$3"
   TOTAL=$((TOTAL + 1))
-  if echo "$ACTUAL" | grep -q "$UNEXPECTED"; then
+  if { trap '' PIPE; echo "$ACTUAL" 2>/dev/null || :; } | grep -q "$UNEXPECTED"; then
     echo -e "  ${RED}FAIL${NC} $NAME (output should NOT contain '$UNEXPECTED')"
     FAIL=$((FAIL + 1))
   else

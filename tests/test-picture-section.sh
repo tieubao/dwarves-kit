@@ -111,7 +111,7 @@ LANE_4="$(spec_lane "$PROTOTYPE_FULL")"
 BODY_4="$(picture_section_body_nonblank "$PROTOTYPE_FULL")"
 VERDICT_4="$(reviewer4_picture_verdict "$PROTOTYPE_FULL")"
 assert_eq "fixture 4 is Lane: full" "full" "$LANE_4"
-RC=0; echo "$BODY_4" | grep -qF 'prototype/' || RC=1
+RC=0; { trap '' PIPE; echo "$BODY_4" 2>/dev/null || :; } | grep -qF 'prototype/' || RC=1
 assert_eq "fixture 4's Picture section names a prototype/<name> branch" 0 $RC
 assert_eq "Reviewer 4 PASSES a full-lane spec whose Picture points at a prototype run" "PASS" "$VERDICT_4"
 
@@ -148,7 +148,7 @@ assert_eq "commands/spec-validate.md Reviewer 4 names the picture-vs-task-list l
 # second one).
 RC=0
 PICTURE_BLOCK="$(awk '/Picture presence/{flag=1} flag{print} flag&&/^- /&&!/Picture/{exit}' "$VALIDATE_MD")"
-echo "$PICTURE_BLOCK" | grep -qiE 'BLOCKING' && RC=1
+{ trap '' PIPE; echo "$PICTURE_BLOCK" 2>/dev/null || :; } | grep -qiE 'BLOCKING' && RC=1
 assert_eq "Reviewer 4's Picture bullets carry no BLOCKING marker (Reviewer 6 stays the only one)" 0 $RC
 
 RC=0; grep -qE 'Reviewer 6.*BLOCKING' "$VALIDATE_MD" || RC=1

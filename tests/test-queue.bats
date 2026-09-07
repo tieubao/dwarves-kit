@@ -83,7 +83,7 @@ jverdict() { awk -F'\t' -v s="$1" '$2==s{print $3}' "$JOURNAL"; }    # slug -> v
 
   run bash "$QUEUE" run "$WORK/q.tsv" --dry-run
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "WOULD LAUNCH"
+  { trap '' PIPE; echo "$output" 2>/dev/null || :; } | grep -q "WOULD LAUNCH"
   [ ! -f "$JOURNAL" ] || [ -z "$(jverdict d3)" ]        # no run row for d3
   ! grep -q "type slug=d3" "$QLOG"                       # no send-keys happened
 }
@@ -198,7 +198,7 @@ jverdict() { awk -F'\t' -v s="$1" '$2==s{print $3}' "$JOURNAL"; }    # slug -> v
   [ "$(jverdict err1)" = "error" ]
   [ "$(jverdict err2)" = "error" ]
   [ -z "$(jverdict err3)" ]                     # row 3 never attempted -> no journal row
-  echo "$output" | grep -q "STOP THE NIGHT"
+  { trap '' PIPE; echo "$output" 2>/dev/null || :; } | grep -q "STOP THE NIGHT"
 }
 
 # NC4 journal-done-idempotence: journal preseeded `slug done` -> row skipped, no window opened
@@ -211,7 +211,7 @@ jverdict() { awk -F'\t' -v s="$1" '$2==s{print $3}' "$JOURNAL"; }    # slug -> v
 
   run bash "$QUEUE" run "$WORK/q.tsv"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "already done"
+  { trap '' PIPE; echo "$output" 2>/dev/null || :; } | grep -q "already done"
   ! grep -q "new-window slug=idem1" "$QLOG"             # never opened a window
   [ "$(grep -c 'idem1' "$JOURNAL")" -eq 1 ]             # no second row appended
 }
@@ -273,7 +273,7 @@ jverdict() { awk -F'\t' -v s="$1" '$2==s{print $3}' "$JOURNAL"; }    # slug -> v
   [ "$(jverdict s1n)" = "stalled" ]
   [ "$(jverdict s2n)" = "stalled" ]
   [ -z "$(jverdict s3n)" ]                       # row 3 never attempted -> no journal row
-  echo "$output" | grep -q "STOP THE NIGHT"
+  { trap '' PIPE; echo "$output" 2>/dev/null || :; } | grep -q "STOP THE NIGHT"
 }
 
 # =============================================================================================
@@ -352,7 +352,7 @@ jverdict() { awk -F'\t' -v s="$1" '$2==s{print $3}' "$JOURNAL"; }    # slug -> v
   seed_dead w1
   QUEUE_WAIT_POLL_SECS=0 run bash "$QUEUE" wait w1
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "	w1	done	"
+  { trap '' PIPE; echo "$output" 2>/dev/null || :; } | grep -q "	w1	done	"
 }
 
 # W2 new terminal row lands mid-wait (window alive) -> exit 0, prints the new row.
@@ -361,7 +361,7 @@ jverdict() { awk -F'\t' -v s="$1" '$2==s{print $3}' "$JOURNAL"; }    # slug -> v
   ( sleep 1; printf '%s\tw2\tgated\tneeds-human\n' "2026-08-10T00:00:01Z" >> "$JOURNAL" ) &
   QUEUE_WAIT_POLL_SECS=1 run bash "$QUEUE" wait w2 --timeout 10
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "	w2	gated	"
+  { trap '' PIPE; echo "$output" 2>/dev/null || :; } | grep -q "	w2	gated	"
 }
 
 # W3 window dies with no terminal row -> exit 1, residue to stderr.
@@ -370,7 +370,7 @@ jverdict() { awk -F'\t' -v s="$1" '$2==s{print $3}' "$JOURNAL"; }    # slug -> v
   seed_dead w3
   QUEUE_WAIT_POLL_SECS=0 run bash "$QUEUE" wait w3
   [ "$status" -eq 1 ]
-  echo "$output" | grep -q "gone with no terminal journal row"
+  { trap '' PIPE; echo "$output" 2>/dev/null || :; } | grep -q "gone with no terminal journal row"
 }
 
 # W4 timeout: window alive, no row ever -> exit 2.
@@ -378,7 +378,7 @@ jverdict() { awk -F'\t' -v s="$1" '$2==s{print $3}' "$JOURNAL"; }    # slug -> v
   : > "$JOURNAL"                                   # window alive (no .dead), never a row
   QUEUE_WAIT_POLL_SECS=1 run bash "$QUEUE" wait w4 --timeout 1
   [ "$status" -eq 2 ]
-  echo "$output" | grep -q "timeout after 1s"
+  { trap '' PIPE; echo "$output" 2>/dev/null || :; } | grep -q "timeout after 1s"
 }
 
 # W5 bad input: a slug with a tmux/path separator, and a missing slug -> usage exit 64.

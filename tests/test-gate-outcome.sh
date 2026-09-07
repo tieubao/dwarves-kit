@@ -40,7 +40,7 @@ gl outcome rt ship start >/dev/null 2>&1
 sleep 1
 gl outcome rt ship end caught=true >/dev/null 2>&1
 RT="$(gl outcome-read rt ship 2>/dev/null)"
-echo "$RT" | grep -q '^ship caught=true dur_s=' && assert "AC1 round-trip: reads back phase+caught+dur_s" 0 || assert "AC1 round-trip: reads back phase+caught+dur_s (got '$RT')" 1
+{ trap '' PIPE; echo "$RT" 2>/dev/null || :; } | grep -q '^ship caught=true dur_s=' && assert "AC1 round-trip: reads back phase+caught+dur_s" 0 || assert "AC1 round-trip: reads back phase+caught+dur_s (got '$RT')" 1
 DUR="$(echo "$RT" | sed -nE 's/.*dur_s=([0-9]+).*/\1/p')"
 [ -n "$DUR" ] && [ "$DUR" -ge 1 ] 2>/dev/null && assert "AC1 duration derivable (dur_s>=1 after a 1s bracket)" 0 || assert "AC1 duration derivable (got dur_s='$DUR')" 1
 

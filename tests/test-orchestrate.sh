@@ -70,8 +70,8 @@ out=$(bash "$ORCH" next "$D")
 
 # ============================ TEST 2: dry-run plan ============================
 out=$(bash "$ORCH" run "$D" --dry-run)
-echo "$out" | grep -q 'SG-01 (auto)' && echo "$out" | grep -q 'SG-02 (auto)' \
-  && echo "$out" | grep -q 'STOP at SG-03 (gate' \
+{ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'SG-01 (auto)' && { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'SG-02 (auto)' \
+  && { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'STOP at SG-03 (gate' \
   && pass "dry-run lists SG-01, SG-02, STOP at gate SG-03" || { fail "dry-run plan wrong"; echo "$out"; }
 # dry-run must NOT invoke claude (no box flipped, no handoff written)
 grep -q '^- \[ \] SG-01' "$D/ROADMAP.md" && [ ! -f "$D/HANDOFF.md" ] \
@@ -213,9 +213,9 @@ EOF
 # TEST 7: --dry-run prints the chosen tier per sub-goal (and "inherit" when absent).
 DR="$TMP/mgr"; mk_routed "$DR"
 out=$(bash "$ORCH" run "$DR" --dry-run)
-echo "$out" | grep -qE 'SG-01 \(auto\).*model: sonnet, effort: low' \
+{ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -qE 'SG-01 \(auto\).*model: sonnet, effort: low' \
   && pass "dry-run shows SG-01 routed model/effort" || { fail "dry-run SG-01 tier wrong"; echo "$out"; }
-echo "$out" | grep -qE "SG-02 \(auto\).*model: ${DEF_MODEL:-inherit}, effort: inherit" \
+{ trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -qE "SG-02 \(auto\).*model: ${DEF_MODEL:-inherit}, effort: inherit" \
   && pass "dry-run shows SG-02 ${DEF_MODEL:-inherit} (no hints)" || { fail "dry-run SG-02 inherit wrong"; echo "$out"; }
 
 # TEST 8: real run passes --model/--effort for the hinted sub-goal, none for the inherit one.
@@ -256,8 +256,8 @@ fi
 # 9a: --step --dry-run annotates the plan with pause points (no claude invoked).
 DS="$TMP/mgs"; mk_megagoal "$DS"
 out=$(bash "$ORCH" run "$DS" --step --dry-run)
-{ echo "$out" | grep -q 'pause for the operator after each sub-goal' \
-  && echo "$out" | grep -q '\[--step\] pause here'; } \
+{ { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'pause for the operator after each sub-goal' \
+  && { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q '\[--step\] pause here'; } \
   && pass "--step --dry-run shows pause points" || { fail "--step dry-run missing pauses"; echo "$out"; }
 grep -q '^- \[ \] SG-01' "$DS/ROADMAP.md" && pass "--step --dry-run did not execute" || fail "--step dry-run had side effects"
 
@@ -317,7 +317,7 @@ bash "$ORCH" run "$DS" --bogus > "$TMP/bogus.out" 2>&1; rc=$?
 # 11a: detect default -> backlog.sh present => both; dry-run renders the board + derives BOARD.md.
 DB="$TMP/mgb"; mk_megagoal "$DB"
 out=$(bash "$ORCH" run "$DB" --dry-run)
-{ echo "$out" | grep -q 'board mode: both' && [ -f "$DB/BOARD.md" ] && grep -q '| SG-01 |' "$DB/BOARD.md"; } \
+{ { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'board mode: both' && [ -f "$DB/BOARD.md" ] && grep -q '| SG-01 |' "$DB/BOARD.md"; } \
   && pass "detect default -> both; dry-run derives BOARD.md" || { fail "board detect/derive wrong"; echo "$out"; }
 # dry-run must NOT write an events.log (board derived from ROADMAP only, no execution)
 [ ! -f "$DB/.orchestrate/events.log" ] && pass "dry-run board writes no events.log (no execution)" || fail "dry-run wrote events"
@@ -325,13 +325,13 @@ out=$(bash "$ORCH" run "$DB" --dry-run)
 # 11b: roadmap fallback -> no kanban tooling => roadmap mode, no board rendered.
 DBF="$TMP/mgbf"; mk_megagoal "$DBF"
 out=$(BACKLOG_LIB="$TMP/nope.sh" bash "$ORCH" run "$DBF" --dry-run)
-{ ! echo "$out" | grep -q 'board mode' && [ ! -f "$DBF/BOARD.md" ]; } \
+{ ! { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'board mode' && [ ! -f "$DBF/BOARD.md" ]; } \
   && pass "no backlog.sh -> detect fail-safes to roadmap (no board)" || { fail "roadmap fallback wrong"; echo "$out"; }
 
 # 11c: explicit --board=roadmap suppresses the board even when backlog.sh is present.
 DBR="$TMP/mgbr"; mk_megagoal "$DBR"
 out=$(bash "$ORCH" run "$DBR" --board=roadmap --dry-run)
-{ ! echo "$out" | grep -q 'board mode' && [ ! -f "$DBR/BOARD.md" ]; } \
+{ ! { trap '' PIPE; echo "$out" 2>/dev/null || :; } | grep -q 'board mode' && [ ! -f "$DBR/BOARD.md" ]; } \
   && pass "--board=roadmap suppresses the board" || { fail "--board=roadmap wrong"; echo "$out"; }
 
 # 11d: ready/blocked derivation from deps. SG-03 depends on unchecked SG-02 => blocked; SG-02 has

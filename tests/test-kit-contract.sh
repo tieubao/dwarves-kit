@@ -145,7 +145,7 @@ WIRING_EXEMPT='session-observe|session-report|session-semantic|session-intel|ses
 unwired=""
 while IFS= read -r exe; do
   base="$(basename "$exe")"
-  echo "$base" | grep -qE "^($WIRING_EXEMPT)$" && continue
+  { trap '' PIPE; echo "$base" 2>/dev/null || :; } | grep -qE "^($WIRING_EXEMPT)$" && continue
   # A deprecated-alias shim (it warns and execs the canonical name) is reachable BY DEFINITION:
   # it exists so an old call-site keeps working. Requiring a bin/ shim for the shim is silly.
   grep -q 'is deprecated, use' "$exe" 2>/dev/null && continue
@@ -232,10 +232,10 @@ while IFS= read -r f; do
   # two proposals out, the forged one indistinguishable to `board promote`). A copy of a
   # shared grammar is not a copy for long (found 2026-07-15).
   body="$(grep -vE '^[[:space:]]*#' "$f")"
-  echo "$body" | grep -q 'staging-format\.py\|staging_format' || { bespoke="$bespoke$f\n"; continue; }
+  { trap '' PIPE; echo "$body" 2>/dev/null || :; } | grep -q 'staging-format\.py\|staging_format' || { bespoke="$bespoke$f\n"; continue; }
   # ... and it must not ALSO define its own renderer next to that import.
-  echo "$body" | grep -qE '^[[:space:]]*def (render_block|render_candidate)\(' \
-    && ! echo "$body" | grep -qE 'sf\.render_block|\.render_block\(\{' \
+  { trap '' PIPE; echo "$body" 2>/dev/null || :; } | grep -qE '^[[:space:]]*def (render_block|render_candidate)\(' \
+    && ! { trap '' PIPE; echo "$body" 2>/dev/null || :; } | grep -qE 'sf\.render_block|\.render_block\(\{' \
     && bespoke="$bespoke$f(defines-its-own)\n"
 # No --include: the kit's executables are EXTENSIONLESS by house rule, so filtering to
 # *.py/*.sh skipped session-audit, one of the very writers this rule governs. C6 had the same
@@ -366,7 +366,7 @@ nc1="$(cc_env "$TMP/nc")"
 [ "$(echo "$nc1" | grep -c CC_SNEAKY)" -eq 3 ] && ok "C1 catches all three unexpected CC_* shapes" || bad "C1 vacuous on unexpected shapes" "(caught: $nc1)"
 # and a NEW CC_SI_* must NOT be grandfathered by the stem
 printf 'z=${CC_SI_BRAND_NEW_FOSSIL}\n' > "$TMP/nc/plant2.sh"
-echo "$(cc_env "$TMP/nc")" | grep -q CC_SI_BRAND_NEW_FOSSIL && ok "C1 does not blanket-exempt the CC_SI_ namespace" || bad "C1 grandfathers a NEW CC_SI_ var"
+{ trap '' PIPE; echo "$(cc_env "$TMP/nc")" 2>/dev/null || :; } | grep -q CC_SI_BRAND_NEW_FOSSIL && ok "C1 does not blanket-exempt the CC_SI_ namespace" || bad "C1 grandfathers a NEW CC_SI_ var"
 rm -f "$TMP/nc/plant.py" "$TMP/nc/plant.sh" "$TMP/nc/plant2.sh"
 
 # C2: an unwired executable in a module bin/ (the session-audit / skill-improve shape)
@@ -385,7 +385,7 @@ else bad "C5 vacuous on the comment-mention evasion"; fi
 printf 'def render_block(c):\n    return "## [staged] " + c["title"] + "\\n"\n' \
   > "$TMP/nc/lib/private-renderer.py"
 nc5b="$(grep -vE '^[[:space:]]*#' "$TMP/nc/lib/private-renderer.py")"
-if ! echo "$nc5b" | grep -q 'staging-format\.py\|staging_format'; then
+if ! { trap '' PIPE; echo "$nc5b" 2>/dev/null || :; } | grep -q 'staging-format\.py\|staging_format'; then
   ok "C5 catches a writer that DEFINES its own renderer (the copy that drifted)"
 else bad "C5 vacuous on the private-renderer evasion"; fi
 
