@@ -3,6 +3,15 @@
 All notable changes to dwarves-kit are documented here.
 
 ## [Unreleased]
+
+## [2.2.0] - 2026-09-07
+
+### COMPAT (contract surfaces, per forge kit-versioning.md)
+- Ledger grammar: unchanged. lanes.d plan format: unchanged. Export `schema`: unchanged (1).
+- Seam keys (new surface, additive, MINOR): `[knowledge] root`, `[wrap] before`, `[wrap] activity_log`, `[precedent] registry`, `PROSE_RAG_BIN`; every default keeps the kit working with nothing filled. `bin/config seams [--check]` reports them.
+- `prose_rag` module: the vendored crate is gone; recall now needs context-kit's `prose-rag` binary on PATH or `PROSE_RAG_BIN`. With neither, the hook stays silent and `index` skips; only an explicit query errors with the install hint.
+- Overlay floors: unchanged (learning-kit and context-kit declare `>= 2.0`; both keep passing their contract tests against this cut).
+
 - prose-rag: the module is an ADAPTER (SPEC-250). `bin/prose-rag` resolves `$PROSE_RAG_BIN` (a regular executable file) then `prose-rag` on PATH, the order `config seams` already reports for that row, and execs it; the vendored Rust crate under `lib/prose-rag/rust` is deleted, because context-kit owns the engine (`cargo install --path src/prose-rag`) and two builds of one engine drift. The three no-engine exits are unchanged: `hook` exits 0, an unconfigured `index` exits 0, any other verb prints an install hint naming context-kit's crate and exits 1. New `tests/test-prose-rag-adapter.sh`.
 - config: named cross-kit seams (SPEC-249). A `[knowledge] root` key (operator or kit-root only; empty means repo-local `.claude/memory`) tells the engine where the context tree lives; a `## Seams` join table in `lib/config/module-registry.md` tags each seam with a kind and the overlay that fills it; `bin/config seams [--check]` reports every seam as `default|filled|unresolved|absent` without executing a target, fenced the way the consumers fence (realpath under HOME, no symlink, no relative path), and `--check` gives an installer a one-bit exit. `_env_val` guards every indirect env expansion in `config.sh` against a forged registry name.
 - wrap: Step 7 `learn` owns the process half of session distill (SPEC-249): the DEBT marker via `significance-classify.sh record`, new-tool candidates through `precedent find --json` into the staging buffer, and one memory note per own-mistake incident under `bin/wrap knowledge-root`. New verbs `wrap knowledge-root <repo>` (fenced root, repo-local fallback) and `wrap stage` (paths and fences in bash, the write in `staging-format.py stage`, which dedupes over staging and board with a Unicode-aware key). Every wrap writer resolves the post-worktree-copy path before fencing it. `commands/onboard.md` and `commands/adopt.md` name the overlays and their seams.
