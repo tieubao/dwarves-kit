@@ -197,8 +197,19 @@ def in_scope(row, filt: dict | None) -> bool:
 
 
 def intake_ok(body: str, filt: dict | None) -> bool:
-    """Up-filter: may this foreign app item become a board row?"""
-    mode = (filt or {}).get("intake", "all")
+    """Up-filter: may this foreign app item become a board row?
+
+    `intake_skip_re` is a body regex (re.search, MULTILINE) that keeps an
+    item on the app whatever the intake mode says. It exists for items that
+    have their own lifecycle on the app: a member-facing support ticket
+    carries a `thread:` line, and adopting it means the next tick's
+    scope-exit archives the ticket, which the support desk then reads as
+    "ops closed it" and tells the member their ticket is solved."""
+    filt = filt or {}
+    skip = filt.get("intake_skip_re")
+    if skip and re.search(skip, body, re.MULTILINE):
+        return False
+    mode = filt.get("intake", "all")
     if mode == "all":
         return True
     if mode == "none":

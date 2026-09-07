@@ -378,7 +378,8 @@ def main(argv=None):
     ap.add_argument("--multica-workspace", help="Multica workspace UUID")
     ap.add_argument("--multica-project", help="Multica project UUID")
     ap.add_argument("--filter", action="append", default=[],
-                    help="app:key=value (key: only_tags|skip_tags|intake); "
+                    help="app:key=value (key: only_tags|skip_tags|intake|"
+                         "intake_skip_re); "
                          "repeatable; cmd_sync fills these from .kit.toml")
     ap.add_argument("--scope-exit-cap", type=int, default=20)
     ap.add_argument("--allow-scope-exit", type=int, default=0,
@@ -395,8 +396,15 @@ def main(argv=None):
                 t.strip() for t in val.split(",") if t.strip()}
         elif key == "intake":
             filters.setdefault(app, {})[key] = val.strip()
+        elif key == "intake_skip_re":
+            try:
+                re.compile(val)
+            except re.error as exc:
+                sys.exit(f"bad --filter intake_skip_re {val!r}: {exc}")
+            filters.setdefault(app, {})[key] = val
         else:
-            sys.exit(f"bad --filter key {key!r} (only_tags|skip_tags|intake)")
+            sys.exit(f"bad --filter key {key!r} "
+                     "(only_tags|skip_tags|intake|intake_skip_re)")
 
     names = [s.strip() for s in args.apps.split(",") if s.strip()]
     # before any source is built, so a refused combination never touches a
