@@ -99,11 +99,12 @@ the skill dedupe in turn; drop the research `README` skip.
 
 ## Live before / after
 
-Master's `inventory.py` and this branch's, run against the same on-disk ops-toolkit checkout:
+Master's `inventory.py` and this branch's, run against the same on-disk ops-toolkit checkout
+(the operator's, path elided here so the tree ships no personal path):
 
 ```
-python3 lib/precedent/inventory.py --root /Users/tieubao/workspace/tieubao/ops-toolkit \
-  --kit <worktree> --quiet -- discord post
+python3 lib/precedent/inventory.py --root <ops-toolkit checkout> \
+  --kit <this worktree> --quiet -- discord post
 ```
 
 BEFORE (master):
