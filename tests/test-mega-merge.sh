@@ -17,7 +17,7 @@ US=$'\037'
 PASS=0; FAIL=0; TOTAL=0
 RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
 ok() { TOTAL=$((TOTAL+1)); if [ "$2" -eq 0 ]; then echo -e "  ${GREEN}PASS${NC} $1"; PASS=$((PASS+1)); else echo -e "  ${RED}FAIL${NC} $1"; FAIL=$((FAIL+1)); fi; }
-has() { { printf '%s' "$2" 2>/dev/null || :; } | grep -qF -- "$1"; }
+has() { { trap '' PIPE; printf '%s' "$2" 2>/dev/null || :; } | grep -qF -- "$1"; }
 
 TMP="$(mktemp -d)"
 # injected gate-ledger stubs: one that passes, one that fails

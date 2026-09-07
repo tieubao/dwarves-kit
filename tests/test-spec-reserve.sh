@@ -19,7 +19,7 @@ PASS=0; FAIL=0; TOTAL=0
 ok()  { TOTAL=$((TOTAL+1)); PASS=$((PASS+1)); echo -e "  ${GREEN}PASS${NC} $1"; }
 bad() { TOTAL=$((TOTAL+1)); FAIL=$((FAIL+1)); echo -e "  ${RED}FAIL${NC} $1"; }
 eq()  { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (want '$3' got '$2')"; fi; }
-expect() { if { printf '%s' "$3" 2>/dev/null || :; } | grep -q "$2"; then ok "$1"; else bad "$1 (missing '$2' in: $3)"; fi; }
+expect() { if { trap '' PIPE; printf '%s' "$3" 2>/dev/null || :; } | grep -q "$2"; then ok "$1"; else bad "$1 (missing '$2' in: $3)"; fi; }
 # grep -c prints "0" AND exits 1 on no match, so `grep -c || echo 0` double-prints. This
 # returns a single clean integer whether or not the file exists / the pattern matches.
 count() { local c; c="$(grep -c "$1" "$2" 2>/dev/null)"; printf '%s' "${c:-0}"; }
@@ -204,7 +204,7 @@ echo "=== T13: check message byte-identical to SPEC-064 on empty ledger (review 
 R="$(mk_repo)"; RES="$R/res.log"
 MSG13="$(cd "$R" && SPEC_RESERVE_FILE="$RES" bash "$SN" check 005 2>&1)"
 expect "T13 empty-ledger TAKEN message has NO reservation clause" "seen in specs/, a branch, or a recent commit subject)" "$MSG13"
-if { printf '%s' "$MSG13" 2>/dev/null || :; } | grep -q 'reservation'; then bad "T13 empty-ledger message leaked a reservation clause"; else ok "T13 no reservation clause on empty ledger"; fi
+if { trap '' PIPE; printf '%s' "$MSG13" 2>/dev/null || :; } | grep -q 'reservation'; then bad "T13 empty-ledger message leaked a reservation clause"; else ok "T13 no reservation clause on empty ledger"; fi
 
 # ============================================================
 echo "=== T14: a normal reserve FREES the lock (no held lock, no owner leak) ==="
@@ -225,7 +225,7 @@ echo "=== T15: a FRESH (non-stale) foreign lock is RESPECTED, not stolen ==="
 R="$(mk_repo)"; RES="$R/res.log"
 mkdir -p "$(dirname "$RES")"; mkdir "$RES.lock"; printf 'foreign.owner.token' > "$RES.lock/owner"   # current mtime, foreign owner
 OUT15="$(cd "$R" && SPEC_RESERVE_MAX_TRIES=3 SPEC_RESERVE_FILE="$RES" bash "$SN" reserve 2>/dev/null; echo "rc=$?")"
-if { printf '%s' "$OUT15" 2>/dev/null || :; } | grep -qE '^[0-9]{3}$'; then bad "T15 reserve STOLE a fresh foreign lock (fail-open: $OUT15)"; else ok "T15 reserve did not steal a fresh foreign lock"; fi
+if { trap '' PIPE; printf '%s' "$OUT15" 2>/dev/null || :; } | grep -qE '^[0-9]{3}$'; then bad "T15 reserve STOLE a fresh foreign lock (fail-open: $OUT15)"; else ok "T15 reserve did not steal a fresh foreign lock"; fi
 expect "T15 bounded reserve fails loudly rather than fail-open" "rc=1" "$OUT15"
 eq "T15 the fresh foreign lock is still held" "$([ -d "$RES.lock" ] && echo held || echo free)" "held"
 eq "T15 the foreign owner token is untouched" "$(cat "$RES.lock/owner" 2>/dev/null)" "foreign.owner.token"

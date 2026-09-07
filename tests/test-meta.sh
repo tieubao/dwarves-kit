@@ -816,7 +816,7 @@ fi
 # check to the description line itself so it is not vacuously satisfied by Step 2's own text.
 TOTAL=$((TOTAL + 1))
 TPRT_DESC_LINE=$(grep -m1 '^description:' "$TPRT_CMD" 2>/dev/null || true)
-if { printf '%s' "$TPRT_DESC_LINE" 2>/dev/null || :; } | grep -qF '6 test-design lenses'; then
+if { trap '' PIPE; printf '%s' "$TPRT_DESC_LINE" 2>/dev/null || :; } | grep -qF '6 test-design lenses'; then
   echo -e "  ${GREEN}PASS${NC} test-plan-review-team.md frontmatter description says '6 test-design lenses' (SPEC-201 AC3)"
   PASS=$((PASS + 1))
 else
@@ -2216,7 +2216,7 @@ fi
 # (d) The State model section names BOTH stores side by side (draft + registry).
 SM_SECTION=$(awk '/^## State model/{f=1; print; next} f && /^## /{exit} f{print}' "$KIT_DIR/docs/architecture.md" 2>/dev/null)
 TOTAL=$((TOTAL + 1))
-if { printf '%s' "$SM_SECTION" 2>/dev/null || :; } | grep -q '\.claude/goals' && { printf '%s' "$SM_SECTION" 2>/dev/null || :; } | grep -q 'kit-goals'; then
+if { trap '' PIPE; printf '%s' "$SM_SECTION" 2>/dev/null || :; } | grep -q '\.claude/goals' && { trap '' PIPE; printf '%s' "$SM_SECTION" 2>/dev/null || :; } | grep -q 'kit-goals'; then
   echo -e "  ${GREEN}PASS${NC} architecture.md State model names both the draft store and kit-goals registry (SPEC-037)"
   PASS=$((PASS + 1))
 else
@@ -2507,9 +2507,9 @@ done
 
 CONTRACT_OUT="$(bash "$KIT_DIR/lib/gate/proof-gate.sh" contract 'build a CLI to pull data from the API' 2>/dev/null)"
 assert_true "proof-gate contract names the data-tool type" \
-  "$({ printf '%s' "$CONTRACT_OUT" 2>/dev/null || :; } | grep -q 'type=data-tool' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$CONTRACT_OUT" 2>/dev/null || :; } | grep -q 'type=data-tool' && echo 0 || echo 1)"
 assert_true "proof-gate contract names the recorded-run artifact + owning skill" \
-  "$({ printf '%s' "$CONTRACT_OUT" 2>/dev/null || :; } | grep -qi 'recorded live run' && { printf '%s' "$CONTRACT_OUT" 2>/dev/null || :; } | grep -qi 'ops-tool-shape' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$CONTRACT_OUT" 2>/dev/null || :; } | grep -qi 'recorded live run' && { trap '' PIPE; printf '%s' "$CONTRACT_OUT" 2>/dev/null || :; } | grep -qi 'ops-tool-shape' && echo 0 || echo 1)"
 assert_true "proof-gate contract upgrades a migration to stateful (class wins on rigor)" \
   "$(bash "$KIT_DIR/lib/gate/proof-gate.sh" contract 'migrate the database schema' 2>/dev/null | grep -q 'class=stateful' && echo 0 || echo 1)"
 

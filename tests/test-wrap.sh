@@ -22,8 +22,8 @@ chk() {
   if [ "$2" -eq 0 ] 2>/dev/null; then echo -e "  ${GREEN}PASS${NC} $1"; PASS=$((PASS+1))
   else echo -e "  ${RED}FAIL${NC} $1"; FAIL=$((FAIL+1)); fi
 }
-chk_has() { chk "$1" "$({ printf '%s' "$2" 2>/dev/null || :; } | grep -qF -- "$3"; echo $?)"; }
-chk_no()  { chk "$1" "$({ printf '%s' "$2" 2>/dev/null || :; } | grep -qF -- "$3" && echo 1 || echo 0)"; }
+chk_has() { chk "$1" "$({ trap '' PIPE; printf '%s' "$2" 2>/dev/null || :; } | grep -qF -- "$3"; echo $?)"; }
+chk_no()  { chk "$1" "$({ trap '' PIPE; printf '%s' "$2" 2>/dev/null || :; } | grep -qF -- "$3" && echo 1 || echo 0)"; }
 
 TMPD="$(mktemp -d "${TMPDIR:-/tmp}/dk-wrap-test.XXXXXX")"
 TMPD="$(cd "$TMPD" && pwd)"
@@ -436,7 +436,7 @@ chk "log --date overrides the prefix" \
 DATE_BEFORE="$(cat "$LOGFILE")"
 out="$(wrap_log --date "$(printf '2026-01-01\nFORGED')" "wrap: forged date" 2>&1)"; rc=$?
 chk "log refuses a multi-line --date (exit 1)" "$([ "$rc" -eq 1 ]; echo $?)"
-chk "log names the --date format" "$({ printf '%s' "$out" 2>/dev/null || :; } | grep -q 'wrap log: --date must be YYYY-MM-DD'; echo $?)"
+chk "log names the --date format" "$({ trap '' PIPE; printf '%s' "$out" 2>/dev/null || :; } | grep -q 'wrap log: --date must be YYYY-MM-DD'; echo $?)"
 chk "log wrote nothing on the forged date" "$([ "$DATE_BEFORE" = "$(cat "$LOGFILE")" ]; echo $?)"
 out="$(wrap_log --date 2026-13-45 "wrap: impossible date" 2>&1)"; rc=$?
 chk "log refuses an out-of-range --date (exit 1)" "$([ "$rc" -eq 1 ]; echo $?)"
@@ -457,12 +457,12 @@ chk "log wrote nothing on the newline" "$([ "$BEFORE" = "$(cat "$LOGFILE")" ]; e
 LONG="wrap: $(head -c 320 < /dev/zero | tr '\0' 'x')"
 out="$(wrap_log "$LONG" 2>&1)"; rc=$?
 chk "log writes a 320-char text" "$rc"
-chk "log warns over the 300-char budget" "$({ printf '%s' "$out" 2>/dev/null || :; } | grep -q 'over the 300-char routine budget'; echo $?)"
+chk "log warns over the 300-char budget" "$({ trap '' PIPE; printf '%s' "$out" 2>/dev/null || :; } | grep -q 'over the 300-char routine budget'; echo $?)"
 
 set_log_key "$LOGHOME/no-such-file.md"
 out="$(wrap_log "wrap: missing target" 2>&1)"; rc=$?
 chk "log exits 1 on a missing file" "$([ "$rc" -eq 1 ]; echo $?)"
-chk "log names the resolved path" "$({ printf '%s' "$out" 2>/dev/null || :; } | grep -q 'no-such-file.md'; echo $?)"
+chk "log names the resolved path" "$({ trap '' PIPE; printf '%s' "$out" 2>/dev/null || :; } | grep -q 'no-such-file.md'; echo $?)"
 
 set_log_key "$TMPD/outside/ACTIVITY.md"
 out="$(wrap_log "wrap: outside home" 2>&1)"; rc=$?
@@ -483,8 +483,8 @@ printf 'untouched\n' > "$LOGHOME/PROJECT.md"
 printf '[wrap]\n' > "$KITROOT/kit.toml"
 out="$(cd "$TMPD/projrepo" && HOME="$LOGHOME" KIT_CONFIG_ROOT="$KITROOT" "$WRAP" log "wrap: project toml" 2>&1)"; rc=$?
 chk "log ignores a project .kit.toml key (exit 0)" "$rc"
-chk "log says the line did not land" "$({ printf '%s' "$out" 2>/dev/null || :; } | grep -q 'no wrap.activity_log key in the kit-root kit.toml; line not written'; echo $?)"
-chk "log still prints the line it would have written" "$({ printf '%s' "$out" 2>/dev/null || :; } | grep -q ' · wrap: project toml'; echo $?)"
+chk "log says the line did not land" "$({ trap '' PIPE; printf '%s' "$out" 2>/dev/null || :; } | grep -q 'no wrap.activity_log key in the kit-root kit.toml; line not written'; echo $?)"
+chk "log still prints the line it would have written" "$({ trap '' PIPE; printf '%s' "$out" 2>/dev/null || :; } | grep -q ' · wrap: project toml'; echo $?)"
 chk "log left the project-named file untouched" "$([ "$(cat "$LOGHOME/PROJECT.md")" = "untouched" ]; echo $?)"
 
 # The operator config overlay (SPEC-248) owns this key too: it is as trusted as the kit root,

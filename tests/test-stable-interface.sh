@@ -43,11 +43,11 @@ chk "consumer drives the board through bin/board (stable)" "$r"
 
 # --- 2. the adopt-injected CLAUDE.md block references bin/, not deep lib paths ---
 block="$(sed -n '/claude_block()/,/^}/p' "$KIT_DIR/lib/adopt.sh")"
-{ printf '%s' "$block" 2>/dev/null || :; } | grep -q '/bin/classify lane classify' && r=0 || r=1
+{ trap '' PIPE; printf '%s' "$block" 2>/dev/null || :; } | grep -q '/bin/classify lane classify' && r=0 || r=1
 chk "adopt block references bin/classify (not lib/classify/*)" "$r"
-{ printf '%s' "$block" 2>/dev/null || :; } | grep -q '/bin/gate ledger' && r=0 || r=1
+{ trap '' PIPE; printf '%s' "$block" 2>/dev/null || :; } | grep -q '/bin/gate ledger' && r=0 || r=1
 chk "adopt block references bin/gate (not lib/gate/*)" "$r"
-{ printf '%s' "$block" 2>/dev/null || :; } | grep -q 'lib/classify/lane-classify.sh\|lib/gate/gate-ledger.sh' && r=1 || r=0
+{ trap '' PIPE; printf '%s' "$block" 2>/dev/null || :; } | grep -q 'lib/classify/lane-classify.sh\|lib/gate/gate-ledger.sh' && r=1 || r=0
 chk "adopt block no longer reaches any deep lib path" "$r"
 
 # --- 3. NEGATIVE CONTROL: internal lib rename does NOT break the stable consumer call ---

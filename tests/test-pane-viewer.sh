@@ -262,7 +262,7 @@ fi
 # ============================ T9: allowlist pre-flight rejection ============================
 F=$(mk_mega "$TMP/repo-f")
 out=$(PANE_VIEWER=bogus bash "$ORCH" run "$F" --dry-run 2>&1); frc=$?
-if [ "$frc" = 64 ] && { printf '%s' "$out" 2>/dev/null || :; } | grep -q 'PANE_VIEWER must be one of: auto|cmux|kitty|wezterm|ghostty|iterm|terminal|none'; then
+if [ "$frc" = 64 ] && { trap '' PIPE; printf '%s' "$out" 2>/dev/null || :; } | grep -q 'PANE_VIEWER must be one of: auto|cmux|kitty|wezterm|ghostty|iterm|terminal|none'; then
   pass "T9 allowlist: unknown PANE_VIEWER rejected at pre-flight (rc 64) naming the allowed set"
 else
   fail "T9 allowlist: rc=$frc, out: $out"
@@ -318,7 +318,7 @@ v=$(viewer_argv ghostty orch-vg)
 v=$(viewer_argv iterm orch-vi)
 case "$v" in
   osascript\ -e\ on\ run\ argv*iTerm*"end run orch-vi")
-    if { printf '%s' "$v" 2>/dev/null || :; } | grep -q 'attach -t orch-vi'; then
+    if { trap '' PIPE; printf '%s' "$v" 2>/dev/null || :; } | grep -q 'attach -t orch-vi'; then
       fail "T10b iterm: session name SPLICED into the AppleScript source: '$v'"
     else
       pass "T10b iterm: osascript gets the session name as a trailing argv item, never spliced into the source"
@@ -328,7 +328,7 @@ esac
 v=$(viewer_argv terminal orch-vt)
 case "$v" in
   osascript\ -e\ on\ run\ argv*Terminal*"end run orch-vt")
-    if { printf '%s' "$v" 2>/dev/null || :; } | grep -q 'attach -t orch-vt'; then
+    if { trap '' PIPE; printf '%s' "$v" 2>/dev/null || :; } | grep -q 'attach -t orch-vt'; then
       fail "T10b terminal: session name SPLICED into the AppleScript source: '$v'"
     else
       pass "T10b terminal: osascript gets the session name as a trailing argv item, never spliced into the source"

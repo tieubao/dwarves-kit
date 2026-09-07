@@ -19,7 +19,7 @@ trap 'rm -rf "$TMP" "${TMP2:-}" "$HOME_SB1" "$HOME_SB2"' EXIT
 mkdir -p "$TMP/plugins/cache/dwarves-marketplace/kit/1.0.0/lib"
 out="$(HOME="$HOME_SB1" CLAUDE_DIR="$TMP" bash "$KIT_DIR/install.sh" 2>&1)"
 
-{ printf '%s' "$out" 2>/dev/null || :; } | grep -q 'COMPAT-ONLY'; chk "took the compat branch" $?
+{ trap '' PIPE; printf '%s' "$out" 2>/dev/null || :; } | grep -q 'COMPAT-ONLY'; chk "took the compat branch" $?
 [ -L "$TMP/dwarves-kit/lib" ];         chk "lib symlink created" $?
 [ -L "$TMP/dwarves-kit/WORKFLOW.md" ]; chk "WORKFLOW.md symlink created" $?
 [ -L "$TMP/dwarves-kit/docs/WORKFLOW.md" ]; chk "docs/WORKFLOW.md symlink created (SPEC-185 bulk)" $?
@@ -31,7 +31,7 @@ out="$(HOME="$HOME_SB1" CLAUDE_DIR="$TMP" bash "$KIT_DIR/install.sh" 2>&1)"
 TMP2="$(mktemp -d)"
 mkdir -p "$TMP2/plugins/cache/dwarves-marketplace/kit/1.0.0/lib"
 out2="$(HOME="$HOME_SB2" CLAUDE_DIR="$TMP2" KIT_FORCE_FULL=1 bash "$KIT_DIR/install.sh" 2>&1 || true)"
-if { printf '%s' "$out2" 2>/dev/null || :; } | grep -q 'COMPAT-ONLY'; then echo "FAIL KIT_FORCE_FULL still compat"; fail=1; else echo "ok   KIT_FORCE_FULL bypasses compat"; fi
+if { trap '' PIPE; printf '%s' "$out2" 2>/dev/null || :; } | grep -q 'COMPAT-ONLY'; then echo "FAIL KIT_FORCE_FULL still compat"; fail=1; else echo "ok   KIT_FORCE_FULL bypasses compat"; fi
 
 # --- Tripwire (ID-463): the compat branch's CLI-shim write must never escape
 # into the REAL $HOME, no matter what changes upstream in install.sh. $HOME is

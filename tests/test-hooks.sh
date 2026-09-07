@@ -1401,7 +1401,7 @@ assert_exit "registry: slashed slug rejected (no subdir split)" 64 "$?"
 REG_LIST=$(bash "$REG" list 2>/dev/null)
 assert_output_contains "registry: list shows admitted goal-a" "goal-a" "$REG_LIST"
 assert_output_contains "registry: list shows admitted goal-b" "goal-b" "$REG_LIST"
-{ printf '%s' "$REG_LIST" 2>/dev/null || :; } | grep -q 'goal-c'
+{ trap '' PIPE; printf '%s' "$REG_LIST" 2>/dev/null || :; } | grep -q 'goal-c'
 assert_exit "registry: list omits the refused goal-c" 1 "$?"
 
 bash "$REG" log goal-a "tried approach X" >/dev/null 2>&1

@@ -259,7 +259,7 @@ RECORDS_LINE="$(printf '%s\n' "$OUT" | grep -n '^## records$' | head -1 | cut -d
 FIRST_INVENTORY_LINE="$(printf '%s\n' "$OUT" | grep -nE '^## [a-z]' | grep -v '^[0-9]*:## records$' | head -1 | cut -d: -f1)"
 if [ "$RC" -eq 0 ] && [ -n "$RECORDS_LINE" ] && [ -n "$FIRST_INVENTORY_LINE" ] \
    && [ "$RECORDS_LINE" -lt "$FIRST_INVENTORY_LINE" ] \
-   && { printf '%s' "$LAST_LINE" 2>/dev/null || :; } | grep -qE '^precedent: [1-9][0-9]* record matches, [1-9][0-9]* inventory hits in [0-9]+ sections; top: .+$'; then
+   && { trap '' PIPE; printf '%s' "$LAST_LINE" 2>/dev/null || :; } | grep -qE '^precedent: [1-9][0-9]* record matches, [1-9][0-9]* inventory hits in [0-9]+ sections; top: .+$'; then
   assert "default (all) surface: records block before inventory, nonzero summary line" 0
 else
   assert "default (all) surface: records block before inventory, nonzero summary line" 1
@@ -293,8 +293,8 @@ fi
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" find "notion sync" --quiet 2>&1)"; RC=$?
 if [ "$RC" -eq 0 ] \
-   && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^precedent: [0-9]+ record matches, [0-9]+ inventory hits in [0-9]+ sections; top: .+$' \
-   && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'sections with no match or skipped)'; then
+   && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^precedent: [0-9]+ record matches, [0-9]+ inventory hits in [0-9]+ sections; top: .+$' \
+   && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'sections with no match or skipped)'; then
   assert "all --quiet: summary line and the empty/skipped collapse line both present" 0
 else
   assert "all --quiet: summary line and the empty/skipped collapse line both present" 1
@@ -313,7 +313,7 @@ cat > "$KIT_ROOT_AC_D/kit.toml" <<TOML
 registry = "$FIX_REGISTRY"
 TOML
 OUT="$(env -u PRECEDENT_REGISTRY KIT_CONFIG_ROOT="$KIT_ROOT_AC_D" "$PRECEDENT_BIN" find notion --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'zeta.sh'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'zeta.sh'; then
   assert "kit-root kit.toml [precedent] registry (no PRECEDENT_REGISTRY) still scans the registry's scripts row" 0
 else
   assert "kit-root kit.toml [precedent] registry (no PRECEDENT_REGISTRY) still scans the registry's scripts row" 1
@@ -335,7 +335,7 @@ registry = "$FIX_REGISTRY"
 TOML
 OUT="$(env -u PRECEDENT_REGISTRY KIT_CONFIG_ROOT="$EMPTY_ROOT_FOR_OP" \
   KIT_CONFIG_OPERATOR="$OP_CONF_DIR" "$PRECEDENT_BIN" find notion --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'zeta.sh'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'zeta.sh'; then
   assert "operator kit.toml [precedent] registry (no PRECEDENT_REGISTRY) still scans the registry's scripts row" 0
 else
   assert "operator kit.toml [precedent] registry (no PRECEDENT_REGISTRY) still scans the registry's scripts row" 1
@@ -359,7 +359,7 @@ TOML
 EMPTY_KIT_ROOT="$TMPDIR_T/kit-root-empty"
 mkdir -p "$EMPTY_KIT_ROOT"
 OUT="$(env -u PRECEDENT_REGISTRY KIT_CONFIG_ROOT="$EMPTY_KIT_ROOT" "$PRECEDENT_BIN" find --explain /etc/hosts --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 1 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'outside the scanned roots'; then
+if [ "$RC" -eq 1 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'outside the scanned roots'; then
   assert "a project .kit.toml registry cannot select the registry: --explain /etc/hosts still refused" 0
 else
   assert "a project .kit.toml registry cannot select the registry: --explain /etc/hosts still refused" 1
@@ -368,7 +368,7 @@ fi
 
 OUT="$(env -u PRECEDENT_REGISTRY KIT_CONFIG_ROOT="$EMPTY_KIT_ROOT" "$PRECEDENT_BIN" find zeta --surface inventory 2>&1)"; RC=$?
 rm -f "$FIX_REPO/.kit.toml"
-if [ "$RC" -eq 0 ] && ! { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'zeta.sh'; then
+if [ "$RC" -eq 0 ] && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'zeta.sh'; then
   assert "a project .kit.toml registry cannot select the registry: zeta.sh never surfaces" 0
 else
   assert "a project .kit.toml registry cannot select the registry: zeta.sh never surfaces" 1
@@ -405,7 +405,7 @@ fi
 # AC6: --help
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" --help 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q -- '--surface'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q -- '--surface'; then
   assert "--help exits 0 and documents --surface" 0
 else
   assert "--help exits 0 and documents --surface" 1
@@ -434,7 +434,7 @@ fi
 # ---------------------------------------------------------------------------
 FIRST_TOOLS_HIT="$("$PRECEDENT_BIN" find alpha --surface inventory --json 2>&1 \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["tools"]["hits"][0])' 2>/dev/null)"
-if { printf '%s' "$FIRST_TOOLS_HIT" 2>/dev/null || :; } | grep -q 'tools/alpha/'; then
+if { trap '' PIPE; printf '%s' "$FIRST_TOOLS_HIT" 2>/dev/null || :; } | grep -q 'tools/alpha/'; then
   assert "name-over-body: the tools section's first hit names tools/alpha/" 0
 else
   assert "name-over-body: the tools section's first hit names tools/alpha/" 1
@@ -462,7 +462,7 @@ fi
 # TASK-003 AC4: registry skip note for the missing `repo /nonexistent/path/for/test` row.
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" find notion --surface inventory 2>&1)"
-if { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'skipped: no dir at /nonexistent/path/for/test'; then
+if { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'skipped: no dir at /nonexistent/path/for/test'; then
   assert "registry skip note for a missing repo path" 0
 else
   assert "registry skip note for a missing repo path" 1
@@ -473,7 +473,7 @@ fi
 # (a unique word, "zorbington") shows up as a hit.
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" find zorbington --surface inventory 2>&1)"
-if { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'eta-repo/scripts/eta.sh'; then
+if { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'eta-repo/scripts/eta.sh'; then
   assert "~ expansion: the eta-repo registry row is scanned" 0
 else
   assert "~ expansion: the eta-repo registry row is scanned" 1
@@ -484,7 +484,7 @@ fi
 # [redacted], never in the clear.
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" find "token rotation" --surface inventory 2>&1)"
-if { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q '\[redacted\]' && ! { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'ghp_abcdefghij'; then
+if { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q '\[redacted\]' && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'ghp_abcdefghij'; then
   assert "secret redaction: a ghp_ token prints as [redacted]" 0
 else
   assert "secret redaction: a ghp_ token prints as [redacted]" 1
@@ -510,7 +510,7 @@ fi
 # TASK-003 AC8: --quiet collapses every empty/skipped section to one count line.
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" find "notion zzzqqq" --surface inventory --quiet 2>&1)"
-if { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'sections with no match or skipped)'; then
+if { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'sections with no match or skipped)'; then
   assert "--quiet collapses empty/skipped sections to one line" 0
 else
   assert "--quiet collapses empty/skipped sections to one line" 1
@@ -521,7 +521,7 @@ fi
 # exits 1.
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" find --explain "skill delta" --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'name: delta'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'name: delta'; then
   assert "--explain \"skill delta\" prints the SKILL.md header, exit 0" 0
 else
   assert "--explain \"skill delta\" prints the SKILL.md header, exit 0" 1
@@ -575,8 +575,8 @@ fi
 OUT="$("$PRECEDENT_BIN" find "notion sync" 3 2>&1)"; RC=$?
 HIT_COUNT="$(printf '%s\n' "$OUT" | grep -cE '^[[:space:]]*[0-9]+x[[:space:]]' || true)"
 if [ "$RC" -eq 0 ] \
-   && ! { printf '%s\n' "$OUT" 2>/dev/null || :; } | grep -q '^## ' \
-   && ! { printf '%s\n' "$OUT" 2>/dev/null || :; } | grep -q '^precedent:' \
+   && ! { trap '' PIPE; printf '%s\n' "$OUT" 2>/dev/null || :; } | grep -q '^## ' \
+   && ! { trap '' PIPE; printf '%s\n' "$OUT" 2>/dev/null || :; } | grep -q '^precedent:' \
    && [ "$HIT_COUNT" -le 3 ]; then
   assert "positional [max] with no --surface: records-only output, no header or summary line" 0
 else
@@ -589,7 +589,7 @@ fi
 # refused, whether reached via an absolute label, a `../` traversal, or a `~`-relative one.
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" find --explain /etc/hosts --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 1 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'outside the scanned roots'; then
+if [ "$RC" -eq 1 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'outside the scanned roots'; then
   assert "--explain /etc/hosts: outside the scanned roots, exit 1" 0
 else
   assert "--explain /etc/hosts: outside the scanned roots, exit 1" 1
@@ -597,7 +597,7 @@ else
 fi
 
 OUT="$("$PRECEDENT_BIN" find --explain "../../../../../../../../../../../../../../../../etc/hosts" --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 1 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'outside the scanned roots'; then
+if [ "$RC" -eq 1 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'outside the scanned roots'; then
   assert "--explain ../traversal to /etc/hosts: outside the scanned roots, exit 1" 0
 else
   assert "--explain ../traversal to /etc/hosts: outside the scanned roots, exit 1" 1
@@ -605,7 +605,7 @@ else
 fi
 
 OUT="$("$PRECEDENT_BIN" find --explain ~/.gitconfig --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 1 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'outside the scanned roots'; then
+if [ "$RC" -eq 1 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'outside the scanned roots'; then
   assert "--explain ~/.gitconfig: refused by confinement (file exists, still outside roots), exit 1" 0
 else
   assert "--explain ~/.gitconfig: refused by confinement (file exists, still outside roots), exit 1" 1
@@ -617,7 +617,7 @@ fi
 # relative (tool.toml/README fallback), each confined inside an allowed root.
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" find --explain "kit lib/precedent/precedent.sh" --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^# precedent --explain: .*lib/precedent/precedent\.sh$'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^# precedent --explain: .*lib/precedent/precedent\.sh$'; then
   assert "--explain \"kit lib/precedent/precedent.sh\" resolves inside KIT_ROOT, exit 0" 0
 else
   assert "--explain \"kit lib/precedent/precedent.sh\" resolves inside KIT_ROOT, exit 0" 1
@@ -625,7 +625,7 @@ else
 fi
 
 OUT="$("$PRECEDENT_BIN" find --explain "memory $FIX_REPO/.claude/memory/gamma.md" --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^# precedent --explain: .*gamma\.md$'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^# precedent --explain: .*gamma\.md$'; then
   assert "--explain \"memory <abs gamma.md>\" resolves via the registry repo row, exit 0" 0
 else
   assert "--explain \"memory <abs gamma.md>\" resolves via the registry repo row, exit 0" 1
@@ -633,7 +633,7 @@ else
 fi
 
 OUT="$("$PRECEDENT_BIN" find --explain "~/eta-repo/scripts/eta.sh" --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^# precedent --explain: .*eta-repo/scripts/eta\.sh$'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^# precedent --explain: .*eta-repo/scripts/eta\.sh$'; then
   assert "--explain \"~/eta-repo/scripts/eta.sh\" resolves via the registry repo row, exit 0" 0
 else
   assert "--explain \"~/eta-repo/scripts/eta.sh\" resolves via the registry repo row, exit 0" 1
@@ -641,7 +641,7 @@ else
 fi
 
 OUT="$("$PRECEDENT_BIN" find --explain "tools/alpha/" --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^# precedent --explain: .*tools/alpha/tool\.toml$'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -qE '^# precedent --explain: .*tools/alpha/tool\.toml$'; then
   assert "--explain \"tools/alpha/\" (bare relative) falls through to tool.toml, exit 0" 0
 else
   assert "--explain \"tools/alpha/\" (bare relative) falls through to tool.toml, exit 0" 1
@@ -671,7 +671,7 @@ fi
 # Review finding 6: the `memory <dir>` one-level `*/memory/*.md` walk surfaces a nested note.
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" find iotaunique --surface inventory 2>&1)"
-if { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'proj-a/memory/iota.md'; then
+if { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'proj-a/memory/iota.md'; then
   assert "nested */memory/*.md registry row: the one-level-down note surfaces" 0
 else
   assert "nested */memory/*.md registry row: the one-level-down note surfaces" 1
@@ -692,7 +692,7 @@ else
 fi
 
 OUT="$("$PRECEDENT_BIN" find "rotate" 2>&1)"
-if { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q '\[redacted\]' && ! { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'ghp_abcdefghij'; then
+if { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q '\[redacted\]' && ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'ghp_abcdefghij'; then
   assert "records headline redaction: a ghp_ token in a spec heading prints as [redacted]" 0
 else
   assert "records headline redaction: a ghp_ token in a spec heading prints as [redacted]" 1
@@ -741,10 +741,10 @@ memory /nonexistent/memory/dir
 EOF
 OUT="$(PRECEDENT_REGISTRY="$SKIP_REGISTRY" "$PRECEDENT_BIN" find "sync notion" --surface inventory 2>&1)"; RC=$?
 if [ "$RC" -eq 0 ] \
-   && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'skill delta' \
-   && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'gamma.md' \
-   && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'skipped: no dir at /nonexistent/skills/dir' \
-   && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'skipped: no dir at /nonexistent/memory/dir'; then
+   && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'skill delta' \
+   && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'gamma.md' \
+   && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'skipped: no dir at /nonexistent/skills/dir' \
+   && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'skipped: no dir at /nonexistent/memory/dir'; then
   assert "set_skip keeps existing hits: skills/memory sections show hits AND the skip note" 0
 else
   assert "set_skip keeps existing hits: skills/memory sections show hits AND the skip note" 1
@@ -780,7 +780,7 @@ cat > "$FIX_HOME/eta-registry.txt" <<EOF
 repo $FIX_HOME/eta-repo
 EOF
 OUT="$(PRECEDENT_REGISTRY='~/eta-registry.txt' "$PRECEDENT_BIN" find zorbington --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'eta-repo/scripts/eta.sh'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'eta-repo/scripts/eta.sh'; then
   assert "PRECEDENT_REGISTRY='~/...' is expanded against HOME and scanned" 0
 else
   assert "PRECEDENT_REGISTRY='~/...' is expanded against HOME and scanned" 1
@@ -788,7 +788,7 @@ else
 fi
 
 OUT="$(PRECEDENT_REGISTRY=/no/such/registry "$PRECEDENT_BIN" find notion --surface inventory 2>&1)"; RC=$?
-if [ "$RC" -eq 0 ] && { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'precedent: registry not found: /no/such/registry'; then
+if [ "$RC" -eq 0 ] && { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q 'precedent: registry not found: /no/such/registry'; then
   assert "a missing explicit PRECEDENT_REGISTRY prints the not-found stderr line and exits 0" 0
 else
   assert "a missing explicit PRECEDENT_REGISTRY prints the not-found stderr line and exits 0" 1
@@ -801,8 +801,8 @@ fi
 fake_log_token_a="ghp_abcdefghij"; fake_log_token_b="klmnopqrstuvwxyz0123456789"
 "$PRECEDENT_BIN" find "notion ${fake_log_token_a}${fake_log_token_b}" --surface inventory >/dev/null 2>&1
 LAST_LOG_LINE="$(tail -n1 "$LOG_FILE")"
-if { printf '%s' "$LAST_LOG_LINE" 2>/dev/null || :; } | grep -q '\[redacted\]' \
-   && ! { printf '%s' "$LAST_LOG_LINE" 2>/dev/null || :; } | grep -q "${fake_log_token_a}${fake_log_token_b}"; then
+if { trap '' PIPE; printf '%s' "$LAST_LOG_LINE" 2>/dev/null || :; } | grep -q '\[redacted\]' \
+   && ! { trap '' PIPE; printf '%s' "$LAST_LOG_LINE" 2>/dev/null || :; } | grep -q "${fake_log_token_a}${fake_log_token_b}"; then
   assert "append_log redacts a secret-shaped query before writing the log line" 0
 else
   assert "append_log redacts a secret-shaped query before writing the log line" 1
@@ -840,7 +840,7 @@ else
 fi
 
 OUT="$("$PRECEDENT_BIN" find zzzqqqxx --quiet 2>&1)"
-if ! { printf '%s' "$OUT" 2>/dev/null || :; } | grep -q '^## records$'; then
+if ! { trap '' PIPE; printf '%s' "$OUT" 2>/dev/null || :; } | grep -q '^## records$'; then
   assert "empty records surface: no ## records header under --quiet" 0
 else
   assert "empty records surface: no ## records header under --quiet" 1

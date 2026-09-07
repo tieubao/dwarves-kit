@@ -84,45 +84,45 @@ assert "AC1 outcome section names the real spec (SPEC-139-kit-emit-sweep)" \
 # weakening what it proves.
 OUT_REAL_SAMPLE="$(_render_with_origin real-sample)"
 assert "AC1 evidence section carries a real PR link (#168)" \
-  "$({ printf '%s' "$OUT_REAL_SAMPLE" 2>/dev/null || :; } | grep -q 'pull/168' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_REAL_SAMPLE" 2>/dev/null || :; } | grep -q 'pull/168' && echo 0 || echo 1)"
 assert "AC1 unknowns section surfaces the real grill skip (reason=operator-wave)" \
-  "$({ printf '%s' "$OUT_REAL_SAMPLE" 2>/dev/null || :; } | grep -q 'reason=operator-wave' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_REAL_SAMPLE" 2>/dev/null || :; } | grep -q 'reason=operator-wave' && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC2 + AC4a: grill record -- NO-grill fixture (load-bearing) vs full fixture (contrast) ==="
 OUT_NOGRILL="$(_render no-grill)"
 OUT_FULL="$(_render full)"
 assert "AC2 no-grill fixture prints the literal absence line" \
-  "$({ printf '%s' "$OUT_NOGRILL" 2>/dev/null || :; } | grep -qF 'no grill record for this run' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_NOGRILL" 2>/dev/null || :; } | grep -qF 'no grill record for this run' && echo 0 || echo 1)"
 assert "AC2 no-grill fixture never fabricates a grill answer (no 'branches resolved' text)" \
-  "$({ printf '%s' "$OUT_NOGRILL" 2>/dev/null || :; } | grep -q 'branches resolved' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_NOGRILL" 2>/dev/null || :; } | grep -q 'branches resolved' && echo 1 || echo 0)"
 assert "AC4a full fixture does NOT print the grill absence line" \
-  "$({ printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -qF 'no grill record for this run' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -qF 'no grill record for this run' && echo 1 || echo 0)"
 assert "AC4a full fixture DOES surface its real grill content" \
-  "$({ printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -q 'branches resolved' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -q 'branches resolved' && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC3 + AC4b: implementation-notes -- NO-implnotes fixture (load-bearing) vs full fixture ==="
 OUT_NOTES="$(_render no-implnotes)"
 assert "AC3 no-implnotes fixture prints the literal absence line" \
-  "$({ printf '%s' "$OUT_NOTES" 2>/dev/null || :; } | grep -qF 'no implementation-notes file for this run' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_NOTES" 2>/dev/null || :; } | grep -qF 'no implementation-notes file for this run' && echo 0 || echo 1)"
 assert "AC3 no-implnotes fixture never fabricates a deviation (no 'fixture deviation' text)" \
-  "$({ printf '%s' "$OUT_NOTES" 2>/dev/null || :; } | grep -q 'fixture deviation' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_NOTES" 2>/dev/null || :; } | grep -q 'fixture deviation' && echo 1 || echo 0)"
 assert "AC4b full fixture does NOT print the implementation-notes absence line" \
-  "$({ printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -qF 'no implementation-notes file for this run' && echo 1 || echo 0)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -qF 'no implementation-notes file for this run' && echo 1 || echo 0)"
 assert "AC4b full fixture DOES surface its real deviation entries (both of them)" \
   "$([ "$(printf '%s' "$OUT_FULL" | grep -c 'fixture deviation')" -eq 2 ] && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC4c: negative controls + evidence + cost sections, full fixture ==="
 assert "AC4c unknowns section surfaces the proof's negative control" \
-  "$({ printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -qi 'negative control' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -qi 'negative control' && echo 0 || echo 1)"
 assert "AC4c evidence section carries the verbatim acceptance-criteria table" \
-  "$({ printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -q 'fixture thing happens' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -q 'fixture thing happens' && echo 0 || echo 1)"
 assert "AC4c cost section surfaces the spec's Out of Scope block" \
-  "$({ printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -q 'fixture-feature-x' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -q 'fixture-feature-x' && echo 0 || echo 1)"
 assert "AC4c ask section is always emitted (pure template, no source to miss)" \
-  "$({ printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -qi 'approve' && echo 0 || echo 1)"
+  "$({ trap '' PIPE; printf '%s' "$OUT_FULL" 2>/dev/null || :; } | grep -qi 'approve' && echo 0 || echo 1)"
 
 echo ""
 echo "=== AC5: NEVER-AUTO-POST (load-bearing) -- grep negative control ==="
@@ -183,7 +183,7 @@ _would_offer() {  # <fixture-name> <gh-stub-mode>
   local name="$1" mode="$2" ws last
   ws="$(_mkws "$name")"
   last="$(cd "$ws" && DWARVES_KIT_LOG_DIR="$ws/logs" bash "$LEDGER" show "$name" | grep '| DEBT |' | tail -1)"
-  if { printf '%s' "$last" 2>/dev/null || :; } | grep -q 'significance=high' \
+  if { trap '' PIPE; printf '%s' "$last" 2>/dev/null || :; } | grep -q 'significance=high' \
      && PATH="$FAKEBIN:$PATH" GH_STUB_MODE="$mode" bash "$LIB" team-shared >/dev/null 2>&1; then
     echo yes
   else

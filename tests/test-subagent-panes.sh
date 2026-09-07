@@ -109,7 +109,7 @@ rc1=$?
   || fail "T1: windows missing: $(ls "$STATE1" 2>/dev/null)"
 n_new_session=$(grep -c '^new-session' "$STATE1/calls.log")
 [ "$n_new_session" = 1 ] && pass "T1: tmux session ensured exactly once" || fail "T1: new-session called $n_new_session times"
-{ printf '%s\n' "$out1" 2>/dev/null || :; } | grep -q 'spawned 2, skipped 0' \
+{ trap '' PIPE; printf '%s\n' "$out1" 2>/dev/null || :; } | grep -q 'spawned 2, skipped 0' \
   && pass "T1: summary line 'spawned 2, skipped 0'" || fail "T1: summary: $out1"
 
 : > "$STATE1/calls.log"
@@ -169,17 +169,17 @@ out3=$(
 )
 rc3=$?
 [ "$rc3" = 0 ] && pass "T3: rc 0 despite multiple skips" || fail "T3: rc=$rc3"
-{ printf '%s\n' "$out3" 2>/dev/null || :; } | grep -q 'not a readable regular file' \
+{ trap '' PIPE; printf '%s\n' "$out3" 2>/dev/null || :; } | grep -q 'not a readable regular file' \
   && pass "T3: missing-file skip warns" || fail "T3: no missing-file warning: $out3"
-{ printf '%s\n' "$out3" 2>/dev/null || :; } | grep -q 'basename does not match' \
+{ trap '' PIPE; printf '%s\n' "$out3" 2>/dev/null || :; } | grep -q 'basename does not match' \
   && pass "T3: wrong-basename skip warns" || fail "T3: no basename warning: $out3"
-{ printf '%s\n' "$out3" 2>/dev/null || :; } | grep -q 'empty dir' \
+{ trap '' PIPE; printf '%s\n' "$out3" 2>/dev/null || :; } | grep -q 'empty dir' \
   && pass "T3: empty-dir warns" || fail "T3: no empty-dir warning: $out3"
-{ printf '%s\n' "$out3" 2>/dev/null || :; } | grep -q 'spawned 1, skipped 3' \
+{ trap '' PIPE; printf '%s\n' "$out3" 2>/dev/null || :; } | grep -q 'spawned 1, skipped 3' \
   && pass "T3: summary counts 1 spawned / 3 skipped (valid sibling still spawns)" || fail "T3: summary: $out3"
 
 out3b=$(cmd_panes "$MEGA3" 2>&1); rc3b=$?
-if [ "$rc3b" = 0 ] && { printf '%s\n' "$out3b" 2>/dev/null || :; } | grep -q '^usage:'; then
+if [ "$rc3b" = 0 ] && { trap '' PIPE; printf '%s\n' "$out3b" 2>/dev/null || :; } | grep -q '^usage:'; then
   pass "T3: <2 total args -> usage on stderr, rc 0"
 else
   fail "T3: rc=$rc3b out=$out3b"
@@ -200,21 +200,21 @@ out3b2=$(
   export TMUX_CMD="$TMP/tmux-mock" TMUX_MOCK_STATE="$STATE3B" TMUX_SESSION=orch-panes-t3b PANE_VIEWER=none
   cmd_panes "$MEGA3B" "$FIX3B" 2>&1
 )
-if { printf '%s' "$out3b2" 2>/dev/null || :; } | grep -q "$(printf '\x1b')"; then
+if { trap '' PIPE; printf '%s' "$out3b2" 2>/dev/null || :; } | grep -q "$(printf '\x1b')"; then
   fail "T3b: raw ESC byte reached combined stdout+stderr: $(printf '%s' "$out3b2" | cat -v)"
 else
   pass "T3b: no raw ESC byte in combined output"
 fi
-{ printf '%s\n' "$out3b2" 2>/dev/null || :; } | grep -qF 'agent-??52?c?evil?x.jsonl' \
+{ trap '' PIPE; printf '%s\n' "$out3b2" 2>/dev/null || :; } | grep -qF 'agent-??52?c?evil?x.jsonl' \
   && pass "T3b: ESC-embedded filename rendered sanitized ('?' replacement)" \
   || fail "T3b: sanitized filename not found: $out3b2"
-{ printf '%s\n' "$out3b2" 2>/dev/null || :; } | grep -q 'skip: symlink, not a real transcript file' \
+{ trap '' PIPE; printf '%s\n' "$out3b2" 2>/dev/null || :; } | grep -q 'skip: symlink, not a real transcript file' \
   && pass "T3b: symlink target skipped with its own warning (not spawned then ghost-killed)" \
   || fail "T3b: no symlink-skip warning: $out3b2"
 [ ! -f "$STATE3B/win.orch-panes-t3b.sa-link" ] \
   && pass "T3b: no window created for the symlink target" \
   || fail "T3b: a window was created for the symlink target"
-{ printf '%s\n' "$out3b2" 2>/dev/null || :; } | grep -q 'spawned 2, skipped 1' \
+{ trap '' PIPE; printf '%s\n' "$out3b2" 2>/dev/null || :; } | grep -q 'spawned 2, skipped 1' \
   && pass "T3b: summary counts symlink as skipped (2 spawned: badname + real)" \
   || fail "T3b: summary: $out3b2"
 
@@ -242,7 +242,7 @@ out4=$(
   || fail "T4: expected sa-new window; state: $(ls "$STATE4" 2>/dev/null)"
 [ ! -f "$STATE4/win.orch-panes-t4.sa-old" ] && pass "T4: --latest did NOT also spawn the older session's window" \
   || fail "T4: unexpectedly spawned sa-old too"
-{ printf '%s\n' "$out4" 2>/dev/null || :; } | grep -q 'spawned 1, skipped 0' \
+{ trap '' PIPE; printf '%s\n' "$out4" 2>/dev/null || :; } | grep -q 'spawned 1, skipped 0' \
   && pass "T4: summary reflects exactly one resolved transcript" || fail "T4: summary: $out4"
 
 # --latest with no matching project dir: clean miss, warns, rc 0, no windows.
@@ -252,7 +252,7 @@ out4b=$(
   export HOME="$TMP/no-such-home" TMUX_CMD="$TMP/tmux-mock" TMUX_MOCK_STATE="$STATE4B" TMUX_SESSION=orch-panes-t4b PANE_VIEWER=none
   cmd_panes "$MEGA4" --latest 2>&1
 ); rc4b=$?
-if [ "$rc4b" = 0 ] && { printf '%s\n' "$out4b" 2>/dev/null || :; } | grep -q -- '--latest:' && { printf '%s\n' "$out4b" 2>/dev/null || :; } | grep -q 'spawned 0, skipped 0'; then
+if [ "$rc4b" = 0 ] && { trap '' PIPE; printf '%s\n' "$out4b" 2>/dev/null || :; } | grep -q -- '--latest:' && { trap '' PIPE; printf '%s\n' "$out4b" 2>/dev/null || :; } | grep -q 'spawned 0, skipped 0'; then
   pass "T4: --latest with no project dir is a clean miss (warns, rc 0, spawns nothing)"
 else
   fail "T4: rc=$rc4b out=$out4b"
@@ -266,7 +266,7 @@ VALID_JSONL="$FIX5/agent-valid.jsonl"
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"ok"}]}}' >| "$VALID_JSONL"
 
 out=$(cmd_pane_tail "$FIX5" "$GOODFMT" 2>&1); rc=$?
-[ "$rc" = 64 ] && { printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'not a regular file' \
+[ "$rc" = 64 ] && { trap '' PIPE; printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'not a regular file' \
   && pass "T5a: a directory is refused, exit 64" || fail "T5a: rc=$rc out=$out"
 
 UNREADABLE="$FIX5/agent-unreadable.jsonl"
@@ -274,23 +274,23 @@ printf '%s\n' '{"type":"assistant"}' >| "$UNREADABLE"
 chmod 000 "$UNREADABLE"
 out=$(cmd_pane_tail "$UNREADABLE" "$GOODFMT" 2>&1); rc=$?
 chmod 644 "$UNREADABLE"
-[ "$rc" = 64 ] && { printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'not readable' \
+[ "$rc" = 64 ] && { trap '' PIPE; printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'not readable' \
   && pass "T5b: an unreadable file is refused, exit 64" || fail "T5b: rc=$rc out=$out"
 
 LINK="$FIX5/agent-link.jsonl"
 ln -sf "$VALID_JSONL" "$LINK"
 out=$(cmd_pane_tail "$LINK" "$GOODFMT" 2>&1); rc=$?
-[ "$rc" = 64 ] && { printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'symlink' \
+[ "$rc" = 64 ] && { trap '' PIPE; printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'symlink' \
   && pass "T5c: a symlink is refused, exit 64 [SECURITY L4]" || fail "T5c: rc=$rc out=$out"
 
 WRONG="$FIX5/not-agent.jsonl"
 printf '%s\n' '{"type":"assistant"}' >| "$WRONG"
 out=$(cmd_pane_tail "$WRONG" "$GOODFMT" 2>&1); rc=$?
-[ "$rc" = 64 ] && { printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'basename does not match' \
+[ "$rc" = 64 ] && { trap '' PIPE; printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'basename does not match' \
   && pass "T5d: a wrong-basename file is refused, exit 64" || fail "T5d: rc=$rc out=$out"
 
 out=$(cmd_pane_tail "$VALID_JSONL" "$FIX5/no-such.jq" 2>&1); rc=$?
-[ "$rc" = 64 ] && { printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'formatter missing or unreadable' \
+[ "$rc" = 64 ] && { trap '' PIPE; printf '%s\n' "$out" 2>/dev/null || :; } | grep -q 'formatter missing or unreadable' \
   && pass "T5e: a missing formatter is refused, exit 64" || fail "T5e: rc=$rc out=$out"
 
 # ================================ T6: formatter ================================
@@ -387,7 +387,7 @@ if [ ! -s "$POISON7" ] && [ ! -e "$PWNED7" ]; then
 else
   fail "T7: poison: $(cat "$POISON7" 2>/dev/null), pwned: $([ -e "$PWNED7" ] && echo YES || echo no)"
 fi
-{ printf '%s\n' "$out7" 2>/dev/null || :; } | grep -q 'charset gate' \
+{ trap '' PIPE; printf '%s\n' "$out7" 2>/dev/null || :; } | grep -q 'charset gate' \
   && pass "T7: the refusal names the charset gate (loud)" || fail "T7: no charset-gate warning: $out7"
 
 echo "----"

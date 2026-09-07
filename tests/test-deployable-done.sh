@@ -55,7 +55,7 @@ else
 fi
 MSG1="$(run_check "$D1" "$B1" "deploy-noproof" 2>&1 || true)"
 assert "AC1: the block message names the stateful class + missing proof" \
-  $({ printf '%s' "$MSG1" 2>/dev/null || :; } | grep -qi "stateful" && { printf '%s' "$MSG1" 2>/dev/null || :; } | grep -qi "proof" && echo 0 || echo 1)
+  $({ trap '' PIPE; printf '%s' "$MSG1" 2>/dev/null || :; } | grep -qi "stateful" && { trap '' PIPE; printf '%s' "$MSG1" 2>/dev/null || :; } | grep -qi "proof" && echo 0 || echo 1)
 
 # ============================================================
 echo ""
@@ -107,7 +107,7 @@ cp "$FIX/deploy-rollout.sh" "$D4/deploy/rollout.sh"
 git -C "$D4" add -A; git -C "$D4" commit -qm "deploy: add rollout script"
 # ID-299: overrides are repo-scoped, so log the override FROM the repo it applies to.
 OUT4="$( cd "$D4" && DWARVES_KIT_LOG_DIR="$LOGDIR" bash "$LIB" override deploy-noproof-override "emergency hotfix, deploy verified manually" 2>&1)"
-assert "AC4: override command reports the trace log path" $({ printf '%s' "$OUT4" 2>/dev/null || :; } | grep -qi "trace" && echo 0 || echo 1)
+assert "AC4: override command reports the trace log path" $({ trap '' PIPE; printf '%s' "$OUT4" 2>/dev/null || :; } | grep -qi "trace" && echo 0 || echo 1)
 if run_check "$D4" "$B4" "deploy-noproof-override" >/dev/null 2>&1; then
   assert "AC4: deployable diff with a LOGGED override PASSES (no proof file needed)" 0
 else
