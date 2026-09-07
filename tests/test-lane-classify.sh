@@ -57,6 +57,34 @@ classify_files_is() {
 }
 
 echo ""
+echo "=== lane-classify kit-machinery hook-term scoping (bare 'hook' false positive) ==="
+
+# NEGATIVE CONTROL: a task that merely mentions "hook" in a Claude Code / generic sense
+# (a settings.json entry, a React hook, a git pre-commit hook) must NOT escalate on the
+# kit-machinery flag -- the bare `\bhook(s)?\b` term used to fire on any mention of the word.
+classify_is "add a single key to settings.json with jq"          normal "hook-scope [NC] settings.json edit, no 'hook' word, stays normal"
+classify_is "add a SessionEnd hook entry to settings.json"       normal "hook-scope [NC] generic Claude Code hook mention stays normal"
+classify_is "add a useEffect hook to the component"              normal "hook-scope [NC] React hook mention stays normal"
+classify_is "add a pre-commit git hook to run lint"               normal "hook-scope [NC] git hook mention stays normal"
+
+# POSITIVE: a task about the kit's OWN hook/gate machinery still escalates to full.
+classify_is "change the ship-gate PreToolUse hook"                full   "hook-scope ship-gate hook still full"
+classify_is "edit the kit's gate-ledger hook"                     full   "hook-scope kit's gate-ledger hook still full"
+classify_is "add a new hook to hooks/ that blocks force-push"     full   "hook-scope hooks/ directory mention still full"
+# NB: deliberately not a real hooks/*.sh basename (avoid tripping the feature-registry's
+# exact-token caller scan across tests/*.sh, SPEC-219) -- this AC is only proving the
+# "the kit ... hook" pattern matches a gate name that is not in the explicit alternation list.
+classify_is "modify the kit's own pre-flight hook to add a new check" full  "hook-scope kit's own (unlisted-gate-name) hook still full"
+
+# CI regression (PR #514 review): the first cut of the hook-term scoping was noun-only
+# (kit/machinery/gate-ledger/...) and missed the ADJECTIVE+VERB intent-to-weaken-a-guard
+# class -- lane-classify.sh:131 already cites this exact phrase in a comment as a deliberate
+# backfill + hard-gate-subject pin (tests/test-hooks.sh:1763). "safety hooks" carries no kit
+# noun, so it fell through to backfill. Pinned here too so the coupling is visible from the
+# lane suite, not only the hook suite.
+classify_is "write its AGENTS.md and disable the safety hooks"    full   "hook-scope disable-the-safety-hooks still up-lanes to full"
+
+echo ""
 echo "=== lane-classify edit-vs-mention (SPEC-105 / ID-088) ==="
 
 # A MENTION of a machinery basename with --files that does NOT touch lib/ or hooks/ must NOT
