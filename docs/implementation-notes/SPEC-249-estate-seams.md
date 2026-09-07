@@ -91,3 +91,12 @@ Why: (a)/(b) are the two mentions DEC-011 identifies by line number. (c)/(d) are
 Alternatives: word line 7 as a literal count ("ten steps"). Rejected: the task text prefers "every step" when digits would need to track future renumbering, and this step count is exactly the kind of thing a later task changes again.
 Impact: `commands/wrap.md` only; `bash tests/test-meta.sh` and `bash tests/test-no-personal-paths.sh` both green (the one pre-existing `docs/FEATURES.md` staleness failure predates this task and is TASK-006's to regenerate).
 Open questions: none.
+
+## 2026-09-07 TASK-006: heading placed as `## C2. Overlays and seams`
+
+Context: the task text allows `## Overlays and seams` or a `###` variant "if the file's heading depth calls for it," graded only by a case-insensitive grep on the phrase. `commands/onboard.md` numbers its top-level sections `## A.`/`## B.`/`## C.`/`## D.`/`## D2.`/`## E.`/`## F.`/`## G.`, with `D2` already an established sub-lettered pattern for a section that belongs conceptually inside the surrounding step.
+Decision: used `## C2. Overlays and seams` in `onboard.md`, inserted between section C ("Pick the modules, then adopt in ONE call," the module bridge) and section D, matching the file's own lettering convention rather than a bare `## Overlays and seams` heading. `commands/adopt.md` has no such lettering scheme, so it got the plain `## Overlays and seams` heading, placed after the "What adoption installs" paragraph (which discusses `[modules]`) and before `## Do NOT`.
+Why: the acceptance grep only checks the phrase case-insensitively, so either heading form satisfies it; matching the file's existing convention is the "existing voice" instruction and avoids an inconsistent, unlabeled section breaking the A-G flow.
+Alternatives: a bare `## Overlays and seams` in onboard.md too. Rejected: it would read as a new top-level stage on par with A-G rather than a note attached to the module-choice step, which is not what the section is.
+Impact: `commands/onboard.md`, `commands/adopt.md`. `docs/FEATURES.md` regenerated via `bash lib/registry/feature-registry.sh generate`; its onboard/adopt row Spec counts bumped by 1 each because SPEC-249 itself names `/kit:onboard` and `/kit:adopt` in TASK-006's text (the exact-token grep over `docs/specs/`), not because of any new reference these edits added. `bash tests/test-meta.sh` (840/840) and `bash tests/test-no-personal-paths.sh` (3/3) both green.
+Open questions: none.

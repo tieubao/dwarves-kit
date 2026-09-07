@@ -40,6 +40,19 @@ coding, and the ship-gate engages on push.
 The classifiers (`lane-classify`, `task-type-classify`, `proof-gate`) run from the installed kit;
 adoption wires the contract to reference them. It never copies the engine.
 
+## Overlays and seams
+
+Adoption installs the engine alone; no `[modules]` entry requires a companion kit. Two overlays
+exist today. context-kit is the data plane: it owns the context tree and recall over it, and
+fills `[knowledge] root` plus the `PROSE_RAG_BIN` binary. learning-kit is a study overlay on the
+engine; it fills `[wrap] before` with its concept flush.
+
+A seam is a key in the operator `kit.toml`, never this repo's `.kit.toml`, that the engine reads
+with `kit_config_get_root`. `bash "$KIT/bin/config" seams` lists every seam with its state
+(`default`, `filled`, `unresolved`, `absent`); `--check` exits 1 on an unresolved row, for an
+installer. With nothing filled, every seam reads `default` or `absent` and the adopted repo works
+the same. Table: `lib/config/module-registry.md` under `## Seams`.
+
 ## Do NOT
 
 - Overwrite an existing AGENTS.md / CLAUDE.md / `.kit.toml` (the driver guards this; never
