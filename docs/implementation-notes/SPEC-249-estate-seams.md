@@ -82,3 +82,12 @@ Why: verified directly; the external `basename` binary and shell parameter expan
 Alternatives: call `basename "$repo_real"` and add a special-case for `/`. Rejected: parameter expansion already gives the right answer with no extra branch.
 Impact: `cmd_knowledge_root` in `lib/wrap/wrap.sh`; `tests/test-wrap.sh` covers both the `/` case (empty basename, exit 64) and a `/no-such-subdir/..` argument (caught by the earlier `cd` failure, exit 64).
 Open questions: none.
+
+## 2026-09-07 16:40 TASK-005: three prose calls the task text left open
+
+Context: the task text names three prose spots to touch, but the spec's own DEC-011 lists only two ("the two prose mentions in `wrap.md` (lines 7 and 35)"), and one of the three (the retro sentence in reflect, "before the report") carries no step number to update, and the "## What this command does NOT do" section carries no existing distill/knowledge bullet to contradict.
+Decision: (a) line 7's "each of the eight steps" became "every step below in order," the wording the task text itself offered as the no-digit option. (b) line 35's "step 8's report" became "step 9's report." (c) the reflect step's "before the report" sentence stayed byte-identical: it names no step number, so renumbering left it correct as written. (d) "## What this command does NOT do" stayed unchanged: it names no distill/knowledge/til bullet today, so nothing in it contradicts the new Step 7; the new step's own heading already states the process half lives there.
+Why: (a)/(b) are the two mentions DEC-011 identifies by line number. (c)/(d) are "no-op, verified" rather than deviations: editing text that already reads correctly would be churn, not a fix.
+Alternatives: word line 7 as a literal count ("ten steps"). Rejected: the task text prefers "every step" when digits would need to track future renumbering, and this step count is exactly the kind of thing a later task changes again.
+Impact: `commands/wrap.md` only; `bash tests/test-meta.sh` and `bash tests/test-no-personal-paths.sh` both green (the one pre-existing `docs/FEATURES.md` staleness failure predates this task and is TASK-006's to regenerate).
+Open questions: none.

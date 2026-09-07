@@ -4,7 +4,7 @@ description: "The session-scoped landing step after ship: flips board rows, merg
 
 Self-intro (AGENTS.md "Self-intro" convention): open your first reply with exactly one banner line, `[kit:wrap] Land the session after ship: board rows, merges, deploy check, tidy, activity line, retro.`, then proceed.
 
-You are the session's landing step. The operator just shipped, or is ending the session, and nothing in the kit lands that session on its own: board rows stay unflipped, the operator's own green PRs stay unmerged, a merged-but-undeployed PR goes unnoticed, branches and worktrees pile up, and `/kit:retro` never runs. Your job is one pass over every repo the session touched, closing out each of the eight steps below in order.
+You are the session's landing step. The operator just shipped, or is ending the session, and nothing in the kit lands that session on its own: board rows stay unflipped, the operator's own green PRs stay unmerged, a merged-but-undeployed PR goes unnoticed, branches and worktrees pile up, and `/kit:retro` never runs. Your job is one pass over every repo the session touched, closing out every step below in order.
 
 ## When this runs
 
@@ -32,7 +32,7 @@ An operator can put one skill in front of this command. Read the key first:
 . lib/config/kit-config.sh && kit_config_get_root wrap.before ""
 ```
 
-An empty value means no skill runs, which is the default; go straight to step 0. A named skill runs NOW, before step 0, and its report lines fold into step 8's report after the `FYI` line. The key resolves with `kit_config_get_root`, so it comes from the operator `kit.toml` or the kit-root `kit.toml` and never from a project `.kit.toml`: it names code this command runs, and a project toml rides inside an untrusted PR.
+An empty value means no skill runs, which is the default; go straight to step 0. A named skill runs NOW, before step 0, and its report lines fold into step 9's report after the `FYI` line. The key resolves with `kit_config_get_root`, so it comes from the operator `kit.toml` or the kit-root `kit.toml` and never from a project `.kit.toml`: it names code this command runs, and a project toml rides inside an untrusted PR.
 
 ### Step 0: concurrent-writer check
 
@@ -78,11 +78,27 @@ Re-run the step 0 check first. Then: `bin/wrap scan <repo>` again to see the cur
 
 Re-run the step 0 check first. Then: `bin/wrap log "<slug>: <one sentence>"`. When the current directory is a git worktree of the repo that holds the configured file, the same repo-relative file inside that worktree is written instead, so the line is committable on the session's branch; the main checkout's copy is left alone. With no `wrap.activity_log` key in the kit-root `kit.toml`, it prints the line and says where it did not land; that is a clean result, not a failure.
 
-### Step 7: reflect
+### Step 7: learn
+
+The process half of distill (SPEC-249): a DEBT marker for the run, new-tool candidates checked against precedent, and one memory note per incident this session caused. Three lettered sub-steps, each prints one line when idle. `b` and `c` write only the staging file and one memory note, never a board row: propose, do not dispose.
+
+a. DEBT marker.
+
+```bash
+rid=$(bash lib/gate/gate-ledger.sh rid)
+```
+
+An empty `rid` prints `skipped: no run id`. Otherwise resolve the log dir with `bash lib/telemetry/kit-log-dir.sh`; a missing `runs/<rid>.log` prints `skipped: no run log`; a `| DEBT |` line already in it prints `skipped: DEBT marker present`. Otherwise `bash lib/classify/significance-classify.sh record <rid> "<one-line session description>"`; a non-zero exit prints `skipped: classifier failed (rc N)` and the step continues to b.
+
+b. Candidates. A candidate is a manual multi-step procedure this session ran three or more times, or a one-off script the operator called recurring. For each, `bin/precedent find --surface inventory --json "<two or three words>"`: `nothing_matched` true stages it, `bin/wrap stage "<title>" "<intent>" "<home>"` with `<home>` the repo that would own it (`already staged` from the verb needs no bullet); `nothing_matched` false adds no row, only an FYI bullet quoting the top hit line. No candidates: `skipped: no candidates`.
+
+c. Incidents. For every `docs/incidents/*.md` written this session whose `## Root cause` names our own mistake, `bin/wrap knowledge-root <repo>` gives the directory. A note already there naming the incident id in its first heading: `skipped: note exists`. Otherwise write one note, how to work here and what to do differently, plus its `MEMORY.md` index line, in that directory. An empty `## Root cause` writes nothing. A `knowledge-root:` fallback line on stderr becomes an FYI bullet, not a skip. No incidents: `skipped: no incidents`.
+
+### Step 8: reflect
 
 Resolve the kit log dir (`bash lib/telemetry/kit-log-dir.sh` resolves it) and grep the run ledgers under it for a `| GATE | ship | ran | shipping pr=#<n>` line naming any PR number merged in step 3. Anchor the number so `#7` never matches `#71`: `grep -rE "shipping pr=#<n>([^0-9]|$)" "<log dir>"`. Any hit means run `/kit:retro` now, before the report. No hit means no spec cycle shipped this session; skip retro and say so in the report's FYI line.
 
-### Step 8: report
+### Step 9: report
 
 Print the skim-first block below. It is the single reply for this command; there is no separate per-step report.
 
@@ -121,6 +137,7 @@ b. ...
 - `Left alone` and `FYI` are bullet lists, one item per repo or fact, never joined with `|` or `;`.
 - `Left alone` names another session's dirty files, worktrees, and branches with the owner, one bullet per repo, so the operator knows a repo is not fully clean and why. A single `- NOTHING` bullet when no repo was left alone.
 - `FYI` closes the message: one bullet per fact that is not the operator's to act on but changes something they will meet next time. A single `- NOTHING` bullet when there is nothing to report.
+- A staged candidate, a filed memory note, or a knowledge-root fallback from step 7 is an `FYI` bullet naming the file or the reason, in the existing `FYI` grammar.
 - An overlay (a consumer's own routing, distill, or knowledge-capture step) appends its own labelled sections after `FYI`, in the same shape: a bold label line followed by bullets, one item per note, candidate, or queue entry; the kit's grammar stops there. A `wrap.before` skill's report lines fold in at that same place.
 - No table unless the session touched four or more repos. No restating what each step did.
 
