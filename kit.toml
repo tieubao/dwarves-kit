@@ -41,7 +41,8 @@ weekend_batch  = false          # hookless; backs lib/queue/weekend-batch.sh
 #         mirror/status/writeback verbs remain until the SPEC-002 P2 port, ID-290)
 worktree       = false          # hookless; exposes the worktree-provision CLI
 money_gate     = false          # money-gate.sh PreToolUse guard; inert without MONEY_GATE_REPOS
-prose_rag      = false          # prose-rag.sh recall inject + CLI; dormant without PROSE_RAG_INJECT=1
+prose_rag      = false          # prose-rag.sh recall inject + CLI adapter; dormant without PROSE_RAG_INJECT=1
+                                # (engine binary comes from context-kit: cargo install --path src/prose-rag)
 sync           = false          # hookless; `board sync` two-way spoke mirror, inert without [sync] sources
 team_mode      = false          # reserved , install.sh hard-rejects it today
 

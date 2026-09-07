@@ -1,5 +1,2 @@
-# local index built inside the tool dir (default lives in ~/.claude/prose-rag/)
+# local index built inside the module dir (default lives in ~/.claude/prose-rag/)
 *.db
-# rust build output + the deployed engine binary (build: cargo build --release)
-rust/target/
-bin/prose-rag-rs

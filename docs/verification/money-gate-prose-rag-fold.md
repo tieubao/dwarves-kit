@@ -9,6 +9,10 @@ Change under proof (the 2026-07-05 "stays personal" disposition was overruled
    repo list; INERT unless the consumer sets `MONEY_GATE_REPOS` (adapter-default
    invariant, the kit ships no tenant repo names and no tenant vendor keywords).
    Module `money_gate` (PreToolUse `Edit|Write|MultiEdit`).
+Superseded on the prose-rag half by the adapter (SPEC-250): the folded-in crate is
+retired and the engine binary now comes from context-kit, so the build and cargo-test
+lines below are historical.
+
 2. `lib/prose-rag/` , fold of the semantic-recall engine, **Rust only** (the
    Python/fastembed engine was dropped at the fold: strictly slower on every
    axis, and one engine is one truth). Genericized: corpus comes from

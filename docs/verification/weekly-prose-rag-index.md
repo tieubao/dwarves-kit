@@ -4,6 +4,9 @@ Branch: `feat/weekly-prose-rag-index`. Stateful change: a new `jobs.txt` job, a
 consumer-env source in the `kit-weekly` dispatcher, and an unconfigured-corpus
 guard in the engine + `bin/prose-rag` wrapper.
 
+Superseded by the adapter (SPEC-250): the vendored crate and its build line are gone,
+and the engine binary now comes from context-kit.
+
 ## Acceptance criteria
 
 1. `prose-rag index` with no `PROSE_RAG_CORPUS` and no `--corpus` skips clean:

@@ -3,6 +3,9 @@
 **Change class:** behavioral (`lib/prose-rag/rust/src/main.rs`); advisory/prompt-wiring
 (`commands/think.md`, `commands/spec-validate.md`, `commands/absorb.md`, `commands/assign.md`).
 
+Superseded on the prose-rag half by the adapter (SPEC-250): the crate under
+`lib/prose-rag/rust` is retired and the engine lives in context-kit.
+
 **Claim:** three independent, small fixes:
 
 1. `prose-rag query`'s relevance floor is overridable via `--floor` (already existed) or the

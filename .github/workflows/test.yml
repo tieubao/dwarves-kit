@@ -269,3 +269,6 @@ jobs:
 
       - name: Run staging-format stage verb tests (SPEC-249)
         run: bash tests/test-staging-stage.sh
+
+      - name: Run prose-rag adapter tests (SPEC-250)
+        run: bash tests/test-prose-rag-adapter.sh
