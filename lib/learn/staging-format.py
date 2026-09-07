@@ -4,6 +4,10 @@
 by whichever of the two sub-goals merges first; SG-06 landed it -- SG-05's `staging-format*`
 did not exist yet on this branch's history).
 
+Three verbs on the CLI: `parse <file>` (read blocks back as JSON), `render` (render one
+candidate from stdin JSON), and `stage` (the one staging WRITER: dedupe + render + append
+in a single process, used directly and by `wrap stage`, SPEC-249 TASK-003/004).
+
 A staging file is a sequence of `## [<state>] <title>` blocks, each followed by `- Field:
 value` lines (Intent, Approach, Tags, Home, Source, ...). This mirrors
 `lib/board/bin/add-backlog`'s private `parse_staging()` (that reader is settled, working, and
@@ -79,7 +83,7 @@ def age_days(fields, today=None):
     return (today - d).days
 
 # --- write side (from SG-05 `learn propose`; unified here per ADR-0034 decision 1:
-# ONE staging-block definition, shared by drain + propose) ---
+# ONE staging-block definition, shared by drain, propose, and the `stage` verb below) ---
 
 _NORM_RE = re.compile(r"[a-z0-9]+")
 
@@ -154,6 +158,53 @@ def existing_keys(*sources):
     return keys
 
 
+def cmd_stage():
+    """`staging-format.py stage`: read one JSON object on stdin (title, intent, home,
+    staging, backlog?) and either report a duplicate or append one block. See the
+    `### Interfaces` `staging-format.py stage` paragraph, SPEC-249 TASK-003. The dedupe
+    check runs immediately before the append, in this same process -- there is no window
+    between "is it staged" and "stage it" for another writer to land in."""
+    import os
+    try:
+        data = json.load(sys.stdin)
+    except (json.JSONDecodeError, ValueError):
+        sys.stderr.write(
+            "usage: staging-format.py stage: expects one JSON object on stdin "
+            "({title, intent, home, staging, backlog?})\n"
+        )
+        return 64
+
+    title = data.get("title", "")
+    staging = data.get("staging", "")
+    key = norm(title)
+    if key and key in existing_keys(("staging", staging), ("board", data.get("backlog"))):
+        print(f"stage: already staged: {title}")
+        return 0
+
+    block = render_block({
+        "title": title,
+        "intent": data.get("intent", ""),
+        "home": data.get("home", ""),
+        "u": "lo",
+        "f": "mid",
+        "source": f"session {date.today().isoformat()}",
+    })
+    if block is None:
+        sys.stderr.write("usage: staging-format.py stage: title is required\n")
+        return 64
+
+    header = "" if os.path.isfile(staging) else "# Backlog staging\n\n"
+    try:
+        with open(staging, "a", encoding="utf-8") as fh:
+            fh.write(header + block)
+    except OSError as e:
+        print(f"FAILED: {e}")
+        return 2
+
+    print(block.splitlines()[0])
+    return 0
+
+
 def _main(argv):
     if len(argv) >= 2 and argv[1] == "parse":
         with open(argv[2], encoding="utf-8") as fh:
@@ -165,7 +216,9 @@ def _main(argv):
             return 1
         sys.stdout.write(block)
         return 0
-    sys.stderr.write("usage: staging_format.py {parse <file>|render <stdin-json>}\n")
+    if len(argv) >= 2 and argv[1] == "stage":
+        return cmd_stage()
+    sys.stderr.write("usage: staging_format.py {parse <file>|render <stdin-json>|stage}\n")
     return 64
 
 

@@ -260,3 +260,6 @@ jobs:
         run: bash tests/test-break-it.sh
       - name: Run wrap verb tests (SPEC-246)
         run: bash tests/test-wrap.sh
+
+      - name: Run staging-format stage verb tests (SPEC-249)
+        run: bash tests/test-staging-stage.sh

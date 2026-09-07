@@ -37,3 +37,12 @@ Why: matches the file's real structure; a case added to the 5-line delegator wou
 Alternatives: duplicate the fixture/case logic into `test-config.sh` directly, bypassing the delegation. Rejected: two copies of the same precedence fixture drift the way DEC-007 in the spec warns against for the staging grammar.
 Impact: none outside this task; `bash tests/test-config.sh` still is the acceptance command and still goes green.
 Open questions: none.
+
+## 2026-09-07 16:20 TASK-003: no deviations; matches SPEC-249 verbatim
+
+Context: `stage` verb on `lib/learn/staging-format.py` per the `### Interfaces` paragraph and edge cases 18, 19, 22, 23.
+Decision: implemented `cmd_stage()` exactly as specified: reads one JSON object on stdin, computes `norm(title)`, calls `existing_keys(("staging", staging), ("board", backlog))`, prints `stage: already staged: <title>` and exits 0 on a hit, else renders one block via `render_block` (`u=lo`, `f=mid`, `source=session <today>`), writes a one-line `# Backlog staging\n\n` header (mirroring `lib/session/intel/bin/session-intel`'s pattern) only when the file is absent, appends header+block in one `open(..., "a").write()` call, prints the block's first line, exits 0. An `OSError` around that one write prints `FAILED: <reason>` and exits 2 before any byte lands. Malformed stdin JSON prints a usage-style line and exits 64.
+Why: DEC-007 names this module as the one place that owns `norm`/`existing_keys`/`render_block`; the writer composes them instead of copying the grammar into bash.
+Alternatives: none considered; the interface paragraph is fully prescriptive.
+Impact: `_main`'s usage line and the module's top docstring now name `stage` alongside `parse`/`render`; the "write side" comment above `render_block` now credits `stage` as a third caller alongside drain and propose. New `tests/test-staging-stage.sh` registered in `.github/workflows/test.yml` after the `test-wrap.sh` step. Directory creation for the staging file's parent is deliberately NOT this verb's job (TASK-004's `wrap stage` owns path resolution + fences before calling this writer).
+Open questions: none.
