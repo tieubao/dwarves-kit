@@ -521,11 +521,135 @@ chk "log from outside the repo prepends to the configured file itself" \
   "$([ "$(head -1 "$LOGREPO/_meta/LOG.md")" = "$(date +%F) · wrap: from outside" ]; echo $?)"
 
 # ===========================================================================
+echo "=== knowledge-root: the key, the HOME fence, and the repo argument ==="
+# ===========================================================================
+KRHOME="$TMPD/kr-home"; mkdir -p "$KRHOME/root-ok"
+KROUTSIDE="$TMPD/kr-outside"; mkdir -p "$KROUTSIDE"
+KRKITROOT="$TMPD/kr-kitroot"; mkdir -p "$KRKITROOT"
+KRREPO="$TMPD/kr-repo"; mkdir -p "$KRREPO"
+git -C "$KRREPO" init -q; gitc "$KRREPO"
+
+set_kr_key() { printf '[knowledge]\nroot = "%s"\n' "$1" > "$KRKITROOT/kit.toml"; }
+kr() { HOME="$KRHOME" KIT_CONFIG_ROOT="$KRKITROOT" "$WRAP" knowledge-root "$@"; }
+
+printf '[knowledge]\n' > "$KRKITROOT/kit.toml"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: key empty exits 0" "$rc"
+chk_has "knowledge-root: key empty prints the repo-local fallback" "$out" "$KRREPO/.claude/memory"
+chk "knowledge-root: key empty creates nothing" "$([ ! -e "$KRREPO/.claude/memory" ]; echo $?)"
+
+set_kr_key "$KRHOME/root-ok"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: filled, under HOME, existing, exits 0" "$rc"
+chk_has "knowledge-root: prints <root>/projects/<basename>" "$out" "root-ok/projects/kr-repo"
+chk "knowledge-root: creates <root>/projects/<basename>" "$([ -d "$KRHOME/root-ok/projects/kr-repo" ]; echo $?)"
+
+set_kr_key "$KRHOME/missing-root"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: filled but missing still exits 0 (fallback, not an error)" "$rc"
+chk_has "knowledge-root: filled but missing falls back on stdout" "$out" "$KRREPO/.claude/memory"
+chk_has "knowledge-root: filled but missing names the reason on stderr" "$out" "knowledge-root:"
+chk "knowledge-root: filled but missing creates nothing under the still-missing root" \
+  "$([ ! -e "$KRHOME/missing-root" ]; echo $?)"
+
+set_kr_key "$KROUTSIDE"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: filled but outside HOME falls back, exit 0" "$rc"
+chk_has "knowledge-root: outside HOME falls back on stdout" "$out" "$KRREPO/.claude/memory"
+chk "knowledge-root: outside HOME creates nothing there" "$([ ! -e "$KROUTSIDE/projects" ]; echo $?)"
+
+ln -s "$KROUTSIDE" "$KRHOME/link-outside"
+set_kr_key "$KRHOME/link-outside"
+out="$(kr "$KRREPO" 2>&1)"; rc=$?
+chk "knowledge-root: a symlink resolving outside HOME falls back, exit 0" "$rc"
+chk_has "knowledge-root: symlink-outside falls back on stdout" "$out" "$KRREPO/.claude/memory"
+chk "knowledge-root: symlink-outside creates nothing under the real target" \
+  "$([ ! -e "$KROUTSIDE/projects" ]; echo $?)"
+
+out="$(kr 2>&1)"; rc=$?
+chk "knowledge-root: missing repo argument exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+
+out="$(kr "$KRREPO/no-such-subdir/.." 2>&1)"; rc=$?
+chk "knowledge-root: repo arg ending in /.. exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+
+out="$(kr / 2>&1)"; rc=$?
+chk "knowledge-root: repo arg resolving to / exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+
+# ===========================================================================
+echo "=== stage: default paths, dedupe, the fences, and the worktree copy ==="
+# ===========================================================================
+STAGEHOME="$TMPD/stage-home"; mkdir -p "$STAGEHOME"
+mk_stage_repo() { # mk_stage_repo <name> -- prints the new repo's path
+  local d="$TMPD/stage-$1"
+  mkdir -p "$d"; git -C "$d" init -q; gitc "$d"
+  git -C "$d" commit -q --allow-empty -m init
+  printf '%s' "$d"
+}
+
+R1="$(mk_stage_repo one)"
+out="$(cd "$R1" && "$WRAP" stage "My First Title" "the intent" "the home" 2>&1)"; rc=$?
+chk "stage: default paths exits 0" "$rc"
+chk "stage: creates _meta/backlog-staging.md" "$([ -f "$R1/_meta/backlog-staging.md" ]; echo $?)"
+chk_has "stage: appends the rendered block" "$(cat "$R1/_meta/backlog-staging.md")" "## [staged] My First Title"
+
+out="$(cd "$R1" && "$WRAP" stage "my   FIRST title!!" "x" "y" 2>&1)"; rc=$?
+chk "stage: a dup differing in case/spacing/punctuation exits 0" "$rc"
+chk_has "stage: the dup prints already staged" "$out" "already staged"
+DUP_COUNT="$(grep -c '^## \[staged\]' "$R1/_meta/backlog-staging.md")"
+chk "stage: the dup wrote no second block" "$([ "$DUP_COUNT" -eq 1 ]; echo $?)"
+
+R2="$(mk_stage_repo two)"
+mkdir -p "$STAGEHOME/override-home"
+out="$(cd "$R2" && BACKLOG_STAGE_STAGING="$STAGEHOME/override-home/staging.md" HOME="$STAGEHOME" \
+  "$WRAP" stage "Override Path Title" "i" "h" 2>&1)"; rc=$?
+chk "stage: BACKLOG_STAGE_STAGING under HOME honoured, exit 0" "$rc"
+chk "stage: writes the overridden path" "$([ -f "$STAGEHOME/override-home/staging.md" ]; echo $?)"
+chk "stage: never touches the repo default path" "$([ ! -e "$R2/_meta/backlog-staging.md" ]; echo $?)"
+
+R3="$(mk_stage_repo three)"
+mkdir -p "$R3/_meta"; ln -s /etc/hosts "$R3/_meta/backlog-staging.md"
+out="$(cd "$R3" && "$WRAP" stage "T" "i" "h" 2>&1)"; rc=$?
+chk "stage: a symlinked target refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "stage: names the reason on stderr" "$out" "wrap stage:"
+chk "stage: the symlink itself is left alone" "$([ -L "$R3/_meta/backlog-staging.md" ]; echo $?)"
+
+R4="$(mk_stage_repo four)"
+mkdir -p "$STAGEHOME/elsewhere" "$STAGEHOME/some-other-home"
+out="$(cd "$R4" && BACKLOG_STAGE_STAGING="$STAGEHOME/elsewhere/staging.md" HOME="$STAGEHOME/some-other-home" \
+  "$WRAP" stage "T" "i" "h" 2>&1)"; rc=$?
+chk "stage: outside the repo and outside HOME refuses, exit 1" "$([ "$rc" -eq 1 ]; echo $?)"
+chk "stage: nothing written outside" "$([ ! -e "$STAGEHOME/elsewhere/staging.md" ]; echo $?)"
+
+out="$("$WRAP" stage "T" "i" "h" --repo "$TMPD/not-a-repo" 2>&1)"; rc=$?
+chk "stage: a non-git --repo exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+
+R5="$(mk_stage_repo five)"
+mkdir -p "$R5/_meta"; : > "$R5/_meta/backlog-staging.md"; chmod 400 "$R5/_meta/backlog-staging.md"
+out="$(cd "$R5" && "$WRAP" stage "T" "i" "h" 2>&1)"; rc=$?
+chk "stage: an unwritable target relays FAILED, exit 2" "$([ "$rc" -eq 2 ]; echo $?)"
+chk_has "stage: relays the FAILED line" "$out" "FAILED"
+chmod 644 "$R5/_meta/backlog-staging.md"
+
+R6MAIN="$TMPD/stage-six"
+git init -q "$R6MAIN" && git -C "$R6MAIN" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+mkdir -p "$R6MAIN/_meta"
+printf '# Backlog staging\n\n' > "$R6MAIN/_meta/backlog-staging.md"
+git -C "$R6MAIN" add _meta/backlog-staging.md
+git -C "$R6MAIN" -c user.name=t -c user.email=t@t commit -q -m stage
+git -C "$R6MAIN" worktree add -q -b stage-side "$TMPD/stage-six-wt"
+out="$(cd "$TMPD/stage-six-wt" && "$WRAP" stage --repo "$R6MAIN" "From The Worktree" "i" "h" 2>&1)"; rc=$?
+chk "stage: run from a worktree exits 0" "$rc"
+chk_has "stage: writes the worktree's own copy" \
+  "$(cat "$TMPD/stage-six-wt/_meta/backlog-staging.md")" "## [staged] From The Worktree"
+chk_no "stage: the main checkout's copy is left alone" \
+  "$(cat "$R6MAIN/_meta/backlog-staging.md")" "## [staged] From The Worktree"
+
+# ===========================================================================
 echo "=== help and usage ==="
 # ===========================================================================
 out="$("$WRAP" --help 2>&1)"; rc=$?
 chk "--help exits 0" "$rc"
-for verb in scan apply merge log default-branch; do
+for verb in scan apply merge log default-branch knowledge-root stage; do
   chk_has "--help names $verb" "$out" "$verb"
 done
 out="$("$WRAP" scan 2>&1)"; rc=$?
@@ -536,6 +660,10 @@ out="$("$WRAP" merge 2>&1)"; rc=$?
 chk "merge with no repo exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 out="$("$WRAP" log 2>&1)"; rc=$?
 chk "log with no text exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+out="$("$WRAP" knowledge-root 2>&1)"; rc=$?
+chk "knowledge-root with no repo exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
+out="$("$WRAP" stage 2>&1)"; rc=$?
+chk "stage with no args exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 out="$("$WRAP" bogus 2>&1)"; rc=$?
 chk "an unknown verb exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 

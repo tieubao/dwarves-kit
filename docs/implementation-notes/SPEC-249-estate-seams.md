@@ -64,3 +64,21 @@ Why: `_seam_resolve` never calls `_resolve` (the invariant), and a key with no r
 Alternatives: a distinct `(unregistered key)` marker. Rejected: unnecessary given the case cannot occur against the shipped registry, and the AC6 lint is the real guardrail.
 Impact: none on the live registry's five rows (all pass `_find_row`). Defensive only.
 Open questions: none.
+
+## 2026-09-07 TASK-004: cmd_log does not actually call _write_guard
+
+Context: the Interfaces paragraph for `bin/wrap stage` and DEC-008 both say the new writers run "`_worktree_copy` and `_write_guard` exactly as `cmd_log` does." Reading `cmd_log` (lib/wrap/wrap.sh) shows it calls `_realpath_f`, the HOME fence, and `_worktree_copy`, but never `_write_guard`; that helper is only called from `run()`, the apply verb's write wrapper.
+Decision: `wrap stage` calls `_write_guard "$repo_top"` before writing (mirroring `run()`'s pattern), and `wrap knowledge-root` calls `_write_guard "$repo_real"` (the `<repo>` argument) before its `mkdir -p`, even though the existing `cmd_log` they were modeled on does not call it.
+Why: the Invariants section states the general rule ("every wrap writer runs ... `_write_guard`") plainly, twice, "`knowledge-root` included"; the cross-reference to `cmd_log`'s own behavior is the part that does not match the code. Satisfying the stated invariant over the inaccurate cross-reference keeps both new writers consistent with each other and with `run()`.
+Alternatives: skip `_write_guard` entirely, matching `cmd_log` byte-for-byte. Rejected: the invariant is stated as a requirement for `knowledge-root` by name, not as a description of legacy behavior to copy.
+Impact: `lib/wrap/wrap.sh` `cmd_stage` and `cmd_knowledge_root`; both fall back (stage: exit 1 fence failure; knowledge-root: repo-local fallback, exit 0) when `_write_guard` reports the checkout locked. No test forces a stale index.lock for these two verbs (the existing apply-verb lock tests already cover `_write_guard` itself); adding one is optional follow-up, not required by the task's acceptance list.
+Open questions: none.
+
+## 2026-09-07 TASK-004: basename check uses parameter expansion, not `basename`
+
+Context: the Interfaces paragraph requires "a resolved basename of `.`, `..`, or empty" to exit 64. After `cd "$repo" && pwd -P`, `..` and `.` components are always collapsed by the shell before `pwd -P` ever prints, so a literal `..`/`.` basename cannot survive resolution; the one case that reliably fires is `<repo>` resolving to `/`, and the external `basename` command prints `/` (not empty) for that input on both GNU and BSD.
+Decision: compute the basename with parameter expansion (`base="${trimmed##*/}"` on `trimmed="${repo_real%/}"`), which gives `""` for `/`, matching the spec's "empty" case. A repo argument that lexically ends in `/..` against a non-existent intermediate component (e.g. `x/y/..` where `x/y` does not exist) is already refused earlier, by the `cd` failure branch, with the same exit 64.
+Why: verified directly; the external `basename` binary and shell parameter expansion disagree only on this one input, and parameter expansion is the one that produces the value the spec names.
+Alternatives: call `basename "$repo_real"` and add a special-case for `/`. Rejected: parameter expansion already gives the right answer with no extra branch.
+Impact: `cmd_knowledge_root` in `lib/wrap/wrap.sh`; `tests/test-wrap.sh` covers both the `/` case (empty basename, exit 64) and a `/no-such-subdir/..` argument (caught by the earlier `cd` failure, exit 64).
+Open questions: none.

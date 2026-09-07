@@ -11,6 +11,8 @@
 #   wrap merge [--apply] <repo>                         one own green PR
 #   wrap log "<slug>: <one sentence>" [--date D]        the activity line
 #   wrap default-branch <repo>                          the detected default branch
+#   wrap knowledge-root <repo>                          SPEC-249: fenced knowledge dir
+#   wrap stage "<title>" "<intent>" "<home>" [--repo R] SPEC-249: stage a candidate
 set -euo pipefail
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 exec bash "$SELF_DIR/../lib/wrap/wrap.sh" "$@"
