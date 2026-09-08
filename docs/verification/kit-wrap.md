@@ -97,3 +97,38 @@ What would close the gap: a recorded `/kit:wrap` transcript over a fixture repo 
 a stale worktree, and a candidate with a precedent hit, asserted against the resulting git state rather
 than against the report text. That fixture does not exist; building it is the honest next step, not a
 line in this file.
+
+## Needs you admission test, mechanised (9f28db9)
+
+The 2026-09-08 entry above recorded #524's admission test as NOT proven, because a test can
+assert the rule shipped, not that a run obeys it. `lib/wrap/report-lint.sh` closes the half of
+that gap which is mechanical: it judges the report's PHRASING, which is checkable, and leaves
+reversibility, which is not, to the rule itself.
+
+Command: `bash tests/test-wrap.sh && bash tests/test-meta.sh && bash tests/test-bin-forwarders.sh && bash tests/test-docs-wiring.sh`
+Exit: 0 for each suite
+Output (excerpt): `test-wrap: all 234 passed` (224 before, 10 lint cases); `Passed: 840 / 840`;
+`test-bin-forwarders: all 41 passed`; docs-wiring `25/25 passed`
+Verdict: PASS
+
+Case 1 is the original defect verbatim, `a. REVIEW then merge #523. Say go and I merge it.`,
+the line this session's own wrap report actually printed while the admission test was prose.
+It now exits 1. The remaining cases pin the boundaries: `NOTHING` passes, the same sentence in
+`What happened` is never judged, a stated blocker passes, a self-runnable command with no
+blocker warns rather than fails, a stated blocker clears that warn, a report with no `Needs you`
+block is clean, and a missing file exits 2.
+
+## NEGATIVE CONTROL (9f28db9)
+
+Command: `bash lib/gate/negctl.sh . "bash tests/test-wrap.sh" "<sed that blanks PERMISSION_RE>"`
+Exit: 0 green before; 1 under mutation; 0 after restore
+Output (excerpt): `Verdict: PASS`
+Verdict: RED-as-expected.
+
+## Still unproven after this
+
+- #525's build routing in step 7b. No lint can see whether a precedent hit was wired into the
+  tool it named; only the resulting commit would show it, and that commit's absence is
+  indistinguishable from "there were no candidates this session".
+- Whether a run follows step 5's ORDER. The lint reads the report, not the sequence that
+  produced it.

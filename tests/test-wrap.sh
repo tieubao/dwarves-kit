@@ -843,6 +843,43 @@ chk "the naive cwd would have been the feature branch" \
   "$([ "$(git -C "$RES/wt" branch --show-current)" = "feature" ]; echo $?)"
 chk_has "commands/wrap.md prescribes the recipe" "$(cat "$KIT_DIR/commands/wrap.md")" "--git-common-dir"
 
+# ------------------------------------------------------------- report lint
+# The `Needs you` admission test, mechanised. The first case is the REAL defect that
+# started this work: a green own PR parked behind "say go and I merge it".
+echo
+echo "=== report lint ==="
+LINT="$KIT_DIR/lib/wrap/report-lint.sh"
+_report() { printf '## Wrap: t\n\n%s\n\n**What happened**\n- %s\n' "$1" "${2:-body}"; }
+
+out="$(_report '🔴 **Needs you:**
+a. REVIEW then merge #523. Say go and I merge it.' | bash "$LINT" 2>&1)"; rc=$?
+chk "the original defect fails the lint" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "the finding names the offending item" "$out" "asks permission instead of naming a blocker"
+
+out="$(_report '✅ **Needs you:** NOTHING' 'say go and I merge it' | bash "$LINT" 2>&1)"; rc=$?
+chk "NOTHING passes, and What happened is never judged" "$([ "$rc" -eq 0 ]; echo $?)"
+
+out="$(_report '🔴 **Needs you:**
+a. UNBLOCK the deploy. It is blocked on a credential only you can read.' | bash "$LINT" 2>&1)"; rc=$?
+chk "a real blocker passes" "$([ "$rc" -eq 0 ]; echo $?)"
+
+out="$(_report '🔴 **Needs you:**
+a. RUN gh pr merge 12 --squash.' | bash "$LINT" 2>&1)"; rc=$?
+chk "a self-runnable command with no blocker warns, does not fail" "$([ "$rc" -eq 0 ]; echo $?)"
+chk_has "the warn names the command class" "$out" "names a command the kit can run"
+
+out="$(_report '🔴 **Needs you:**
+a. RUN gh pr merge 12 once security signs off; it is blocked on their approval.' | bash "$LINT" 2>&1)"; rc=$?
+chk_no "a stated blocker clears the warn" "$out" "names a command the kit can run"
+
+out="$(printf 'no needs-you section at all\n' | bash "$LINT" 2>&1)"; rc=$?
+chk "a report with no Needs you block is clean" "$([ "$rc" -eq 0 ]; echo $?)"
+
+rc=0; bash "$LINT" /nonexistent-report-file >/dev/null 2>&1 || rc=$?
+chk "a missing file exits 2" "$([ "$rc" -eq 2 ]; echo $?)"
+
+chk_has "commands/wrap.md wires the lint into step 9" "$(cat "$KIT_DIR/commands/wrap.md")" "lib/wrap/report-lint.sh"
+
 echo
 if [ "$FAIL" -gt 0 ]; then echo "test-wrap: $PASS passed, $FAIL FAILED of $TOTAL" >&2; exit 1; fi
 echo "test-wrap: all $PASS passed"
