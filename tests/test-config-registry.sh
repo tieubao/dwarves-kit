@@ -252,6 +252,45 @@ while IFS= read -r srow; do
 done <<< "$SEAM_ROWS"
 assert "every ## Seams key appears at most once in 'bash bin/config list' output" "$LEAK_DUP"
 
+# --------------------------------------------- command autonomy knobs (SPEC-246 sibling)
+# Five keys gate an action that is reversible in git; the shipped default acts. Each
+# authorizes a WRITE, so the fence that matters is the third assertion per key: a project
+# `.kit.toml` rides inside a pull request and must never widen what a command does.
+echo ""
+echo "=== AC9: command autonomy knobs resolve root-only ==="
+# shellcheck source=/dev/null
+. "$(cd "$(dirname "$0")/.." && pwd)/lib/config/kit-config.sh"
+AUTONOMY_DIR="$(mktemp -d)"; AUT_OP="$AUTONOMY_DIR/op"; AUT_PROJ="$AUTONOMY_DIR/proj"
+mkdir -p "$AUT_OP" "$AUT_PROJ"
+cat > "$AUT_OP/kit.toml" <<'TOML'
+[ship]
+confirm_commit = true
+confirm_bump = "always"
+create_changelog = false
+[debug]
+confirm_fix = true
+[review]
+apply_findings = false
+TOML
+cp "$AUT_OP/kit.toml" "$AUT_PROJ/.kit.toml"
+# key<TAB>shipped default<TAB>operator override
+while IFS='|' read -r akey adefault aover; do
+  [ -n "$akey" ] || continue
+  v="$(kit_config_get_root "$akey" "$adefault")"
+  assert "$akey ships as $adefault" "$([ "$v" = "$adefault" ] && echo 0 || echo 1)"
+  v="$(KIT_CONFIG_OPERATOR="$AUT_OP" kit_config_get_root "$akey" "$adefault")"
+  assert "$akey honours the operator kit.toml" "$([ "$v" = "$aover" ] && echo 0 || echo 1)"
+  v="$(KIT_PROJECT_ROOT="$AUT_PROJ" kit_config_get_root "$akey" "$adefault")"
+  assert "$akey ignores a project .kit.toml" "$([ "$v" = "$adefault" ] && echo 0 || echo 1)"
+done <<'KEYS'
+ship.confirm_commit|false|true
+ship.confirm_bump|major|always
+ship.create_changelog|true|false
+debug.confirm_fix|false|true
+review.apply_findings|true|false
+KEYS
+rm -rf "$AUTONOMY_DIR"
+
 echo ""
 echo "=== $PASS/$TOTAL passed ==="
 [ "$FAIL" -eq 0 ]

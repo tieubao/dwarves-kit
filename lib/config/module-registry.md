@@ -261,6 +261,22 @@ single-reader fence). No env vars; per-repo values live in `.kit.toml [sync]`.
 |---|---|---|---|---|---|
 | PRECEDENT_REGISTRY | precedent.registry | `${XDG_CONFIG_HOME:-$HOME/.config}/dwarves-kit/inventory.txt` | [consumer] | precedent | Registry file of extra `<kind> <path>` scan locations (`repo\|scripts\|skills\|crons\|memory`) for `precedent find --surface inventory\|all`. Resolution: `--registry` flag > this env var > `kit_config_get_root precedent.registry` (the operator `kit.toml` or the kit-root `kit.toml` ONLY; a project `.kit.toml` is never read for this key because registry rows widen the roots `--explain` may read and a project toml rides inside an untrusted PR, `kit-config.sh:75-90`) > the XDG default path shown here (read by `inventory.py` itself, not the resolver). Empty/missing registry means built-in scan only. |
 
+### ship / debug / review (command autonomy knobs, no install module)
+
+Each key gates an action that is reversible in git; the shipped default acts. All resolve with
+`kit_config_get_root` (the operator `kit.toml` or the kit-root `kit.toml` ONLY; a project
+`.kit.toml` is never read for any of them because each authorizes a write and a project toml rides
+inside an untrusted PR, `kit-config.sh:75-90`). A `false` turns the action into a report line; it
+never turns the step off.
+
+| Env var | kit.toml key | Default | Status | Module | Doc |
+|---|---|---|---|---|---|
+| - | ship.confirm_commit | `false` | [impl] | (none) | `commands/ship.md` step 6. `false` stages intentionally, commits, then shows what landed; `true` shows the proposed commits and waits. Nothing is pushed at this step either way, so a wrong message is one `git commit --amend` away. |
+| - | ship.confirm_bump | `"major"` | [impl] | (none) | `commands/ship.md` step 4. Which version bumps still need a yes: `"major"` (default, the breaking bump alone, because it is a semver promise to consumers), `"always"`, or `"never"`. A minor or patch bump applies and is reported. |
+| - | ship.create_changelog | `true` | [impl] | (none) | `commands/ship.md` step 5. `true` creates the changelog file when none exists; `false` offers and skips on a decline. |
+| - | debug.confirm_fix | `false` | [impl] | (none) | `commands/debug.md` Phase 4 step 5. `false` declares the fix done once the phase's own three conditions hold (the new test passes, no other test broke, the symptom is gone) and reports the evidence; `true` holds the verdict for a human yes. A fix missing any of the three is never declared fixed at either setting. |
+| - | review.apply_findings | `true` | [impl] | (none) | `commands/review-team.md` step 5. `true` applies the `gated_auto` findings that `responding-to-review` VERIFIED, via `fix-agent`, leaving the PR as the review surface; `false` proposes them for the operator to apply. A finding that agent pushed back on is never applied at either setting; `manual` and `advisory` findings never route here (SPEC-078). |
+
 ### wrap (`/kit:wrap` landing-step config, no install module)
 
 | Env var | kit.toml key | Default | Status | Module | Doc |

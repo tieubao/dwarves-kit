@@ -101,7 +101,7 @@ Record findings in `## Evidence` as you go. When you can name the cause and poin
 2. **One fix, at the root cause.** No "while I'm here" changes, no bundled refactoring.
 3. **Verify.** The new test passes; no other test broke; the original symptom is gone.
 4. **Clean up.** Remove all instrumentation in one pass over the region markers (`sed '/# #region DEBUG/,/# #endregion/d'` or equivalent). Confirm `git bisect reset` ran if you bisected.
-5. **Do not declare "fixed" until the human confirms.** Increment `## Fix attempts`. Write the result in `## Resolution`. Then ask the human to confirm before you call it done or strip the ledger.
+5. **Declare it fixed on the loop's own evidence.** Increment `## Fix attempts`. Write the result in `## Resolution`. Then read `kit_config_get_root debug.confirm_fix false`. False, the default: step 3 already proved it (the new test passes, no other test broke, the symptom is gone), so declare it fixed and report those three results as the evidence. True: hold the verdict and ask the human to confirm. Either way, a fix missing any of step 3's three conditions is NEVER declared fixed, and the ledger is stripped only after the verdict stands.
 
 ## The 3-fix architecture wall
 
