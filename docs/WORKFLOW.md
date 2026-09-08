@@ -1319,4 +1319,4 @@ mistake is irreversible:
 | `/kit:retro` | retrospective | `docs/retro/RETRO-<date>-<slug>.md` written | advisory |
 | a `/goal` activator | goal loop | `## Verification` passes + done-definition | anti-rationalization (hard) |
 
-<!-- provenance: SPEC-062 (telemetry closure), SPEC-063, SPEC-069 (review escalation), SPEC-074 (lane x type composition), SPEC-076 (V-model descent) -->
+<!-- provenance: SPEC-062 (telemetry closure), SPEC-063, SPEC-069 (review escalation), SPEC-074 (lane x type composition), SPEC-076 (V-model descent), SPEC-128 (wavefront spec-reservation), SPEC-129 (gate-outcome marker), SPEC-130 (coverage-delta), SPEC-131 (mutation-smoke), SPEC-132 (generated proof-table) -->

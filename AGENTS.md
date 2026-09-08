@@ -183,4 +183,4 @@ not from this file. Keep the four zone names stable; renaming one without updati
 | Done-when | AGENTS.md zone 3 (Done means) + the active spec's `## After state` |
 | Pause-if | AGENTS.md zone 4 (Pause if) |
 
-<!-- provenance: SPEC-070 (one rid per run), SPEC-063 (run legibility) -->
+<!-- provenance: SPEC-070 (one rid per run), SPEC-063 (run legibility), ADR-0031 (the understanding axis, advisory), SPEC-128 (wavefront spec-reservation), SPEC-129 (gate-outcome marker), SPEC-132 (generated proof-table) -->
