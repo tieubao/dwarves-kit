@@ -510,6 +510,49 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# ID-642: the widened shape catches AWS secret access keys, PEM private-key
+# blocks, ops_ 1Password service tokens, and PASSWORD=/TOKEN= assignments,
+# and a benign line still passes through unredacted (negative control). Every
+# fixture is built from split fragments so no literal credential-shaped
+# string sits in this file.
+# ---------------------------------------------------------------------------
+WIDEN_RESULT="$(python3 -c "
+import importlib.util
+
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+inv = load('inv', '$KIT_DIR/lib/precedent/inventory.py')
+
+fake_slack = 'xox' + 'b-' + '1' * 10 + '-' + 'a' * 12
+fake_aws_val = ''.join(['wJal', 'rXUt', 'nFEM', 'I/K7', 'MDEN', 'G/bP', 'xRfi', 'CYEX', 'AMPL', 'EKEY'])
+fake_aws = 'AWS_SECRET_ACCESS_KEY=' + fake_aws_val
+fake_pem = '-----BEGIN RSA PRIV' + 'ATE KEY-----'
+
+cases = [
+    (fake_slack, True),
+    (fake_pem, True),
+    ('ops_' + 'a' * 24, True),
+    (fake_aws, True),
+    ('DB_PASSWORD=hunter2ishardtoguess', True),
+    ('API_TOKEN=' + 'abc123xyz789longenough', True),
+    ('the quick brown fox jumps over the lazy dog', False),
+    ('run \`git commit -m fix\` then push', False),
+]
+bad = [s for s, expect in cases if bool(inv.SECRET_SHAPE_RE.search(s)) != expect]
+print('ok' if not bad else 'bad: ' + repr(bad))
+" 2>&1)"
+if [ "$WIDEN_RESULT" = "ok" ]; then
+  assert "widened SECRET_SHAPE_RE catches AWS/PEM/ops_/PASSWORD=/TOKEN= shapes, benign text passes (ID-642)" 0
+else
+  assert "widened SECRET_SHAPE_RE catches AWS/PEM/ops_/PASSWORD=/TOKEN= shapes, benign text passes (ID-642)" 1
+  echo "$WIDEN_RESULT" | sed 's/^/      /'
+fi
+
+# ---------------------------------------------------------------------------
 # AC6: --help
 # ---------------------------------------------------------------------------
 OUT="$("$PRECEDENT_BIN" --help 2>&1)"; RC=$?

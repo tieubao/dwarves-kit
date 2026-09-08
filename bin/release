@@ -44,19 +44,30 @@ fi
 
 echo "== channel 1 · public (free core) =="
 python3 - "$VER" <<'PY'
-import json, sys
+import json, re, sys
 v = sys.argv[1]
+
+# Three version surfaces must move together (SPEC-115): plugin.json, VERSION,
+# tool.toml. The 1.7.0 cut missed tool.toml and drifted; tests/test-meta.sh
+# now pins all three, so a missed surface fails CI instead of drifting silently.
 p = ".claude-plugin/plugin.json"
 d = json.load(open(p)); d["version"] = v
 open(p, "w").write(json.dumps(d, indent=2) + "\n")
 open("VERSION", "w").write(v + "\n")
-print(f"  plugin.json + VERSION -> {v}")
+
+t = open("tool.toml").read()
+t = re.sub(r'(?m)^version\s*=\s*"[^"]*"', f'version     = "{v}"', t, count=1)
+open("tool.toml", "w").write(t)
+print(f"  plugin.json + VERSION + tool.toml -> {v}")
 PY
-# roll [Unreleased] into the new section; skeleton from git log if it was empty
+# roll [Unreleased] into the new section; skeleton from git log if it was empty.
+# Targets docs/CHANGELOG.md, the full-history file (SPEC-185 made the root
+# CHANGELOG.md a thin stub that this script must never touch).
 python3 - "$VER" <<'PY'
 import re, subprocess, sys, datetime
 v, today = sys.argv[1], datetime.date.today().isoformat()
-s = open("CHANGELOG.md").read()
+path = "docs/CHANGELOG.md"
+s = open(path).read()
 last = subprocess.run(["git", "describe", "--tags", "--abbrev=0"],
                       capture_output=True, text=True).stdout.strip()
 log = subprocess.run(["git", "log", "--oneline", f"{last}..HEAD"] if last else
@@ -64,17 +75,17 @@ log = subprocess.run(["git", "log", "--oneline", f"{last}..HEAD"] if last else
                      capture_output=True, text=True).stdout
 skeleton = "".join(f"- {l.split(' ', 1)[1]}\n" for l in log.splitlines()[:40] if " " in l)
 if "## [Unreleased]" in s:
-    s = s.replace("## [Unreleased]", f"## [Unreleased]\n\n## [{v}] , {today}", 1)
+    s = s.replace("## [Unreleased]", f"## [Unreleased]\n\n## [{v}] - {today}", 1)
 else:
-    s = re.sub(r"(?m)^(## \[)", f"## [{v}] , {today}\n\n{skeleton}\n\\1", s, count=1)
-open("CHANGELOG.md", "w").write(s)
-print(f"  CHANGELOG: [{v}] section rolled ({last or 'no prior tag'} -> HEAD)")
+    s = re.sub(r"(?m)^(## \[)", f"## [{v}] - {today}\n\n{skeleton}\n\\1", s, count=1)
+open(path, "w").write(s)
+print(f"  {path}: [{v}] section rolled ({last or 'no prior tag'} -> HEAD)")
 PY
 
 echo "== channel 2 · paid stream bundle =="
 STAGE="$(mktemp -d)"
 mkdir -p "$STAGE/forge-stream"
-cp CHANGELOG.md "$STAGE/forge-stream/"
+cp docs/CHANGELOG.md "$STAGE/forge-stream/CHANGELOG.md"
 [ -f docs/tiers.md ] && cp docs/tiers.md "$STAGE/forge-stream/"
 if [ -n "${STREAM_SRC:-}" ]; then
   [ -d "$STREAM_SRC" ] || { echo "STREAM_SRC=$STREAM_SRC not found" >&2; exit 1; }
@@ -89,12 +100,12 @@ SIZE="$(wc -c < "$TAR" | tr -d ' ')"
 echo "  bundle: $SIZE bytes, sha256 $SHA"
 
 if [ "$DRY" = 1 ]; then
-  git checkout -q -- VERSION .claude-plugin/plugin.json CHANGELOG.md
+  git checkout -q -- VERSION .claude-plugin/plugin.json tool.toml docs/CHANGELOG.md
   echo "== dry run: files restored, nothing committed; bundle left at $TAR =="
   exit 0
 fi
 
-git add VERSION .claude-plugin/plugin.json CHANGELOG.md
+git add VERSION .claude-plugin/plugin.json tool.toml docs/CHANGELOG.md
 git commit -q -m "release: v$VER"
 git tag "v$VER"
 echo "  committed + tagged v$VER (locally)"
@@ -103,7 +114,7 @@ if [ "$PUSH" = 1 ]; then
   : "${FORGE_ADMIN_TOKEN:?--stream-push needs FORGE_ADMIN_TOKEN}"
   NOTES="$(python3 -c "
 import re,sys
-s=open('CHANGELOG.md').read()
+s=open('docs/CHANGELOG.md').read()
 m=re.search(r'## \[$VER\][^\n]*\n(.*?)(?=\n## \[|\Z)', s, re.S)
 print((m.group(1).strip() if m else '')[:3800])" 2>/dev/null || true)"
   export RELEASE_NOTES="$NOTES"
@@ -123,9 +134,12 @@ with urllib.request.urlopen(req, timeout=60) as r:
 PY
 fi
 
+# The tag push prints last: it is the step that made the 2.1.0 cut a phantom
+# (VERSION/plugin.json/tool.toml moved, no v2.1.0 tag ever reached origin), so
+# it is the one line that must not scroll off before someone reads it.
 cat <<EOF
 == human steps (outward-facing, per ID-295) ==
-  git push origin master --tags
   gh release create v$VER --title "v$VER" --notes-file <(changelog section)
   claude plugin marketplace update      # propagates the free core
+  git push origin master --tags
 EOF

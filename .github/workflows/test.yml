@@ -272,3 +272,6 @@ jobs:
 
       - name: Run prose-rag adapter tests (SPEC-250)
         run: bash tests/test-prose-rag-adapter.sh
+
+      - name: Run bin/release fixture tests (ID-648)
+        run: bash tests/test-release.sh
