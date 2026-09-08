@@ -62,7 +62,9 @@ See `## Design`.
  │    a. DEBT marker  ── rid from gate-ledger.sh rid; runs/<rid>.log has no DEBT
  │                       └─▶ significance-classify.sh record <rid>
  │    b. candidates   ── precedent find --surface inventory --json
- │                       └─ nothing_matched ─▶ bin/wrap stage
+ │                       ├─ hit ─────────────▶ wire it into the hit, commit, FYI bullet
+ │                       ├─ none + shape obvious ─▶ build it in the home repo, commit, FYI
+ │                       └─ none + scope is a judgment ─▶ bin/wrap stage
  │                            └─▶ staging-format.py stage ─▶ <repo>/_meta/backlog-staging.md
  │    c. incidents    ── bin/wrap knowledge-root <repo> ─▶ one memory note (idempotent)
  │                       root filled, under HOME, exists ─▶ <root>/projects/<repo>/
@@ -92,7 +94,8 @@ sequence: /kit:wrap Step 7 (learn)
    │ for each candidate:             │                  │                │                     │
    │─ find --surface inventory --json "<words>" ───────▶│                │                     │
    │◀─ nothing_matched / top hit ─────────────────────── │                │                     │
-   │─ nothing_matched ⇒ stage "<title>" "<intent>" "<home>" ────────────▶│                     │
+   │ hit ⇒ wire into it, commit; none + obvious ⇒ build it, commit; both report an FYI bullet │
+   │─ none + scope is a judgment ⇒ stage "<title>" "<intent>" "<home>" ─▶│                     │
    │                                 │  resolve repo realpath, staging path, fences, worktree copy, write guard
    │                                 │                  │                │─ stage (stdin JSON) ▶│
    │                                 │                  │                │◀ title | already staged
@@ -265,6 +268,7 @@ bash tests/test-config-registry.sh && bash tests/test-config.sh && bash tests/te
 - DEC-010 (validate): env-read inputs to the seam report (`KIT_SKILL_DIRS`, `PROSE_RAG_BIN`) are registered rows, expanded with `${VAR:-}`, and skill dirs outside HOME are dropped, because a repo `.envrc` can set them. The report never executes a target, so the remaining exposure is a false `filled`, and that path is closed.
 - DEC-011 (validate): Step 7 renumbers reflect and report to 8 and 9; `grep -rn "Step 7\|Step 8" tests/` hits only `ship.md` assertions, and the two prose mentions in `wrap.md` (lines 7 and 35) update with it. Rejected: a `6b` step that would have contradicted the acceptance grep.
 - DEC-012 (validate): candidate matching branches on `precedent find --json` (`nothing_matched`), because `--quiet` always exits 0 and its summary names a section, not a tool.
+- DEC-013 (revision): step 7b builds rather than proposes. A hit means wire the enhancement into the tool that already exists; no hit with an obvious shape means build it in its home repo; only a scope that is a judgment with differing irreversible outcomes stages a row. Every outcome is a commit in a private git repo, so a wrong call costs one revert while a staged row costs a round trip on work the operator already asked for. Supersedes the earlier "propose, do not dispose" reading of this sub-step, which produced a quoted hit line and no consolidation, the exact fragmentation the precedent check exists to prevent.
 - DEC-013 (review): the review loop tightened five things the first build left open. A seam `Key` must be a shell identifier with a registry row, so a forged registry cell can never reach an indirect expansion. Every wrap write target resolves through `_realpath_f` BEFORE any fence, because a symlink at a parent directory of a path passed the leaf-only refusal and the prefix fence read the unresolved string. A `BACKLOG_STAGE_STAGING` override may only append to a file that already exists, since the value comes from the environment a repo `.envrc` writes. The staging append opens with `O_NOFOLLOW`. The seam report's `file` and `dir` checks now apply the consumers' own HOME fence and symlink refusal, so the advisor never calls a target `filled` that `wrap log` or `wrap knowledge-root` would reject.
 
 ## Review
