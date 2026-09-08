@@ -34,6 +34,17 @@ An operator can put one skill in front of this command. Read the key first:
 
 An empty value means no skill runs, which is the default; go straight to step 0. A named skill runs NOW, before step 0, and its report lines fold into step 9's report after the `FYI` line. The key resolves with `kit_config_get_root`, so it comes from the operator `kit.toml` or the kit-root `kit.toml` and never from a project `.kit.toml`: it names code this command runs, and a project toml rides inside an untrusted PR.
 
+Read the three autonomy knobs in the same call, once, and carry the values through the pass:
+
+```bash
+. lib/config/kit-config.sh
+kit_config_get_root wrap.merge_own_prs true
+kit_config_get_root wrap.tidy_worktrees true
+kit_config_get_root wrap.build_candidates true
+```
+
+Each governs exactly one step: `merge_own_prs` step 3, `tidy_worktrees` step 5, `build_candidates` step 7b. The shipped defaults are all `true`, so wrap acts. Every one of the three authorizes a write, which is why all three resolve with `kit_config_get_root` and never from a project `.kit.toml`. A `false` turns that step's action into a report line; it never turns the step off, and it never relaxes a refusal the tools make on their own. Name every knob read as `false` in the report's `FYI`, so a step that stayed its hand says why.
+
 ### Step 0: concurrent-writer check
 
 Foreign activity in a repo's checkout means either signal is present: a worktree reflog entry newer than the session start, or an `index.lock` file that is older than 5 seconds or persists for 5 seconds (a lock that clears within the window is ordinary git traffic). Run `bin/wrap scan <repo>` for the checkout, ahead/behind count, dirty files, worktrees, branch verdicts, and the operator's own open PRs.
@@ -52,7 +63,9 @@ Commit any of the operator's own outstanding work under its own name and message
 
 ### Step 3: merge the operator's own PRs
 
-Re-run the step 0 check first. Then, once per PR: `bin/wrap merge --apply <repo>`. It merges exactly one own, green PR whose base is the default branch and reports every skip reason for the rest.
+`wrap.merge_own_prs` false: merge nothing, report every own open PR as `OPEN` under `Shipped`, and say in `FYI` that the knob is off. Steps 4 onward still run.
+
+Otherwise re-run the step 0 check first. Then, once per PR: `bin/wrap merge --apply <repo>`. It merges exactly one own, green PR whose base is the default branch and reports every skip reason for the rest.
 
 - `wrap merge` never runs twice for the same PR in one call; call it again for the next PR.
 - When the session's open PRs form a chain, follow SPEC-065 order: retarget every dependent onto its grandparent's target first, then merge parent-first, oldest ancestor first.
@@ -69,7 +82,7 @@ A merged PR is not a deployed one. For a repo whose deploy is a `workflow_dispat
 Re-run the step 0 check first. Then, in this order: remove the session's own worktree (the bullet below), `bin/wrap scan <repo>` again to see the current branch verdicts, `bin/wrap apply --worktrees <repo>` as a dry run, read every `SKIP` line, then `bin/wrap apply --apply --worktrees <repo>` to execute. Close the step by re-running `bin/wrap scan <repo>`: that final scan, not memory, is what step 9's `Left alone` reports.
 
 - `<repo>` is the MAIN checkout path, never the session's cwd. Resolve it once: `main=$(git -C <cwd> rev-parse --path-format=absolute --git-common-dir)` then strip the trailing `/.git`. Off the main checkout `apply` sees the feature branch as current and never pulls, which is how a repo stays behind while the report claims it landed.
-- Pass `--worktrees` on every call, dry run and apply alike. It is the flag the operator asks for by saying "clean up worktrees", and `apply` refuses a dirty, detached, or checked-out worktree on its own, so the flag is not the safety. Omitting it also strands every branch a worktree holds: `apply` skips those with `held by a worktree` and the branch survives with it.
+- Pass `--worktrees` on every call, dry run and apply alike, unless `wrap.tidy_worktrees` is false. It is the flag the operator asks for by saying "clean up worktrees", and `apply` refuses a dirty, detached, or checked-out worktree on its own, so the flag is not the safety. Omitting it also strands every branch a worktree holds: `apply` skips those with `held by a worktree` and the branch survives with it. With the knob false, drop the flag, leave every worktree, list them under `Left alone`, and name the knob in `FYI`; the session's own worktree bullet below is unaffected, because that removal is proven per worktree rather than swept.
 - `bin/wrap apply` without `--apply` changes nothing; always read its dry-run SKIP lines before adding `--apply`.
 - Pull on the default branch is `--ff-only`; off the default branch, `apply` fetches the default branch into itself instead and reports a refusal as `FAILED`, never forced. That fetch refuses outright when the default branch is checked out in another worktree, which is the second way a repo stays behind; the main-checkout rule above is what avoids both.
 - The session's own `EnterWorktree` worktree goes FIRST, before `wrap apply` runs, so the harness records the removal instead of finding the directory gone. Once `wrap scan` proves its branch squash-merged (tip matches the PR head) and the worktree is clean, remove it: `ExitWorktree remove` with `discard_changes: true` (the squashed commits are not ancestors of the default branch, so the tool asks; the proof is the confirmation), then `git branch -D <branch>`. The operator gave that confirmation once, as a standing rule, and a worktree whose PR merged this session is finished work, never something to keep. `ExitWorktree keep` only when the worktree is dirty, the branch is not proven merged, or the proof is unavailable (no `gh`); say which in `Left alone`. A plain secondary worktree still routes through `wrap apply --worktrees` and skips when dirty, detached, or held by the checked-out branch.
@@ -94,7 +107,9 @@ rid=$(bash lib/gate/gate-ledger.sh rid)
 
 An empty `rid` prints `skipped: no run id`. Otherwise resolve the log dir with `logdir=$(bash -c 'source lib/telemetry/kit-log-dir.sh; kit_resolve_log_dir')` (the file is source-only and prints nothing when run as a command); a missing `runs/<rid>.log` prints `skipped: no run log`; a `| DEBT |` line already in it prints `skipped: DEBT marker present`. Otherwise `bash lib/classify/significance-classify.sh record <rid> "<one-line session description>"`; a non-zero exit prints `skipped: classifier failed (rc N)` and the step continues to b.
 
-b. Candidates. A candidate is anything this session BUILT or proposed to build that could outlive the session: a new script or tool, an enhancement the operator asked for and the session deferred, a manual multi-step procedure run three or more times, or a one-off script the operator called recurring. The check runs on the first one, not the third, because a single-purpose script written next to an existing tool is the fragment this step exists to prevent. For each, `bin/precedent find --surface inventory --json "<two or three words>"`, then route on the answer:
+b. Candidates. A candidate is anything this session BUILT or proposed to build that could outlive the session: a new script or tool, an enhancement the operator asked for and the session deferred, a manual multi-step procedure run three or more times, or a one-off script the operator called recurring. The check runs on the first one, not the third, because a single-purpose script written next to an existing tool is the fragment this step exists to prevent. `wrap.build_candidates` false: run the precedent check anyway, then stage every candidate with the `bin/wrap stage` line below and quote the top hit in the FYI bullet where one came back. Building is what the knob governs; checking precedent is not optional at either setting, because a staged row that does not name the tool it should have joined recreates the fragment one release later.
+
+Otherwise, for each candidate run `bin/precedent find --surface inventory --json "<two or three words>"`, then route on the answer:
 
 - **`nothing_matched` false, a hit came back.** The candidate is an enhancement to something that already exists, which is the whole reason this check runs. WIRE IT INTO THE HIT NOW: edit that tool or script in its own repo, commit under its own name, and report the change as an FYI bullet naming the file and the commit. Do not stage a row and do not merely quote the hit line. A single-purpose script written beside an existing tool is the fragment this step exists to prevent, and quoting the tool it should have joined prevents nothing.
 - **`nothing_matched` true, and the shape is obvious.** One home, one clear entry point, no design fork. BUILD IT in that home repo, commit, and report it as an FYI bullet naming the path and the commit.

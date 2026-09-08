@@ -794,6 +794,31 @@ chk "stage with no args exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 out="$("$WRAP" bogus 2>&1)"; rc=$?
 chk "an unknown verb exits 64" "$([ "$rc" -eq 64 ]; echo $?)"
 
+# ------------------------------------------------------- autonomy knobs (wrap.*)
+# The three knobs `commands/wrap.md` reads at step -1. They govern a write each, so the
+# fence that matters is the third block: a project `.kit.toml` rides inside a pull request
+# and must never widen what wrap does to the machine running it.
+echo
+echo "=== autonomy knobs ==="
+# shellcheck source=/dev/null
+. "$KIT_DIR/lib/config/kit-config.sh"
+KNOB_OP="$TMPD/knob-operator"; KNOB_PROJ="$TMPD/knob-project"
+mkdir -p "$KNOB_OP" "$KNOB_PROJ"
+printf '[wrap]\nmerge_own_prs = false\ntidy_worktrees = false\nbuild_candidates = false\n' > "$KNOB_OP/kit.toml"
+printf '[wrap]\nmerge_own_prs = false\ntidy_worktrees = false\nbuild_candidates = false\n' > "$KNOB_PROJ/.kit.toml"
+for knob in merge_own_prs tidy_worktrees build_candidates; do
+  v="$(KIT_CONFIG_ROOT="$KIT_DIR" kit_config_get_root "wrap.$knob" true)"
+  chk "wrap.$knob ships as true" "$([ "$v" = "true" ]; echo $?)"
+  v="$(KIT_CONFIG_OPERATOR="$KNOB_OP" kit_config_get_root "wrap.$knob" true)"
+  chk "wrap.$knob honours the operator kit.toml" "$([ "$v" = "false" ]; echo $?)"
+  v="$(KIT_PROJECT_ROOT="$KNOB_PROJ" kit_config_get_root "wrap.$knob" true)"
+  chk "wrap.$knob ignores a project .kit.toml" "$([ "$v" = "true" ]; echo $?)"
+done
+for knob in merge_own_prs tidy_worktrees build_candidates; do
+  chk_has "commands/wrap.md reads wrap.$knob" "$(cat "$KIT_DIR/commands/wrap.md")" "wrap.$knob"
+  chk_has "kit.toml declares $knob" "$(cat "$KIT_DIR/kit.toml")" "$knob"
+done
+
 echo
 if [ "$FAIL" -gt 0 ]; then echo "test-wrap: $PASS passed, $FAIL FAILED of $TOTAL" >&2; exit 1; fi
 echo "test-wrap: all $PASS passed"

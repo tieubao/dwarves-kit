@@ -191,6 +191,26 @@ before = ""                     # [consumer] name of a skill `/kit:wrap` invokes
                                  #        skill's report lines fold into the wrap report after its
                                  #        `FYI` line. Empty = no skill runs, which is the default.
 
+# Autonomy knobs. Each one authorizes a WRITE, so all three read from the
+# operator `kit.toml` or the KIT-ROOT `kit.toml` ONLY; a project `.kit.toml`
+# rides inside a pull request and must never be able to widen what wrap does to
+# the machine it runs on. The shipped defaults act; an operator who wants a
+# report instead of an action flips the one knob that covers that step.
+merge_own_prs = true            # [impl] step 3. true = merge the operator's own green PRs, one per
+                                 #        call, base default branch only. false = leave every PR open
+                                 #        and list it as `OPEN` in `Shipped`. Never merges a PR the
+                                 #        operator did not open, at either setting.
+tidy_worktrees = true           # [impl] step 5. true = pass `--worktrees` to `wrap apply`, which
+                                 #        removes clean secondary worktrees and frees the branches
+                                 #        they hold. false = leave every worktree and report it under
+                                 #        `Left alone`. `apply` refuses a dirty, detached, or
+                                 #        checked-out worktree at either setting.
+build_candidates = true         # [impl] step 7b. true = a precedent hit wires the enhancement into
+                                 #        that tool and a clear-shaped miss builds it, both committed
+                                 #        in the home repo. false = every candidate stages a row in
+                                 #        `_meta/backlog-staging.md` instead. A candidate whose scope
+                                 #        is a judgment stages at either setting.
+
 [knowledge]                     # context tree root for repo knowledge notes (context-kit fills this)
 root = ""                       # [consumer] absolute or ~-prefixed path to the context tree
                                  #        root. Read from the operator `kit.toml` or the
