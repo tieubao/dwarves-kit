@@ -50,3 +50,10 @@ Gitignored: may name unfiled work. NEVER the source of truth.
 - Home: dwarves-kit
 - Source: session 2026-09-08
 
+## [staged] wrap merge: wait for CI instead of returning on pending
+- Intent: This session hand-rolled the same watch-then-merge-then-clean script three times (merge-527/528/529.sh in scratch). bin/wrap merge returns immediately on a pending PR, so every caller reinvents the wait. Enhancement belongs in wrap merge, not a fourth script. The fork that makes it a judgment: blocking wrap on CI holds the landing step for the full macOS leg (~9 min observed today), so it likely wants a --watch flag plus a timeout, not a new default.
+- Approach: (no approach extracted)
+- Tags: #u-lo #f-mid
+- Home: dwarves-kit
+- Source: session 2026-09-08
+
