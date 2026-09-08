@@ -50,7 +50,7 @@ GENERATED , do not hand-edit. Regenerate: `bash lib/registry/feature-registry.sh
 | `/kit:verify` | `[H/I]` | Re-run the test levels (task-verifier + integration-verifier + acceptance-verifier + system-verifier) on the current spec/branch read-only,… | SPEC-002, SPEC-003, SPEC-006 +37 | test-break-it.sh, test-command-emit-sweep.sh, test-gate-vocab-recording.sh +6 |
 | `/kit:visual-team` | `[H/I]` | Parallel multi-lens critique of a visual/UI design. Dispatches 5 design lenses, merges findings, reports a verdict. Report-only, downstream… | SPEC-016, SPEC-018, SPEC-019 +10 | test-command-emit-sweep.sh, test-meta.sh |
 | `/kit:wayfind` | `[H]` | Plan a chunk of work too big for one agent session as a shared decision map: map.md + typed decision tickets in the mega-goal folder, resol… | SPEC-206, SPEC-207, SPEC-217 +2 | - |
-| `/kit:wrap` | `[H/I]` | The session-scoped landing step after ship: flips board rows, merges the operator's own green PRs one at a time, checks deploys, tidies bra… | SPEC-020, SPEC-060, SPEC-072 +9 | test-bin-forwarders.sh, test-config-seams.sh, test-hooks.sh +1 |
+| `/kit:wrap` | `[H/I]` | The session-scoped landing step after ship: flips board rows, merges the operator's own green PRs one at a time, checks deploys, tidies bra… | SPEC-020, SPEC-060, SPEC-072 +9 | test-bin-forwarders.sh, test-config-registry.sh, test-config-seams.sh +2 |
 
 ## Agents
 

@@ -117,6 +117,14 @@ Otherwise, for each candidate run `bin/precedent find --surface inventory --json
 
 No candidates: `skipped: no candidates`. Nothing here reaches a public repo or an outward-facing surface; a candidate that would (a publish, a send, a charge) is never built here, it goes to `Needs you` under the admission test.
 
+**Draining what was staged.** Read `kit_config_get_root wrap.drain_staged false`. False, the default: report each staged row and its home in `FYI` and stop. This is the one knob in this command whose default does not act, and the reason is worth stating plainly: `queue run` drives a real interactive claude in a tmux window under `QUEUE_CLAUDE_FLAGS` (default `--dangerously-skip-permissions`) for up to `QUEUE_TIMEOUT_SECS` per row. Every other knob here governs finishing work the operator already asked for. This one starts work nobody has decided on yet, at the moment the operator said to stop.
+
+True: drain, under three fences.
+
+- **Scope is this session's own rows.** Write a tsv of `slug<TAB>repo<TAB>pointer` for the rows THIS pass staged, then `bash lib/queue/queue.sh run <tsv> --sanitize-prompt --max-megas <count>`. Never `--from-boards`: that reads the whole board queue and would run rows this session never touched. Pass `--sanitize-prompt` explicitly because this command authored the tsv, not the operator, and operator authorship is the trust boundary that flag exists to replace.
+- **A row without a goal pointer is never drained.** `wrap stage` writes prose (Intent, Approach, Tags, Home) and `queue run` needs a pointer path. Report each such row in `FYI` with the reason and the step that closes it, `/kit:assign`, which turns a board row into a goal draft. Do not invent a pointer to make a row runnable.
+- **Report what was dispatched, not what will happen.** The queue is asynchronous and its journal is the record. Name the tsv, the row count, and the journal path in `FYI`; never claim an outcome the queue has not written yet.
+
 c. Incidents. For every `docs/incidents/*.md` written this session whose `## Root cause` names our own mistake, `bin/wrap knowledge-root <repo>` gives the directory. A note already there naming the incident id in its first heading: `skipped: note exists`. Otherwise write one note, how to work here and what to do differently, plus its `MEMORY.md` index line, in that directory. An empty `## Root cause` writes nothing. A `knowledge-root:` fallback line on stderr becomes an FYI bullet, not a skip. No incidents: `skipped: no incidents`.
 
 ### Step 8: reflect

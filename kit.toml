@@ -240,6 +240,20 @@ tidy_worktrees = true           # [impl] step 5. true = pass `--worktrees` to `w
                                  #        they hold. false = leave every worktree and report it under
                                  #        `Left alone`. `apply` refuses a dirty, detached, or
                                  #        checked-out worktree at either setting.
+drain_staged = false            # [impl] step 7b tail. The ONE knob here whose default does NOT
+                                 #        act, deliberately. true = after staging, hand this
+                                 #        session's OWN staged rows to `queue run`, which drives a
+                                 #        real interactive claude in a tmux window with
+                                 #        QUEUE_CLAUDE_FLAGS (default
+                                 #        --dangerously-skip-permissions) for up to
+                                 #        QUEUE_TIMEOUT_SECS per row. Every other knob here governs
+                                 #        FINISHING work already asked for; this one STARTS work not
+                                 #        yet decided on, at the moment the operator said to stop.
+                                 #        Scoped to a session tsv, never `--from-boards`, which
+                                 #        would run rows this session never touched. A row with no
+                                 #        goal pointer is never drained: `wrap stage` writes prose
+                                 #        and `queue run` needs slug/repo/pointer, so those rows
+                                 #        report the gap and the command that closes it.
 build_candidates = true         # [impl] step 7b. true = a precedent hit wires the enhancement into
                                  #        that tool and a clear-shaped miss builds it, both committed
                                  #        in the home repo. false = every candidate stages a row in
