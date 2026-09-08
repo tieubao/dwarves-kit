@@ -24,7 +24,7 @@ list` can render "every declared key," not just the env-shaped subset.
 Authoritative assignment per ADR-0034 decision 3, renamed by the 2026-07-18 amendment (leg ->
 stage; Specify/Execute/Observe/Govern -> Shape/Build/Watch/Check, Learn kept). Old names shown
 parenthetically for one release. Every `KIT_KNOWN_MODULES` entry
-(`install.sh:170`, 12 modules) has exactly one row. `team_mode` is excluded from
+(`install.sh`, 12 modules) has exactly one row. `team_mode` is excluded from
 `KIT_KNOWN_MODULES` itself (install.sh hard-rejects it until team-mode ships), so
 it is not a row here either , the completeness rule is scoped to
 `KIT_KNOWN_MODULES`, not to every `[modules]` line in `kit.toml`.

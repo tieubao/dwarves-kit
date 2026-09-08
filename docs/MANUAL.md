@@ -29,7 +29,7 @@ You do not memorize commands. Say what you want; the kit reads your intent, runs
 | "discuss / iterate the design" | `/kit:design` (+ `/kit:devs-team`) | (none) | every section (human-in-loop) |
 | "vague idea about X" | `/kit:think` / brainstorming | (none) | your approval of the objective |
 | "run the full lane, your call" | the lane, autonomously | anti-rationalization (in a /goal loop) | hard stops + push/PR |
-| "fix this bug / it regressed" | `/kit:debug` (bug lane) | guess-fix guard | root cause + human-confirm |
+| "fix this bug / it regressed" | `/kit:debug` (bug lane) | guess-fix guard | root cause + fix verified (`debug.confirm_fix` gates the human step, default off) |
 | "review this" / "ship it" | `/kit:review[-team]` / `/kit:ship` | ship gate, push-to-main | DO-NOT-SHIP verdict; the push/PR |
 | "can a cold consumer succeed with this artifact alone" (onboarding docs, a runbook, a spec, an API surface) / "test our onboarding" | `/kit:gauntlet` | clean-room probe rounds, artifact revisions between rounds; onboarding is the reference preset | SOLID / REVISE / RECONSIDER (guide: `docs/guides/gauntlet.md`, tutorial: `docs/guides/gauntlet-tutorial.md`) |
 | "is the gauntlet surface converging / what does a probe round cost" | `bash lib/gauntlet/stats.sh` (`--write` for a dated snapshot) | read-only projection over `docs/verification/gauntlet/` run records | one table: findings trajectory, rounds-to-clean, probe tokens/cost, probe-model deltas (SPEC-240) |
@@ -245,7 +245,7 @@ Related , **2b-0 role synthesis** (inside `/kit:execute`): each task is classifi
 **Dispatches:** 3 `code-reviewer` subagents (security, architecture, test-coverage lenses) in parallel + the deeper `security-reviewer` agent
 **Writes:** a `## Review` section in the active spec with per-lens subsections (replace-not-stack); inline in chat if no spec exists
 **When to invoke:** medium-to-large diff (>300 lines) or any change touching auth, payments, multi-tenant boundaries
-**Common gotcha:** the FIX-THEN-SHIP path dispatches `responding-to-review` to triage findings without performative agreement. Read both the findings AND the response triage before committing fixes.
+**Common gotcha:** the FIX-THEN-SHIP path dispatches `responding-to-review` to triage findings without performative agreement. `review.apply_findings` ships `true`, so `fix-agent` applies every finding `responding-to-review` VERIFIED and the PR is your review surface; a finding it pushed back on is never applied. Set the key `false` to have them proposed for you to apply by hand.
 
 ### `/kit:verify`
 

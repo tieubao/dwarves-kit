@@ -9,6 +9,7 @@ This folder is large because the kit was built **through its own workflow**: eve
 | Path | What it is | Read it if you want to... |
 |---|---|---|
 | [`architecture.md`](architecture.md) | Components, data flow, the state model, the verification pipeline | understand how the pieces fit before extending the kit |
+| [`execution-planes.md`](execution-planes.md) | The four ways the kit runs agents: board, orchestrator, queue, gauntlet, and their trust models | work out which engine to reach for, or why two of them share a directory |
 | [`PHILOSOPHY.md`](PHILOSOPHY.md) | Design principles, target user, the rejection list | know why a feature was kept out (load-bearing for contributors) |
 | [`MANUAL.md`](MANUAL.md) | The full command reference | look up a `/kit:*` command's exact behavior |
 | [`WORKFLOW.md`](WORKFLOW.md) | The full lifecycle write-up (root `WORKFLOW.md` is now a thin pointer stub to this) | understand the think -> spec -> execute -> review -> ship loop end to end |

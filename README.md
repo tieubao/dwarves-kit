@@ -430,6 +430,7 @@ dwarves-kit/
     README.md                   Map of docs/: what each file is, and that you can skip it to use the kit
     PHILOSOPHY.md               Design principles, target user, rejection list
     architecture.md             Components, data flow, the SDLC state machine, Collaborative Design Protocol, deps
+    execution-planes.md         The four ways the kit runs agents, how they hand off, their trust models
     decisions/                  One ADR per file (NNNN-<slug>.md); supersession recorded in the Status line
     specs/                      Specs (SPEC-NNN-<slug>.md); also the live spec store the hooks detect
     retro/                      Per-cycle retrospectives (output of /kit:retro)
