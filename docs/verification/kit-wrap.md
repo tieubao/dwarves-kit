@@ -70,7 +70,7 @@ would have yielded the feature branch instead.
 
 ### Class 1b: live run (ops-toolkit, 2026-09-08)
 
-Command: `bash bin/wrap apply /Users/tieubao/workspace/tieubao/ops-toolkit` then the same with `--apply --worktrees`
+Command: `bash bin/wrap apply <consumer repo>` then the same with `--apply --worktrees`
 Exit: 0
 Output (excerpt): without the flag, `SKIP <path>: --worktrees not given` for 9 worktrees and
 `SKIP <branch>: held by a worktree` for 8 branches. With it, 9 `[APPLY] remove worktree` lines, then
