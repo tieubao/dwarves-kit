@@ -4,6 +4,20 @@ All notable changes to dwarves-kit are documented here.
 
 ## [Unreleased]
 
+### COMPAT (contract surfaces, per forge kit-versioning.md)
+- Config surface (new keys, additive, MINOR): `[wrap] merge_own_prs`, `[wrap] tidy_worktrees`, `[wrap] build_candidates`, all defaulting `true`. An existing install keeps its current behavior without editing anything. All three resolve root-only, so a project `.kit.toml` cannot set them.
+- Ledger grammar, lanes.d plan format, export `schema`: unchanged.
+
+### Fixed
+- `/kit:wrap` step 5 left every worktree behind, and with it every branch a worktree held. The step wrote `--worktrees` as optional, so the flag went unpassed; `apply` then skipped each worktree and each branch with `held by a worktree`. Measured on one live checkout: 9 worktrees and 8 branches skipped from that one omission. The step now passes the flag on every call (#523).
+- `/kit:wrap` step 5 took the session cwd as its repo argument. From inside a worktree that reads as the feature branch, so `apply` never pulled, and its `fetch origin <def>:<def>` fallback refuses outright when the default branch is checked out elsewhere. The step now resolves the main checkout via `--git-common-dir` (#523).
+- `/kit:wrap` step 9 narrated `Left alone` from what the steps intended rather than from a re-scan, so a surviving worktree or branch never appeared in the report. Step 5 now closes with a final `wrap scan` and step 9 derives the section from it (#523).
+- `/kit:wrap` step 7b ran the precedent check and then only quoted the hit, naming the tool the work should have joined while the work never joined it. A hit now wires the enhancement into that tool and commits; a clear-shaped miss is built in its home repo; only a scope that is a judgment stages a row (#525).
+
+### Added
+- `Needs you` in the `/kit:wrap` report carries an admission test. An item belongs there only when the operator is the only one who can do it: it needs a human credential or presence, it is irreversible and outward-facing, or it is a judgment whose options carry different irreversible outcomes. Everything else runs before the report prints and is reported past tense in `What happened`. Five cases are named explicitly, because they are the ones that kept surfacing as permission requests: merging your own green PR, pulling the default branch, installing what you just merged, dispatching an established deploy, rerunning a check (#524).
+- Three `[wrap]` autonomy knobs make each of wrap's write actions a choice, defaulting to the acting posture: `merge_own_prs` (step 3), `tidy_worktrees` (step 5), `build_candidates` (step 7b). A `false` turns that step's action into a report line named in `FYI`; it never turns the step off and never relaxes a refusal the tools make on their own (#526).
+
 ## [2.2.0] - 2026-09-07
 
 ### COMPAT (contract surfaces, per forge kit-versioning.md)
