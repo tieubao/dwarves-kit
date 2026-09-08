@@ -42,7 +42,7 @@ How to do one unit of work. The smallest verifiable increment, verified, committ
    conversation): enqueue every item as a board row FIRST (queued; the in-flight one
    executing), then pull them one at a time.** Work that never touches the board is
    invisible to the board's state machine even when its runs are ledgered, the gap an
-   operator caught live on 2026-06-10 (SPEC-064). Not handed one: pull the board's top queued item,
+   operator caught live on 2026-06-10. Not handed one: pull the board's top queued item,
    `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/board/backlog.sh" next`, claim it (goal-registry) and flip it to `claimed` (the
    `/kit:assign --next` flow). The BACKLOG is the board; its Status column is the state
    machine (`queued -> claimed -> speccing -> validated -> executing -> shipped`, + parked/
@@ -52,13 +52,13 @@ How to do one unit of work. The smallest verifiable increment, verified, committ
    planning / learning / eval / research / review / doc / migration / data-tool) runs its TYPE LOOP per
    `WORKFLOW.md ## Type loops`, with its executor from the registry's `agent` column. The lane
    is STILL sized for every type (it is the evidence contract ship-gate enforces via the spec's
-   `Lane:` header; the type is the content contract , `WORKFLOW.md ### Lane x type composition`). For code:
+   `Lane:` header; the type is the content contract, `WORKFLOW.md ### Lane x type composition`). For code:
    pick `tiny` / `normal` / `full` / `bug` / `backfill` per `WORKFLOW.md`; when in doubt between
    two lanes, take the heavier one. **Between classification and done comes the grill** (`/kit:grill`, or its
    one-question-at-a-time discipline driven inline): interview until the task is actually
    understood, type-shaped questions, recommended answers, contradictions checked against the
    repo, answers WRITTEN as they resolve (glossary / sparse ADR / the goal draft's Context).
-   Tiny lane exempt. **Record the grill's disposition either way** (SPEC-063):
+   Tiny lane exempt. **Record the grill's disposition either way**:
    `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" record <rid> grill ran "<N> branches resolved"`, or, when the
    conversation already resolved the banks, `... record <rid> grill skipped "<why>"`; a
    skip without a reason is invisible to telemetry, which defeats the point.
@@ -73,20 +73,20 @@ How to do one unit of work. The smallest verifiable increment, verified, committ
 
 If you cannot make progress, see zone 4 (Pause if) and stop with a named blocker note. Do not churn.
 
-**One rid per run, derived from the branch (SPEC-070).** `<rid>` everywhere below is `$(bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" rid)`: the branch slug (`type/` prefix stripped), the same key `hooks/ship-gate.sh` checks at push, so assign-time records and ship-time enforcement meet with no mirror re-records. Derive it AFTER the work branch exists; the verb refuses master/main/detached.
+**One rid per run, derived from the branch.** `<rid>` everywhere below is `$(bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" rid)`: the branch slug (`type/` prefix stripped), the same key `hooks/ship-gate.sh` checks at push, so assign-time records and ship-time enforcement meet with no mirror re-records. Derive it AFTER the work branch exists; the verb refuses master/main/detached.
 
-**Show the road, then your position on it (SPEC-063).** Right after a lane is committed,
+**Show the road, then your position on it.** Right after a lane is committed,
 print the checklist the run will walk: `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" plan <lane>`. At each phase
 entry, print where the run stands: `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" progress <rid> <lane>`
 (one status line: `<rid> · <lane> · step k/n (<phase>)` + the ✓/▶/· checklist). For the
 full story of a past or in-flight run: `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/telemetry/lane-telemetry.sh" trace <rid>`.
 
-**Escalate the review for enforcement surfaces (SPEC-069).** A run touching `lib/` or
+**Escalate the review for enforcement surfaces.** A run touching `lib/` or
 `hooks/` uses `/kit:review-team` (multi-lens), not a single reviewer.
 
-**Record your gates (ADR-0024).** When you run a phase gate (`/kit:spec`, `/kit:spec-validate`, `/kit:execute`, `/kit:review`, `/kit:docs`, `/kit:ship`, ...), record it so the run is auditable: `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" record <rid> <Phase> ran`; record a deliberate skip as `skipped "<why>"`. The `ship-gate` hook refuses a push whose lane has a required gate with no `ran`/`override` entry. Phase ORDER matters too: the lane plan is the V-model descent order; `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" descent <rid> <lane>` names out-of-order records, surfaced at ship as an advisory (SPEC-076). Full convention + the logged-override path: WORKFLOW.md "## Gate ledger and ship enforcement".
+**Record your gates.** When you run a phase gate (`/kit:spec`, `/kit:spec-validate`, `/kit:execute`, `/kit:review`, `/kit:docs`, `/kit:ship`, ...), record it so the run is auditable: `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" record <rid> <Phase> ran`; record a deliberate skip as `skipped "<why>"`. The `ship-gate` hook refuses a push whose lane has a required gate with no `ran`/`override` entry. Phase ORDER matters too: the lane plan is the V-model descent order; `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" descent <rid> <lane>` names out-of-order records, surfaced at ship as an advisory. Full convention + the logged-override path: WORKFLOW.md "## Gate ledger and ship enforcement".
 
-**Gates are also MEASURED, not just recorded (SPEC-129).** Beside `ran`/`skipped`, `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" outcome <rid> <phase> start|end [caught=<bool>]` brackets a gate with a duration and whether it caught a defect, on the same additive marker convention (a fourth `| OUTCOME |` line beside `| GATE | / | DEBT | / | TOKENS |`; existing readers ignore it). The only live emitter today is `hooks/ship-gate.sh` at the ship boundary, HOOK-ENFORCED but ship-boundary-only, not yet per-phase; read it back with `outcome-read`. **A parallel wave closes the SPEC-number race at dispatch, not at spec-time (SPEC-128).** `lib/queue/orchestrate.sh`'s own wavefront dispatch atomically reserves a number per sub-goal via `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/spec/spec-next.sh" reserve` (a portable mkdir-mutex over an append-only reservations ledger) before any worker can race `spec-next.sh next`; a standalone session still calls `spec-next.sh next` directly, unaffected. **Generate the confirmation table, never hand-author it (SPEC-132).** `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/proof-table-gen.sh" <rid>` renders `docs/verification/generated/<rid>.md` from the same gate/run ledger (surfacing the OUTCOME column above when present); see `docs/verification/README.md` "Generators write run ledgers, never the canonical." Full detail on all three, plus the two advisory measurement gates (coverage-delta, mutation-smoke): WORKFLOW.md "## Gate ledger and ship enforcement" and "## Advisory measurement gates".
+**Gates are also MEASURED, not just recorded.** Beside `ran`/`skipped`, `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/gate-ledger.sh" outcome <rid> <phase> start|end [caught=<bool>]` brackets a gate with a duration and whether it caught a defect, on the same additive marker convention (a fourth `| OUTCOME |` line beside `| GATE | / | DEBT | / | TOKENS |`; existing readers ignore it). The only live emitter today is `hooks/ship-gate.sh` at the ship boundary, HOOK-ENFORCED but ship-boundary-only, not yet per-phase; read it back with `outcome-read`. **A parallel wave closes the SPEC-number race at dispatch, not at spec-time.** `lib/queue/orchestrate.sh`'s own wavefront dispatch atomically reserves a number per sub-goal via `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/spec/spec-next.sh" reserve` (a portable mkdir-mutex over an append-only reservations ledger) before any worker can race `spec-next.sh next`; a standalone session still calls `spec-next.sh next` directly, unaffected. **Generate the confirmation table, never hand-author it.** `bash "${DWARVES_KIT:-$HOME/.claude/dwarves-kit}/lib/gate/proof-table-gen.sh" <rid>` renders `docs/verification/generated/<rid>.md` from the same gate/run ledger (surfacing the OUTCOME column above when present); see `docs/verification/README.md` "Generators write run ledgers, never the canonical." Full detail on all three, plus the two advisory measurement gates (coverage-delta, mutation-smoke): WORKFLOW.md "## Gate ledger and ship enforcement" and "## Advisory measurement gates".
 
 ## 3. Done means
 
@@ -105,21 +105,21 @@ completion under Claude Code, but the honesty obligation is yours under any
 runtime.
 
 **Deployable-done (ADR-0028, reusing ADR-0025).** DEPLOYABLE work is anything that runs
-somewhere , a service, a daemon, a feature behind a flag, or any change `lib/gate/proof-ledger.sh
+somewhere, a service, a daemon, a feature behind a flag, or any change `lib/gate/proof-ledger.sh
 classify` puts in its `stateful` class (deploy / rollout / production / migration / schema /
 database / persistent-state signals in the diff or commit subjects). For deployable work,
 `done` = **a deploy-proof + a UAT/acceptance run**: the existing ADR-0025 stateful proof
 shape (a recorded run with `Command:`/`Exit:` AND a `rollback` note or `[UNAVAILABLE:
 reason]`) PLUS a UAT/acceptance line recording that the change was exercised in the target
 environment and accepted. This is enforced at ship by the SAME `hooks/ship-gate.sh` ->
-`proof-ledger.sh check` wall every stateful change already passes through , the ship-gate
+`proof-ledger.sh check` wall every stateful change already passes through, the ship-gate
 already DETECTS deployability (it classifies `stateful`), so a deployable item marked done
 without the deploy-proof is blocked exactly like any other unproven stateful change, or
 needs a logged override (`proof-ledger.sh override <slug> "<reason>"`). INERT, library,
-refactor, and docs work (the `inert`/`behavioral` classes) is unchanged , it owes no
+refactor, and docs work (the `inert`/`behavioral` classes) is unchanged, it owes no
 deploy-proof or UAT.
 
-**Understanding is a separate, advisory axis (ADR-0031) -- orthogonal to Done means above.**
+**Understanding is a separate, advisory axis -- orthogonal to Done means above.**
 A design record (before build) and an explainer + quiz nudge (at merge) gate the human's
 PARTICIPATION and ATTENTION, never correctness: they never change what "done" means here, never
 block a correct build, and are not enforced by any hook the way the verification gates are.
@@ -182,3 +182,5 @@ not from this file. Keep the four zone names stable; renaming one without updati
 | Validation loop | the active spec's `## Verification` |
 | Done-when | AGENTS.md zone 3 (Done means) + the active spec's `## After state` |
 | Pause-if | AGENTS.md zone 4 (Pause if) |
+
+<!-- provenance: SPEC-070 (one rid per run), SPEC-063 (run legibility) -->

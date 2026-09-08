@@ -32,7 +32,7 @@ You do not memorize commands. Say what you want; the kit reads your intent, runs
 | "fix this bug / it regressed" | `/kit:debug` (bug lane) | guess-fix guard | root cause + fix verified (`debug.confirm_fix` gates the human step, default off) |
 | "review this" / "ship it" | `/kit:review[-team]` / `/kit:ship` | ship gate, push-to-main | DO-NOT-SHIP verdict; the push/PR |
 | "can a cold consumer succeed with this artifact alone" (onboarding docs, a runbook, a spec, an API surface) / "test our onboarding" | `/kit:gauntlet` | clean-room probe rounds, artifact revisions between rounds; onboarding is the reference preset | SOLID / REVISE / RECONSIDER (guide: `docs/guides/gauntlet.md`, tutorial: `docs/guides/gauntlet-tutorial.md`) |
-| "is the gauntlet surface converging / what does a probe round cost" | `bash lib/gauntlet/stats.sh` (`--write` for a dated snapshot) | read-only projection over `docs/verification/gauntlet/` run records | one table: findings trajectory, rounds-to-clean, probe tokens/cost, probe-model deltas (SPEC-240) |
+| "is the gauntlet surface converging / what does a probe round cost" | `bash lib/gauntlet/stats.sh` (`--write` for a dated snapshot) | read-only projection over `docs/verification/gauntlet/` run records | one table: findings trajectory, rounds-to-clean, probe tokens/cost, probe-model deltas |
 
 For the full playbook (every scenario, the autonomy dial, the freeform front door) see `## Operator scenarios`. For a per-command lookup see `## Command reference`. Hooks fire on their own; commands and skills are invoked, by you or by Claude reading your intent.
 
@@ -57,7 +57,7 @@ Index by loop stage (formerly "leg", ADR-0034; the README's "The five stages" se
 **Writes:** nothing; advises in chat which command to run next
 **When to invoke:** opening a fresh session and you do not remember where you left off
 **Common gotcha:** the router suggests a next step but does not run it. You decide.
-**Spec resolution (dual-mode, SPEC-005):** the active spec is the lone non-SHIPPED/PARKED `docs/specs/SPEC-*.md`; with several live, the one whose slug matches the git branch; if zero or several match, it reports `spec:ambiguous(...)` and asks rather than guessing. `docs/specs/` is the sole spec location (ADR-0010). The same rule drives the `context-readiness` hook, `spec-drift-guard` (which greps the union of active specs), and `/kit:next`.
+**Spec resolution (dual-mode, SPEC-005):** the active spec is the lone non-SHIPPED/PARKED `docs/specs/SPEC-*.md`; with several live, the one whose slug matches the git branch; if zero or several match, it reports `spec:ambiguous(...)` and asks rather than guessing. `docs/specs/` is the sole spec location. The same rule drives the `context-readiness` hook, `spec-drift-guard` (which greps the union of active specs), and `/kit:next`.
 
 **Modes (`$ARGUMENTS`):**
 - `/kit:start --brief` -- one line, max 120 chars: state + suggested command + `[branch | N dirty | spec]`. For returning users who want a cue, not a report. Example: `Spec VALIDATED, 3/8 tasks -> /kit:execute. [master | 2 dirty | VALIDATED]`
@@ -92,7 +92,7 @@ Index by loop stage (formerly "leg", ADR-0034; the README's "The five stages" se
 
 ### `/kit:prototype`
 
-**Phase:** opt-in throwaway-spike beat beside `/kit:design` (SPEC-206)
+**Phase:** opt-in throwaway-spike beat beside `/kit:design`
 **Reads:** the design question at hand, the brief/spec if present
 **Writes:** throwaway code on a `prototype/<name>` branch, never in master; the DECISION folds back into the brief/spec
 **When to invoke:** a design question resists prose, a state model that only feels wrong once pushed through real cases (logic TUI, driven by hand), or a layout argued in the abstract (3-5 structurally different UI variants on one route)
@@ -100,7 +100,7 @@ Index by loop stage (formerly "leg", ADR-0034; the README's "The five stages" se
 
 ### `/kit:wayfind`
 
-**Phase:** pre-cycle intake shape for work too foggy for one session (SPEC-207)
+**Phase:** pre-cycle intake shape for work too foggy for one session
 **Reads:** the loose idea; the board
 **Writes:** `_meta/megagoals/<slug>/map.md` (destination / decisions-so-far / fog / out-of-scope) + typed decision tickets (`research` / `prototype` / `grilling` / `task`), resolved one per session through the kit's own machinery
 **When to invoke:** the OPEN questions outnumber the stateable ones. A well-scoped feature belongs on `/kit:grill` + `/kit:spec`; a decomposable build with a clear route belongs on `/kit:mega`; wayfind is only for genuine fog
@@ -132,7 +132,7 @@ Materializes a reviewed test plan into real test code, after `/kit:test-plan-rev
 **Reads:** `$ARGUMENTS` = either an `ID-NNN` (today's path) OR **freeform intent** (anything not matching `^ID-[0-9]+$`, e.g. "apply SDD to X"); `_meta/BACKLOG.md` Active queue, the item's Lane column, `AGENTS.md` zones (the projection source for the six-section goal) + the active spec's `## Verification` / `## After state`. Freeform delegates the crystallize interview to `/kit:think`.
 **Writes:** `.claude/goals/<slug>.md` (the SPEC-005 draft contract; never `.claude/last-goal.md`), a six-section operating directive (Context-to-read / Constraints / Operating rules / Validation loop / Done-when / Pause-if). On the **freeform path** it first writes a new sanitized `_meta/BACKLOG.md` row with a freshly allocated ID (row-before-draft, approve-before-allocate).
 **When to invoke:** you picked an `ID-NNN` from "what's left?", OR you have a freeform feature idea / vague brief with no ID yet, and want it scoped into a goal and routed into the right lane.
-**Floor check (advisory):** after the lane is chosen, it runs `bash lib/classify/lane-classify.sh check <chosen> "<title>"`. A `LANE-DOWNGRADE` warning means the task text matches a heavier lane than you chose: size up, or narrow the scope and say why. It warns + logs to `completeness.log` (reviewed at `/kit:ship`); it never blocks ("Detect, don't dictate"). This is the guard for the classify-then-route gap (SPEC-053): the classifier suggested a lane, but nothing caught an under-sized choice until now.
+**Floor check (advisory):** after the lane is chosen, it runs `bash lib/classify/lane-classify.sh check <chosen> "<title>"`. A `LANE-DOWNGRADE` warning means the task text matches a heavier lane than you chose: size up, or narrow the scope and say why. It warns + logs to `completeness.log` (reviewed at `/kit:ship`); it never blocks ("Detect, don't dictate"). This is the guard for the classify-then-route gap: the classifier suggested a lane, but nothing caught an under-sized choice until now.
 **Common gotcha:** it is a mutator-dispatcher: it sets up the goal and hands off, it does NOT execute. The freeform path **delegates** the interview to `/kit:think` (it does not embed one). It detects the goal-loop activator (built-in `/goal`, `ralph-loop`, or `goal-craft`) and degrades to a plain draft file if none is installed. Idempotent per id (and per slug for freeform). Source: SPEC-006 + ADR-0011; freeform front door SPEC-026; floor check SPEC-053.
 
 ### `/kit:dispatch`
@@ -155,7 +155,7 @@ Materializes a reviewed test plan into real test code, after `/kit:test-plan-rev
 
 `/kit:dispatch` is the single-session axis (one lead, N workers). The other axis is
 **multi-session**: one operator opens several Claude sessions on one machine (one goal
-each) and walks away (ADR-0022, SPEC-036). A passive registry under
+each) and walks away. A passive registry under
 `$(git rev-parse --git-common-dir)/kit-goals/` (shared by every worktree, never committed)
 keeps the sessions from colliding. It is a `lib/` helper, not a slash command.
 
@@ -183,7 +183,7 @@ schedules, sequences, or merges. Source: SPEC-036; ADR-0022.
 **Writes:** `docs/specs/SPEC-NNN-<slug>.md` (Status: DRAFT), `docs/research/{stack,features,architecture,pitfalls}.md`
 **When to invoke:** after `/think`, or directly if the work is well-scoped already
 **Common gotcha:** the research agents are parallel-dispatched via Task tool. If your Claude Code is older than v2.0.60, they fall back to inline research and the run is slower.
-**Template sections:** the generated spec scaffolds Solution depth (approaches / chosen + why / extensibility, SPEC-008), plus an optional `### Interfaces (I/O contract)` under Technical Design and an optional `## Failure modes` table (SPEC-009). Both optional sections are lane-scoped; Reviewers 2 and 5 check them when present. It also pins `## Verification` (the command(s) that prove the spec done) and `## Open questions` (the blocker landing zone a `/goal` loop appends to), so a validated spec is natively pointer-`/goal`-ready (SPEC-012 P1). An optional, on-demand `## Amendments` section (added only when a mid-flight amend happens, never an empty scaffold) records add-scope provenance during a build (SPEC-027).
+**Template sections:** the generated spec scaffolds Solution depth (approaches / chosen + why / extensibility, SPEC-008), plus an optional `### Interfaces (I/O contract)` under Technical Design and an optional `## Failure modes` table. Both optional sections are lane-scoped; Reviewers 2 and 5 check them when present. It also pins `## Verification` (the command(s) that prove the spec done) and `## Open questions` (the blocker landing zone a `/goal` loop appends to), so a validated spec is natively pointer-`/goal`-ready (SPEC-012 P1). An optional, on-demand `## Amendments` section (added only when a mid-flight amend happens, never an empty scaffold) records add-scope provenance during a build.
 
 ### `/kit:spec-validate`
 
@@ -191,7 +191,7 @@ schedules, sequences, or merges. Source: SPEC-036; ADR-0022.
 **Reads:** `docs/specs/SPEC-NNN-<slug>.md`
 **Writes:** comments in chat; the maintainer flips SPEC Status to VALIDATED manually after addressing findings
 **When to invoke:** before `/execute` on any spec longer than ~5 tasks
-**Common gotcha:** 6 reviewers (security, failure-mode, assumption-destroyer, scope-critic, solution-design & extensibility, design-record) run sequentially. Budget ~10-12 minutes. The 5th reviewer (SPEC-008) flags shallow or non-extensible designs and is calibrated against false positives + legacy specs. The 6th, Reviewer 6 (SPEC-122 / ADR-0031 §1), is the one BLOCKING check in the set: a design-bearing spec with an empty `## Design` block cannot flip to VALIDATED.
+**Common gotcha:** 6 reviewers (security, failure-mode, assumption-destroyer, scope-critic, solution-design & extensibility, design-record) run sequentially. Budget ~10-12 minutes. The 5th reviewer flags shallow or non-extensible designs and is calibrated against false positives + legacy specs. The 6th, Reviewer 6 (SPEC-122 / ADR-0031 §1), is the one BLOCKING check in the set: a design-bearing spec with an empty `## Design` block cannot flip to VALIDATED.
 
 ### `/kit:execute`
 
@@ -201,7 +201,7 @@ schedules, sequences, or merges. Source: SPEC-036; ADR-0022.
 **Dispatches:** worker subagent per task, then task-verifier, then fix-agent on FAIL:fixable (retry max 2)
 **When to invoke:** when handing off to a contractor OR running the kit on yourself end-to-end
 **Common gotcha:** verification adds ~2x token cost per task. Worth it for the FAIL:fixable catch rate; budget accordingly. Each worker first expands its task into bite-sized verify-each-step increments (TDD when a unit test fits; grep/bash/test-suite verify for doc and config tasks) before coding.
-**Mid-flight amend:** if a build reveals scope that must be added now ("also do Y"), do not silently edit the spec or restart the lane. With your approval, amend at a task checkpoint (append `- [ ]` tasks, record an `## Amendments` entry, Status stays VALIDATED) and resume with `/kit:next`. The canonical rule is WORKFLOW.md "## Mid-flight amend"; the operator card is "## Operator scenarios" Scenario 6 below (SPEC-027).
+**Mid-flight amend:** if a build reveals scope that must be added now ("also do Y"), do not silently edit the spec or restart the lane. With your approval, amend at a task checkpoint (append `- [ ]` tasks, record an `## Amendments` entry, Status stays VALIDATED) and resume with `/kit:next`. The canonical rule is WORKFLOW.md "## Mid-flight amend"; the operator card is "## Operator scenarios" Scenario 6 below.
 
 ### `/kit:next`
 
@@ -209,18 +209,18 @@ schedules, sequences, or merges. Source: SPEC-036; ADR-0022.
 **Reads:** `docs/specs/SPEC-NNN-<slug>.md`
 **Writes:** code, tests; you drive the verification yourself
 **When to invoke:** when you want hands-on control or the next task needs subtle judgment that the verification pipeline might over-correct on
-**Common gotcha:** picks the next unchecked task only. To skip a task or pick a specific one, edit SPEC.md task ordering first. This unchecked-only behavior is also why `/kit:next` (not a fresh `/kit:execute`) is the way to resume after a mid-flight amend: it runs the newly appended tasks and skips the done rows (SPEC-027).
+**Common gotcha:** picks the next unchecked task only. To skip a task or pick a specific one, edit SPEC.md task ordering first. This unchecked-only behavior is also why `/kit:next` (not a fresh `/kit:execute`) is the way to resume after a mid-flight amend: it runs the newly appended tasks and skips the done rows.
 
 ### `/kit:draft-agent`
 
 **Phase:** build (meta-tooling)
 **Reads:** a one-line role description (or a unit-of-work description) from `$ARGUMENTS`
-**Writes:** by default INSTALLS a new subagent , `agents/<name>.md` + the roster rows (MANUAL/architecture/README) + `~/.claude/agents/<name>.md` for runtime; `--draft` stops at a staged draft; `subgoal:` mode drafts a mega-goal sub-goal file (never installed)
+**Writes:** by default INSTALLS a new subagent, `agents/<name>.md` + the roster rows (MANUAL/architecture/README) + `~/.claude/agents/<name>.md` for runtime; `--draft` stops at a staged draft; `subgoal:` mode drafts a mega-goal sub-goal file (never installed)
 **Dispatches:** the `meta-agent` (drafts to staging; the command promotes/installs)
-**When to invoke:** when a task needs a specialist role no existing agent covers and you want it as a reusable, named kit agent. For a one-off same-run specialist during `/kit:execute`, you do NOT invoke this , 2b-0 role synthesis handles it inline (see below).
+**When to invoke:** when a task needs a specialist role no existing agent covers and you want it as a reusable, named kit agent. For a one-off same-run specialist during `/kit:execute`, you do NOT invoke this, 2b-0 role synthesis handles it inline (see below).
 **Common gotcha:** a freshly installed agent is dispatchable only NEXT session (Claude Code loads the agent registry at session start); the command prints the granted tools + an `rm` undo. Sharing an installed agent with the team still goes through a reviewed PR. Design: SPEC-089.
 
-Related , **2b-0 role synthesis** (inside `/kit:execute`): each task is classified by `lib/classify/role-classify.sh`; a specialist-worthy task gets a role synthesized by the `meta-agent` (Mode C, open-ended , any role) and injected into the worker THIS run, cached to `~/.claude/agents/` for reuse. Plain tasks fall through to the generic worker. This is automatic; `/kit:draft-agent` is the manual, install-a-named-agent path. Both share the `meta-agent` + `role-classify.sh` primitives (SPEC-089).
+Related, **2b-0 role synthesis** (inside `/kit:execute`): each task is classified by `lib/classify/role-classify.sh`; a specialist-worthy task gets a role synthesized by the `meta-agent` (Mode C, open-ended, any role) and injected into the worker THIS run, cached to `~/.claude/agents/` for reuse. Plain tasks fall through to the generic worker. This is automatic; `/kit:draft-agent` is the manual, install-a-named-agent path. Both share the `meta-agent` + `role-classify.sh` primitives.
 
 ### `/kit:debug`
 
@@ -267,20 +267,20 @@ Related , **2b-0 role synthesis** (inside `/kit:execute`): each task is classifi
 ### `/kit:explain`
 
 **Phase:** understanding (the AFTER gate, ADR-0031 §2)
-**Reads:** a git ref (`$ARGUMENTS`: a commit / PR / spec) , the ACTUAL diff via `lib/explain.sh`, plus recorded test results under `docs/verification/`
-**Writes:** a literate-diff explainer artifact under `docs/verification/explain-command/` , background -> goal + intuition -> a prose-ORDERED diff (reading order, not git alphabetical) -> a diagram
+**Reads:** a git ref (`$ARGUMENTS`: a commit / PR / spec), the ACTUAL diff via `lib/explain.sh`, plus recorded test results under `docs/verification/`
+**Writes:** a literate-diff explainer artifact under `docs/verification/explain-command/`, background -> goal + intuition -> a prose-ORDERED diff (reading order, not git alphabetical) -> a diagram
 **When to invoke:** after a significant change ships, when you want to UNDERSTAND it (stay a participant in the next loop) instead of click-to-merge a raw diff. Advisory, never blocks (engage / defer / wave).
 **Composes:** `narrate-log` (the prose arc) + `svg-knowledge-diagram` (a richer figure); the kit does not reinvent pedagogy.
-**Common gotcha:** the explainer is grounded in the diff, NOT the agent's narrative , if the commit message or your recollection contradicts the code, the diff wins. The 5-question quiz built ON this artifact is a separate step (`deep-understand`); this command produces the material, not the quiz.
+**Common gotcha:** the explainer is grounded in the diff, NOT the agent's narrative, if the commit message or your recollection contradicts the code, the diff wins. The 5-question quiz built ON this artifact is a separate step (`deep-understand`); this command produces the material, not the quiz.
 
 ### `/kit:quiz-gate`
 
 **Phase:** understanding (the AFTER gate's speed regulator, ADR-0031 §2/§3)
 **Reads:** a git ref + `<rid>` (`$ARGUMENTS`), the ACTUAL diff + recorded tests via `lib/gate/quiz-gate.sh` (which reuses `lib/explain.sh`), and `lib/classify/significance-classify.sh`'s verdict for the change
 **Writes:** the human's engage/defer/wave choice to the debt ledger (`| DEBT | response=...` via `gate-ledger.sh debt-response`); on engage, dispatches the `deep-understand` mastery gate with 5 diff-grounded questions
-**When to invoke:** at the merge boundary of a `gate`/gated-final PR. It NUDGES only when the change is `tap` (significant AND understanding-worthy); a `wave` or `not-significant` change is never quizzed (anti-fatigue). Advisory, never must-pass , a waved change still merges.
+**When to invoke:** at the merge boundary of a `gate`/gated-final PR. It NUDGES only when the change is `tap` (significant AND understanding-worthy); a `wave` or `not-significant` change is never quizzed (anti-fatigue). Advisory, never must-pass, a waved change still merges.
 **Composes:** `deep-understand` (the AskUserQuestion mastery gate); the kit builds the questions and routes, it scores nothing.
-**Common gotcha:** the quiz questions come from the DIFF + recorded tests, NEVER the agent's narrative , a quiz on the agent's misconceptions is worse than none. `questions`/`route` take a git ref only, so a false story cannot leak in. This gates the human's ATTENTION, not the merge.
+**Common gotcha:** the quiz questions come from the DIFF + recorded tests, NEVER the agent's narrative, a quiz on the agent's misconceptions is worse than none. `questions`/`route` take a git ref only, so a false story cannot leak in. This gates the human's ATTENTION, not the merge.
 
 ### `/kit:ship`
 
@@ -289,7 +289,7 @@ Related , **2b-0 role synthesis** (inside `/kit:execute`): each task is classifi
 **Writes:** bumped `VERSION`, new `CHANGELOG.md` entry, git tag, PR via `gh`
 **When to invoke:** review is green and docs are synced
 **Common gotcha:** blocks if the spec's `## Review` verdict is DO NOT SHIP. Use `/review-team` and `responding-to-review` to triage before re-running ship.
-**Release-hygiene warn (Step 4a):** at the version step it warns (never blocks) on a phantom cut, `VERSION` naming a version with no matching git tag, with a heads-up when `[Unreleased]` is accumulating above it. Warn-only; tag `v<version>` or confirm intentional, then continue (SPEC-028).
+**Release-hygiene warn (Step 4a):** at the version step it warns (never blocks) on a phantom cut, `VERSION` naming a version with no matching git tag, with a heads-up when `[Unreleased]` is accumulating above it. Warn-only; tag `v<version>` or confirm intentional, then continue.
 
 ### `/kit:retro`
 
@@ -536,7 +536,7 @@ that feeds `/kit:retro` and the effectiveness eval (`runs/<rid>.log`, `completen
 (SPEC-097: outside the plugin-reinstall blast zone so it survives a reinstall; an existing
 `~/.claude/dwarves-kit/logs` corpus is migrated in additively on first use). The **hook
 diagnostic logs** above (`safety-gate.log`, `slop-cleaner.log`, etc.) stay at
-`~/.claude/dwarves-kit/logs/` , they are ephemeral breadcrumbs, not corpus. Set
+`~/.claude/dwarves-kit/logs/`, they are ephemeral breadcrumbs, not corpus. Set
 `DWARVES_KIT_LOG_DIR` to redirect the corpus elsewhere (it also disables auto-migration, so
 an explicit path never ingests the legacy corpus); the test suite sets it to a throwaway
 `mktemp` dir so running tests never writes into your real tree.

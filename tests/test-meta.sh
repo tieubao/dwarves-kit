@@ -2010,7 +2010,7 @@ fi
 # SPEC-062: telemetry closure. The operator scenarios live in WORKFLOW; debug carries the
 # escaped-from marker; test-plan commands record their outcome.
 TOTAL=$((TOTAL + 1))
-if grep -qF 'What the operator sees, and when (SPEC-062)' "$KIT_DIR/docs/WORKFLOW.md" \
+if grep -qF 'What the operator sees, and when' "$KIT_DIR/docs/WORKFLOW.md" \
    && grep -qF 'escaped-from=' "$KIT_DIR/commands/debug.md" \
    && grep -qF 'gate-ledger.sh record <rid> test-plan ran' "$KIT_DIR/commands/test-plan.md" \
    && grep -qF 'gate-ledger.sh record <rid> test-plan ran' "$KIT_DIR/commands/test-plan-review-team.md" \
@@ -2028,7 +2028,7 @@ TOTAL=$((TOTAL + 1))
 if grep -qF 'plan)     plan "$@" ;;' "$KIT_DIR/lib/gate/gate-ledger.sh" \
    && grep -qF 'progress) progress "$@" ;;' "$KIT_DIR/lib/gate/gate-ledger.sh" \
    && grep -qF 'trace)    trace "$@" ;;' "$KIT_DIR/lib/telemetry/lane-telemetry.sh" \
-   && grep -qF 'Show the road, then your position on it (SPEC-063)' "$KIT_DIR/AGENTS.md" \
+   && grep -qF 'Show the road, then your position on it' "$KIT_DIR/AGENTS.md" \
    && grep -qF 'record <rid> grill' "$KIT_DIR/AGENTS.md" \
    && grep -qF 'gate-ledger.sh plan' "$KIT_DIR/commands/assign.md" \
    && grep -qF 'record <rid> grill ran' "$KIT_DIR/commands/grill.md"; then
@@ -2088,7 +2088,7 @@ fi
 
 # SPEC-069: retro follow-ups wired (escalation rule, advisory, grill line, color gate).
 TOTAL=$((TOTAL + 1))
-if grep -qF 'Review escalation (SPEC-069)' "$KIT_DIR/docs/WORKFLOW.md" \
+if grep -qF 'Review escalation' "$KIT_DIR/docs/WORKFLOW.md" \
    && grep -qF 'review-team' "$KIT_DIR/AGENTS.md" \
    && grep -qF 'codebase-memory' "$KIT_DIR/commands/grill.md" \
    && grep -qF 'appears nowhere in _meta/BACKLOG.md' "$KIT_DIR/hooks/ship-gate.sh" \
@@ -2558,7 +2558,7 @@ assert_eq "eval design pins its data window honestly" 0 $RC
 echo ""
 echo "=== SPEC-074: composition section + 3-surface parity (ID-066) ==="
 # ============================================================
-RC=0; grep -qF 'Lane x type composition (SPEC-074 / ID-066)' "$KIT_DIR/docs/WORKFLOW.md" || RC=1
+RC=0; grep -qF 'Lane x type composition' "$KIT_DIR/docs/WORKFLOW.md" || RC=1
 assert_eq "WORKFLOW carries the lane x type composition rule" 0 $RC
 RC=0; grep -qF 'recorded `skipped "<loop-step note>"`' "$KIT_DIR/docs/WORKFLOW.md" || RC=1
 assert_eq "composition names the skip-with-loop-note mapping" 0 $RC
@@ -2569,7 +2569,7 @@ assert_eq "type loops table and registry agree on the 12 types" "$LOOPT" "$REGT"
 
 
 # SPEC-076: descent contract wired
-RC=0; grep -qF 'The V-model descent contract (SPEC-076 / ID-068)' "$KIT_DIR/docs/WORKFLOW.md" || RC=1
+RC=0; grep -qF 'The V-model descent contract' "$KIT_DIR/docs/WORKFLOW.md" || RC=1
 assert_eq "WORKFLOW carries the descent contract" 0 $RC
 RC=0; grep -q '^  descent)' "$KIT_DIR/lib/gate/gate-ledger.sh" || RC=1
 assert_eq "gate-ledger dispatches the descent verb" 0 $RC

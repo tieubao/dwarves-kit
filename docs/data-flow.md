@@ -63,7 +63,7 @@ The Learn stage's whole job. Every arrow is code, not intent; the names are the 
                                     (flow 2), which is what the next audit reads
 ```
 
-**The four invariants of this flow** (SPEC-200), and why each is load-bearing:
+**The four invariants of this flow**, and why each is load-bearing:
 
 | Invariant | In this diagram |
 |---|---|
@@ -102,7 +102,7 @@ listed in staging-format.py's docstring as known duplication.
 
 ## 2. The ledger path: who writes evidence, who reads it
 
-One append-only corpus, one resolver. Every path below is derived, never hardcoded (SPEC-097).
+One append-only corpus, one resolver. Every path below is derived, never hardcoded.
 
 ```
                         ┌────────────────────────────────────────────┐
@@ -219,7 +219,7 @@ every output feeds a gate, a lens, or a worker slot.
                                                       never becomes a worker)
 ```
 
-**Why the reviewer/worker split matters** (SPEC-111): `role-classify agent-for` returns a name
+**Why the reviewer/worker split matters**: `role-classify agent-for` returns a name
 only for the two WRITE domains. Ask it for `security` and it returns nothing, on purpose: a
 security lens is read-only and must never be handed a build slot. The same classifier feeds
 both sides; the asymmetry is enforced in `agent_for()`, not in the caller's discipline.
