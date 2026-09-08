@@ -819,6 +819,30 @@ for knob in merge_own_prs tidy_worktrees build_candidates; do
   chk_has "kit.toml declares $knob" "$(cat "$KIT_DIR/kit.toml")" "$knob"
 done
 
+# ------------------------------------------------- main-checkout resolver recipe
+# `commands/wrap.md` step 5 prescribes one recipe for turning the session cwd into the
+# repo argument `wrap apply` needs: `--git-common-dir` minus the trailing `/.git`. Run from
+# a worktree the naive `$PWD` yields the feature branch, `apply` takes its non-default-branch
+# path, and the checkout never pulls. This asserts the recipe, not the model following it.
+echo
+echo "=== main-checkout resolver ==="
+RES="$TMPD/resolver"; mkdir -p "$RES"
+(
+  cd "$RES" || exit 1
+  git init -q -b main . && git -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  git worktree add -q wt -b feature >/dev/null 2>&1
+) >/dev/null 2>&1
+main_real="$(cd "$RES" && pwd -P)"
+resolved="$(git -C "$RES/wt" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+resolved="${resolved%/.git}"
+resolved="$(cd "$resolved" 2>/dev/null && pwd -P)"
+chk "the recipe resolves a worktree to the main checkout" "$([ "$resolved" = "$main_real" ]; echo $?)"
+chk "the main checkout is on the default branch, so apply pulls" \
+  "$([ "$(git -C "$main_real" branch --show-current)" = "main" ]; echo $?)"
+chk "the naive cwd would have been the feature branch" \
+  "$([ "$(git -C "$RES/wt" branch --show-current)" = "feature" ]; echo $?)"
+chk_has "commands/wrap.md prescribes the recipe" "$(cat "$KIT_DIR/commands/wrap.md")" "--git-common-dir"
+
 echo
 if [ "$FAIL" -gt 0 ]; then echo "test-wrap: $PASS passed, $FAIL FAILED of $TOTAL" >&2; exit 1; fi
 echo "test-wrap: all $PASS passed"

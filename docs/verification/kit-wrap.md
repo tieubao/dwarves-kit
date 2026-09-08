@@ -49,3 +49,51 @@ Command: `bash lib/gate/negctl.sh <throwaway> "bash tests/test-wrap.sh" "<sed th
 Exit: 0 green before; 1 under mutation; 0 after restore
 Output (excerpt): negctl `Verdict: PASS`; under mutation the worktree-copy case and the main-copy-untouched case go RED
 Verdict: RED-as-expected
+
+## Worktree sweep, main checkout, derived report (#523 6b2eca8, #524 3c00c57, #525 932b280, backfilled at docs/wrap-backfill)
+
+Three PRs changed `commands/wrap.md` and its specs only, with no `lib/` change. Their claims split into
+two classes and this entry keeps them apart rather than implying one proof covers both.
+
+### Class 1: mechanical, proven
+
+Command: `bash tests/test-wrap.sh && bash tests/test-config-registry.sh && bash tests/test-meta.sh`
+Exit: 0 for each suite
+Output (excerpt): `test-wrap: all 224 passed` (205 before this batch, 15 knob cases from #526, 4 resolver
+cases added here); config-registry `23/23 passed`; `Passed: 840 / 840`
+Verdict: PASS
+
+The resolver recipe step 5 prescribes is now asserted directly: from a worktree,
+`git rev-parse --path-format=absolute --git-common-dir` minus `/.git` resolves to the main checkout,
+that checkout sits on the default branch (so `apply` reaches its pull path), and the naive `$PWD`
+would have yielded the feature branch instead.
+
+### Class 1b: live run (ops-toolkit, 2026-09-08)
+
+Command: `bash bin/wrap apply /Users/tieubao/workspace/tieubao/ops-toolkit` then the same with `--apply --worktrees`
+Exit: 0
+Output (excerpt): without the flag, `SKIP <path>: --worktrees not given` for 9 worktrees and
+`SKIP <branch>: held by a worktree` for 8 branches. With it, 9 `[APPLY] remove worktree` lines, then
+the held branches delete as `squash-merged into main, tip matches the PR head`, then
+`[APPLY] pull --ff-only (checkout on main)`.
+End state, verified by `git worktree list` and `git branch`: 9 worktrees to 0 (one foreign, detached and
+locked, correctly skipped); 15 branches to 5, the 4 non-default survivors each held for a named reason
+(unpushed commits, or no merged PR).
+Verdict: PASS. This is the negative control for #523's central claim: the same command on the same
+repo, one flag apart, with opposite outcomes.
+
+### Class 2: model-obedience, NOT proven and not provable by a test
+
+These are instructions in a prompt file. A test can assert the token is present in `commands/wrap.md`,
+which proves the text shipped, not that a run obeys it. Recording them as proven would be false.
+
+- #523: `Left alone` is derived from the closing `wrap scan` rather than narrated from intent.
+- #524: an item reaches `Needs you` only through the admission test, and everything failing it is run
+  first and reported past tense.
+- #525: a precedent hit is wired into the tool it named, a clear-shaped miss is built, and only a
+  judgment-scoped candidate stages.
+
+What would close the gap: a recorded `/kit:wrap` transcript over a fixture repo carrying a green own PR,
+a stale worktree, and a candidate with a precedent hit, asserted against the resulting git state rather
+than against the report text. That fixture does not exist; building it is the honest next step, not a
+line in this file.
