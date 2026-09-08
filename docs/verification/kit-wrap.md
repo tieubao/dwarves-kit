@@ -132,3 +132,34 @@ Verdict: RED-as-expected.
   indistinguishable from "there were no candidates this session".
 - Whether a run follows step 5's ORDER. The lint reads the report, not the sequence that
   produced it.
+
+## FYI admission test (f4d148f)
+
+The `Needs you` lane got an admission test in #524; `FYI` did not, and the gap showed the
+first time the operator read one. That report's `FYI` carried a staged candidate and two
+unproven claims, which ARE work to develop further, under a contract that called the section
+"never a task". Both readings were defensible, which means the contract was wrong.
+
+Command: `bash tests/test-wrap.sh && bash tests/test-meta.sh && bash tests/test-docs-wiring.sh && bash tests/test-command-emit-sweep.sh && bash tests/test-no-personal-paths.sh`
+Exit: 0 for each suite
+Output (excerpt): `test-wrap: all 236 passed` (234 before, 2 pins); `All meta tests passed.`;
+docs-wiring `25/25 passed`; command-emit-sweep and no-personal-paths green
+Verdict: PASS
+
+Two pins, deliberately paired: one asserts the new rule is present, the other asserts the old
+"never a task" wording is GONE. A pin on presence alone would stay green if both wordings
+shipped side by side, which is the drift this replaces.
+
+## NEGATIVE CONTROL (f4d148f)
+
+Command: `bash lib/gate/negctl.sh . "bash tests/test-wrap.sh" "<sed downcasing NAMES ITS HOME>"`
+Exit: 0 green before; 1 under mutation; 0 after restore
+Output (excerpt): `Verdict: PASS`
+Verdict: RED-as-expected.
+
+## What this does not enforce
+
+That every `FYI` follow-up bullet actually names a path. `report-lint.sh` judges the `Needs you`
+block only. A lint over `FYI` would need to tell a state-change bullet, which owes no path, from
+a follow-up bullet, which does, and that classification is the judgment the rule asks a writer
+to make. Left as prose deliberately, not overlooked.

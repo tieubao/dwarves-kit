@@ -879,6 +879,8 @@ rc=0; bash "$LINT" /nonexistent-report-file >/dev/null 2>&1 || rc=$?
 chk "a missing file exits 2" "$([ "$rc" -eq 2 ]; echo $?)"
 
 chk_has "commands/wrap.md wires the lint into step 9" "$(cat "$KIT_DIR/commands/wrap.md")" "lib/wrap/report-lint.sh"
+chk_has "the FYI contract requires each follow-up to name its home" "$(cat "$KIT_DIR/commands/wrap.md")" "NAMES ITS HOME"
+chk_no "FYI is not described as never a task" "$(cat "$KIT_DIR/commands/wrap.md")" "never a task"
 
 echo
 if [ "$FAIL" -gt 0 ]; then echo "test-wrap: $PASS passed, $FAIL FAILED of $TOTAL" >&2; exit 1; fi
