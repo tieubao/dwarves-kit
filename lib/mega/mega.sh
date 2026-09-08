@@ -30,7 +30,10 @@
 # RIGHT NOW is the runner's own journal/RUNNER_DONE job); this only ever points at git + gh.
 #
 # ROADMAP sub-goal line grammar parsed (documented convention, no fixed schema -- same judgment
-# call `lib/board/board-mirror.sh`'s `extract_megas` already documents for this same file):
+# call `lib/board/board-mirror.sh`'s `extract_megas` already documents for this same file).
+# BOTH id forms are accepted: `SG-NN` is what `/kit:mega` scaffolds today (commands/mega.md),
+# `NN-slug` is the older form every archived roadmap still carries.
+#   - [x] SG-01 Collapse the module , auto , PR #190 merged cb64f15
 #   - [x] 01-module-collapse (dwarves-kit), <prose>, PR #190 merged cb64f15 (<prose>)
 #   - [ ] 04-install-wire (dwarves-kit), <prose>, PR #
 #   - [~] 09-rehomed (dwarves-kit), rehomed into <other mega> (informational, never flagged)
@@ -279,7 +282,12 @@ cmd_status() {
   local -a detail_lines=()
 
   while IFS= read -r line; do
-    [[ "$line" =~ ^-\ \[(.)\]\ ([0-9]+-[A-Za-z0-9_-]+) ]] || continue
+    # Two grammars are live. The current one `/kit:mega` scaffolds is `SG-NN <title>`
+    # (commands/mega.md, and orchestrate.sh's own `_subgoals`); the older `NN-slug` form
+    # is still in every archived roadmap. Matching only the old one made this auditor
+    # silently find ZERO rows in a current roadmap and report nothing wrong, which is the
+    # worst failure available to a reconciler: a checker that cannot see its input passes.
+    [[ "$line" =~ ^-\ \[(.)\]\ (SG-[0-9]+|[0-9]+-[A-Za-z0-9_-]+) ]] || continue
     local box="${BASH_REMATCH[1]}" sub="${BASH_REMATCH[2]}"
     total=$((total + 1))
 

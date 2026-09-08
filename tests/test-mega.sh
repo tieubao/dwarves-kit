@@ -228,6 +228,33 @@ else
   no "board board without --with-mega should not print a MEGA ROLLUP section"
 fi
 
+# --------------------------------------------------------------------------- SG-NN grammar
+# Every fixture above uses the OLDER `NN-slug` id form. `/kit:mega` scaffolds `SG-NN` today
+# (commands/mega.md), and mega.sh's parser matched only the old form, so `bin/mega status`
+# found ZERO rows in a current roadmap and reported nothing wrong. A reconciler that cannot
+# see its input passes, which is why this fixture exists in the CURRENT grammar.
+SGSLUG="sgmega"
+mkdir -p "$MEGAROOT/$SGSLUG/goals"
+cat > "$MEGAROOT/$SGSLUG/ROADMAP.md" <<'SGROADMAP'
+# Mega-goal: sgmega
+
+## Sub-goals
+
+- [x] SG-01 Collapse the module , auto , PR #101 merged abc123def0
+- [ ] SG-02 Wire the seam , gate , depends SG-01
+SGROADMAP
+SG_OUT="$(GH_BIN="$STUBGH" bash "$MEGA" status "$SGSLUG" --megagoals-root "$MEGAROOT" --code-root "$CODEROOT" 2>&1)"
+if { trap '' PIPE; printf '%s\n' "$SG_OUT" 2>/dev/null || :; } | grep -qE 'SG-01'; then
+  ok "status parses the current SG-NN grammar (the form /kit:mega scaffolds)"
+else
+  no "status did not see SG-01; the parser is blind to the current grammar: $SG_OUT"
+fi
+if { trap '' PIPE; printf '%s\n' "$SG_OUT" 2>/dev/null || :; } | grep -qE 'SG-02'; then
+  ok "status sees an unchecked SG-NN row too, not just the checked one"
+else
+  no "status did not see SG-02: $SG_OUT"
+fi
+
 echo "---"
 echo "Coverage delta: mega.sh had 0 tests before this file; now $((PASS + FAIL)) checks across the full drift-class taxonomy."
 echo "---"
