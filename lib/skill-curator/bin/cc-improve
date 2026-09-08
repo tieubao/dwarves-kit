@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 # Deprecated alias of `skill-improve` (SPEC-200 I5: the kit speaks one language; the
 # `cc-` host-agent prefix is retired). Works for one release, then goes away.
-printf 'cc-improve is deprecated, use skill-improve (SPEC-200)\n' >&2
+printf 'cc-improve is deprecated, use skill-improve\n' >&2
 exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/skill-improve" "$@"

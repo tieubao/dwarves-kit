@@ -26,7 +26,7 @@ for _v in STATE_DIR PROPOSALS_DIR SKILLS_DIR CONFIG SETTINGS MEMORY_LEDGER CURAT
           REVIEWER_CMD SIGNAL_MARKERS; do
   _new="SKILL_CURATOR_$_v"; _old="CC_SI_$_v"
   if [ -z "${!_new:-}" ] && [ -n "${!_old:-}" ]; then
-    printf 'skill-curator: %s is deprecated, use %s (SPEC-200)\n' "$_old" "$_new" >&2
+    printf 'skill-curator: %s is deprecated, use %s\n' "$_old" "$_new" >&2
     export "$_new=${!_old}"
   fi
 done
@@ -54,7 +54,7 @@ cfg() {
   legacy="CC_SI_$(printf '%s' "$key" | tr '[:lower:]' '[:upper:]')"
   if [ -n "${!envvar:-}" ]; then printf '%s' "${!envvar}"; return; fi
   if [ -n "${!legacy:-}" ]; then
-    printf 'skill-curator: %s is deprecated, use %s (SPEC-200)\n' "$legacy" "$envvar" >&2
+    printf 'skill-curator: %s is deprecated, use %s\n' "$legacy" "$envvar" >&2
     printf '%s' "${!legacy}"; return
   fi
   if [ -f "$SKILL_CURATOR_CONFIG" ]; then

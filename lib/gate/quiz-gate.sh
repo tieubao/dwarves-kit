@@ -81,7 +81,7 @@ cmd_questions() {
   local first_file="${order%% *}"
 
   echo "# 5-question understanding quiz for \`${ref}\`"
-  echo "# Grounded in the ACTUAL diff + recorded test results (SPEC-125), NOT any agent narrative."
+  echo "# Grounded in the ACTUAL diff + recorded test results, NOT any agent narrative."
   echo "# These questions are the payload for the deep-understand mastery gate, they are not scored here."
   echo
   echo "Q1. Background: this change is read in the order: ${order:-（no files）}. Start from \`${first_file:-（none）}\` -- what existing context does the change build on, and why is that the reader's first stop?"
@@ -103,7 +103,7 @@ cmd_route() {
   local ref="${1:-HEAD}"
   echo "ROUTE: deep-understand"
   echo "engine: deep-understand skill (its AskUserQuestion mastery-gate quiz)"
-  echo "material: the SPEC-124 literate explainer (lib/explain.sh render ${ref}); docs/verification/"
+  echo "material: the literate explainer (lib/explain.sh render ${ref}); docs/verification/"
   echo "instruction: hand these 5 diff-grounded questions to deep-understand; it runs the mastery gate,"
   echo "             shuffles answer slots, and gates each item on a demonstrated answer. The kit scores nothing."
   echo
@@ -153,7 +153,7 @@ cmd_tap() {
   echo "  This gate/gated-final PR is significant AND understanding-worthy. Before you merge, pick one"
   echo "  (all three are logged to the debt ledger; the quiz never blocks the merge):"
   echo "    engage  -- pull the 5-question quiz now (deep-understand mastery gate)"
-  echo "    defer   -- send it to the weekend batch (SG-05)"
+  echo "    defer   -- send it to the weekend batch"
   echo "    wave    -- accept the debt knowingly (the change still merges)"
   echo "  Respond: bash lib/gate/quiz-gate.sh respond ${rid} <engage|defer|wave> [--ref <ref>]"
 }
@@ -179,7 +179,7 @@ cmd_respond() {
         echo "ROUTE: deep-understand (no --ref given; run 'quiz-gate.sh route <ref>' to build the questions)"
       fi
       ;;
-    defer) echo "recorded: defer (rid=${rid}) -- queued for the weekend batch (SG-05). The change still merges." ;;
+    defer) echo "recorded: defer (rid=${rid}) -- queued for the weekend batch. The change still merges." ;;
     wave)  echo "recorded: wave (rid=${rid}) -- debt accepted knowingly. The change still merges." ;;
   esac
   return 0

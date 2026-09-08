@@ -103,7 +103,7 @@ fi
 # spec-less freeform pushes are exactly the work most likely to be un-boarded, and the
 # old placement exited before the nudge could fire.
 if [ -f "$ROOT/_meta/BACKLOG.md" ] && ! grep -E '^\|' "$ROOT/_meta/BACKLOG.md" 2>/dev/null | grep -qF -- "$SLUG"; then
-  echo "[advisory] branch slug '$SLUG' appears nowhere in _meta/BACKLOG.md; if this is real work, give it a board row (SPEC-069)" >&2
+  echo "[advisory] branch slug '$SLUG' appears nowhere in _meta/BACKLOG.md; if this is real work, give it a board row" >&2
 fi
 
 # Doc-projection gate (kit repo only): the drift class that shipped twice
@@ -150,7 +150,7 @@ if [ -f "$LEDGER62" ]; then
         if [ -n "$BASE62" ] && ! git -C "$ROOT" diff --name-only "$BASE62" HEAD 2>/dev/null \
             | grep -E '^docs/verification/.+\.md$|(^|/)proof-of-done\.md$' \
             | grep -vq '/README\.md$'; then
-          echo "[advisory] run '$SLUG' (lane $RLANE) recorded a build but this branch ships no docs/verification/ record; the session ledger is not committable evidence (SPEC-071/ID-062)" >&2
+          echo "[advisory] run '$SLUG' (lane $RLANE) recorded a build but this branch ships no docs/verification/ record; the session ledger is not committable evidence" >&2
         fi ;;
     esac
   fi
@@ -162,7 +162,7 @@ if [ -f "$LEDGER62" ] && [ -n "${RLANE:-}" ]; then
   DOUT=$(bash "$LEDGER62" descent "$SLUG" "$RLANE" 2>/dev/null || true)
   DN=$(printf '%s' "$DOUT" | grep -c '^DESCENT:' || true)
   if [ "${DN:-0}" -gt 0 ] 2>/dev/null; then
-    echo "[advisory] run '$SLUG': $DN descent violation(s), phases recorded before an earlier plan phase disposed; see: bash <kit>/lib/gate/gate-ledger.sh descent $SLUG $RLANE (SPEC-076)" >&2
+    echo "[advisory] run '$SLUG': $DN descent violation(s), phases recorded before an earlier plan phase disposed; see: bash <kit>/lib/gate/gate-ledger.sh descent $SLUG $RLANE" >&2
   fi
 fi
 

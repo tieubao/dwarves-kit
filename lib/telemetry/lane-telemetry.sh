@@ -270,7 +270,7 @@ report() {
       printf '%s\n' "$tagg" | awk -F'\t' '$1!="__ALL__"{ printf "    %-12s %10d %7d%%\n", $1, $3, $4 }' | sort
       printf '    rework share (bug-lane tokens / total, run-granularity v1): %s%%\n' "${rework:-0}"
     fi
-    printf '    (no thresholds pinned; baseline forms after ~5 captured runs, SPEC-073 pattern)\n'
+    printf '    (no thresholds pinned; baseline forms after ~5 captured runs)\n'
   fi
 
   # Failure-policy breakdown (ID-398, docs/patterns/failure-policy.md): only over OUTCOME
@@ -278,7 +278,7 @@ report() {
   local pagg; pagg="$(_policy_agg)"
   if [ -n "$pagg" ]; then
     echo ""
-    echo "  failure policy (close/escalate/continue, ID-398):"
+    echo "  failure policy (close/escalate/continue):"
     printf '%s\n' "$pagg" | awk -F'\t' '{ printf "    %-10s %5d\n", $1, $2 }'
   fi
 
@@ -330,7 +330,7 @@ misfires() {
   fi
   local bl_list; bl_list="$(_boardless)"
   if [ -n "$bl_list" ]; then
-    echo "boardless runs (SPEC-069: work that never touched the board):"
+    echo "boardless runs (work that never touched the board):"
     printf '%s\n' "$bl_list" | sed 's/^/  /'; any=1
   fi
   local si_list; si_list="$(_shipped_incomplete)"
@@ -493,7 +493,7 @@ render() {
 
   echo ""
   printf '  legend: gates r/s/o = ran / skipped / override summed over those runs;\n'
-  printf '          "?" lane/type = runs with no START line (untracked; see ID-085).\n'
+  printf '          "?" lane/type = runs with no START line (untracked).\n'
   return 0
 }
 

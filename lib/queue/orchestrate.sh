@@ -1803,7 +1803,7 @@ _wave_run() {  # megadir roadmap
     local reserved_spec
     if reserved_spec="$(_wave_reserve_spec)"; then
       {
-        printf '\n\n---\nRESERVED SPEC NUMBER (SPEC-128 wavefront reservation)\n'
+        printf '\n\n---\nRESERVED SPEC NUMBER\n'
         printf 'This wave dispatch reserved SPEC-%s for your sub-goal. When you run /kit:spec (or\n' "$reserved_spec"
         printf 'call lib/spec/spec-next.sh), USE SPEC-%s , it is already claimed for you under a lock, so\n' "$reserved_spec"
         printf 'no sibling wave worker can take it. Do NOT re-derive a different number.\n'

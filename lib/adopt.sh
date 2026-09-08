@@ -221,7 +221,7 @@ if [ -n "$kit_root_toml" ] && [ "$RESOLVER_OK" -eq 1 ]; then
       [ -n "$WITH_ARG" ] && with_norm=" $(echo "$WITH_ARG" | tr ',' ' ' | xargs) "
       tmp="$(mktemp)"
       {
-        echo "# .kit.toml -- this PROJECT's override of the kit-root defaults (SPEC-192)."
+        echo "# .kit.toml -- this PROJECT's override of the kit-root defaults."
         echo "# Only the keys you set here matter; every key you omit inherits the kit-root"
         echo "# default at $KIT_REF/kit.toml (lib/config/kit-config.sh: project keys WIN)."
         echo "# Re-run \`bash $KIT_REF/lib/adopt.sh --refresh <this repo>\` (or /kit:adopt) after"
