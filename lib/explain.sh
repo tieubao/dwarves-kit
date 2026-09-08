@@ -218,7 +218,7 @@ cmd_render() {
     echo "# Explainer for \`${ref}\`"
     echo
     echo "> Literate-diff explainer (base \`${base}\`). Grounded in the ACTUAL diff + recorded test"
-    echo "> results, NOT any agent/author narrative (ADR-0031 §2). Read top to bottom; the diff below is"
+    echo "> results, NOT any agent/author narrative. Read top to bottom; the diff below is"
     echo "> in READING order, not git's alphabetical order. The commit message is shown as UNVERIFIED"
     echo "> metadata only; where it disagrees with the code, the code below is the source of truth."
     echo

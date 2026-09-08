@@ -53,7 +53,7 @@ For the selected task, gather:
 
 Say: "Ready to implement. Work through the acceptance criteria one by one. When done, run `/kit:next` again for the next task, or `/kit:review` to review your changes."
 
-**Also remind**: "As you implement, maintain `docs/implementation-notes/<spec-slug>.md`. Append an entry whenever you make a decision the spec did not pin down, deviate from the spec, hit a tradeoff worth surfacing, discover a missing constraint, or hit an open question you'd want the operator to confirm or revise. Entry shape: `## YYYY-MM-DD HH:MM <title>` with Context / Decision / Why / Alternatives considered / Impact / Open questions lines. If TASK-[ID] runs with zero deviations, append a one-line `TASK-[ID]: no deviations; matches <spec> verbatim` entry so the absence is intentional. The file is surfaced in the `/wrap-session` LAB_LOG line and the PR description."
+**Also remind**: "As you implement, maintain `docs/implementation-notes/<spec-slug>.md`. Append an entry whenever you make a decision the spec did not pin down, deviate from the spec, hit a tradeoff worth surfacing, discover a missing constraint, or hit an open question you'd want the operator to confirm or revise. Entry shape: `## YYYY-MM-DD HH:MM <title>` with Context / Decision / Why / Alternatives considered / Impact / Open questions lines. If the task runs with zero deviations, append a one-line `No deviations; matches the spec verbatim` entry so the absence is intentional. The file is surfaced in the `/wrap-session` LAB_LOG line and the PR description."
 
 If the file does not yet exist, create it with a short header (`# Implementation notes: <spec-slug>` + a one-line pointer to the spec path) before handing off, so the implementor only has to append.
 

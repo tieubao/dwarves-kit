@@ -374,7 +374,7 @@ check() {
       echo "  Need: a docs/verification/<slug>.md added by this branch with a recorded run AND a rollback note, or [UNAVAILABLE: reason] if no such flow exists here."
       echo "        ('recorded run' = Command:/Exit: text OR a committed screenshot/GIF embed for visual/demo work.)"
     fi
-    echo "  Type-specific shape (SPEC-044): run 'bash lib/gate/proof-gate.sh contract \"<your task>\"' for the exact artifact this work-type owes + the skill that owns it (e.g. a data/CLI tool owes a recorded live run; an eval owes a TEST-REPORT)."
+    echo "  Type-specific shape: run 'bash lib/gate/proof-gate.sh contract \"<your task>\"' for the exact artifact this work-type owes + the skill that owns it (e.g. a data/CLI tool owes a recorded live run; an eval owes a TEST-REPORT)."
     echo "  Produce it via /kit:verify (or record it), or log an explicit override (audited):"
     echo "    bash lib/gate/proof-ledger.sh override '${slug:-<branch-slug>}' \"<reason>\""
     # ID-299 operator hint: an override for THIS slug exists in the log but is scoped to a
@@ -382,7 +382,7 @@ check() {
     # so it does not apply here. Say so, or the operator re-logs and it still "does nothing".
     if [ -n "$slug" ] && [ -f "$OVERRIDE_LOG" ] \
        && awk -F'|' -v s="$slug" 'function trim(x){gsub(/^[ \t]+|[ \t]+$/,"",x);return x} trim($3)==s && trim($4)=="OVERRIDE"{f=1;exit} END{exit(f?0:1)}' "$OVERRIDE_LOG"; then
-      echo "  Note: an override for '$slug' exists in the log but is scoped to a different repo; re-log it from THIS repo's root (ID-299)."
+      echo "  Note: an override for '$slug' exists in the log but is scoped to a different repo; re-log it from THIS repo's root."
     fi
   } >&2
   return 1

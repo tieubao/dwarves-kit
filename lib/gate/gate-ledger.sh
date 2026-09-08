@@ -446,7 +446,7 @@ override() {
           if (rr==r) found=1
         }
         END { exit !found }' "$f"; then
-    echo "override rejected: reason already used for another gate in run '$rid' -- each gate override needs its own reason (SPEC-097)" >&2
+    echo "override rejected: reason already used for another gate in run '$rid' -- each gate override needs its own reason" >&2
     return 65
   fi
   mkdir -p "$RUNS_DIR"
@@ -501,7 +501,7 @@ plan() {
   [ -n "$rows" ] || { echo "unknown lane '$lane' (not a column in the WORKFLOW matrix; no lanes.d drop-in)" >&2; return 1; }
   local i=0 ph cell mark
   if [ "$lane" != "tiny" ]; then
-    i=1; printf '%2d. %-18s %s\n' 1 "grill" "intake (universal, SPEC-058)"
+    i=1; printf '%2d. %-18s %s\n' 1 "grill" "intake (universal)"
   fi
   while IFS=$'\t' read -r ph cell; do
     case "$cell" in
