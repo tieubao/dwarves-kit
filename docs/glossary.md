@@ -14,7 +14,7 @@ Source of the ranked list: `docs/research/2026-07-16-plain-words-inventory.md`.
 
 These are the load-bearing coined words. Each appears in 300-1000+ files (code
 identifiers, config keys, module and file names, test assertions), so a full
-rename is its own migration project (ID-293) and is deliberately NOT done here.
+rename is its own migration project and is deliberately NOT done here.
 Read the plain word; the jargon is what the code still calls it.
 
 | Jargon (in code) | Plain word | What it means |
@@ -97,7 +97,7 @@ command or file names; the code keeps calling the stages Shape/Build/Watch/Check
 `harness` (~319) are semantic-everywhere: the name is a code identifier, a
 config key, a module directory, and a file name, not just prose. Renaming any
 one of them is a dedicated migration project with its own PR, legacy-alias
-window, and full-suite run (ID-293). This glossary is the deliberate first slice:
+window, and full-suite run. This glossary is the deliberate first slice:
 it delivers the onboarding benefit (a reader always has the plain word) without
 the destabilising code churn, and it is the precondition ID-293's own backlog
 note names ("unpark after the glossary lands").

@@ -59,7 +59,7 @@ entry in that file is preserved). Command/skill modules (`queue`, `stats`, `quiz
 
 ## The stable entrypoint
 
-Reference `$DWARVES_KIT/bin/<name>`, never a deep `lib/<subsystem>/<file>.sh` path (SPEC-184).
+Reference `$DWARVES_KIT/bin/<name>`, never a deep `lib/<subsystem>/<file>.sh` path.
 The adopt-injected `CLAUDE.md` block already does this for you:
 
 | Stable entrypoint | Forwards to |
@@ -75,7 +75,7 @@ The adopt-injected `CLAUDE.md` block already does this for you:
 | `bin/session` | `lib/session/session.sh` (`session <intel\|observe\|recall\|report\|semantic>`, ex the five `bin/session-*`) |
 | `bin/spec` | `lib/spec/spec.sh` |
 | `bin/stats` | `lib/stats/` (via `uv run --project`) |
-| `bin/wrap` | `lib/wrap/wrap.sh` (`scan` report-only; `apply [--apply] [--worktrees]` branch delete + worktree remove + `--ff-only` pull, dry-run by default; `merge [--apply]` one own green PR per call, base = default branch, mergeable, checks green, no unresolved threads, no open dependents (SPEC-065); `log` prepends a dated line to `[wrap] activity_log (from a worktree of the log's repo, the worktree's copy is written)`, operator or kit-root `kit.toml` only, path must resolve under `$HOME`; `default-branch` prints the detected name) |
+| `bin/wrap` | `lib/wrap/wrap.sh` (`scan` report-only; `apply [--apply] [--worktrees]` branch delete + worktree remove + `--ff-only` pull, dry-run by default; `merge [--apply]` one own green PR per call, base = default branch, mergeable, checks green, no unresolved threads, no open dependents; `log` prepends a dated line to `[wrap] activity_log (from a worktree of the log's repo, the worktree's copy is written)`, operator or kit-root `kit.toml` only, path must resolve under `$HOME`; `default-branch` prints the detected name) |
 
 Module CLIs keep their module names (ADR-0034 two-class rule): `bin/prose-rag`,
 `bin/worktree-provision`.

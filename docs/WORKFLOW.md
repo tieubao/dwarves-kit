@@ -29,7 +29,7 @@ via `install.sh --with <modules>`, recording the enabled set in the consumer's
 
 ## Where work comes from (the board)
 
-`_meta/BACKLOG.md` is the kanban board (SPEC-055): one row per work item, the Status column is
+`_meta/BACKLOG.md` is the kanban board: one row per work item, the Status column is
 the state machine (`queued -> claimed -> speccing -> validated -> executing -> shipped`, plus
 `parked` / `dropped`). Render it with `bash lib/board/backlog.sh board`; flip states mechanically with
 `backlog.sh set <ID> <state>` (the leading keyword changes, the row's annotation prose
@@ -38,7 +38,7 @@ survives). Work arrives two ways, and they coexist: an operator names an item
 `backlog.sh next` -> goal-registry claim -> flip to `claimed`). No daemon, no parallel task
 database: the markdown file is the one source of truth.
 
-**Too foggy to be a board item yet? Wayfind first (SPEC-207).** When an effort's open
+**Too foggy to be a board item yet? Wayfind first.** When an effort's open
 questions outnumber its stateable ones (a grill keeps hitting "can't phrase that question
 yet", or a brief carries 3+ unresolved decisions), `/kit:wayfind` charts it as a decision
 map at `_meta/megagoals/<slug>/map.md` + typed decision tickets, resolved one per session
@@ -88,9 +88,9 @@ type-agnostic).
 | Type | Loop (entry -> phases -> exit) |
 |------|-------------------------------|
 | research | frame the question -> multi-modal sweep (parallel angles) -> adversarially verify every load-bearing claim -> cited report |
-| review | scope the artifact (diff/PR/branch) -> pick lens count (single, or multi per the escalation rule) -> dispatch read-only reviewer(s) -> merge + Route findings (SPEC-078) -> verdict -> record (spec `## Review` or report) |
+| review | scope the artifact (diff/PR/branch) -> pick lens count (single, or multi per the escalation rule) -> dispatch read-only reviewer(s) -> merge + Route findings -> verdict -> record (spec `## Review` or report) |
 | eval | frame + define metrics -> hand-verify seed data -> climb the test ladder (smoke -> live) -> TEST-REPORT with falsifiability controls -> verdict |
-| doc | two entry paths (SPEC-073/ID-060): code-diff-triggered, diff sweep (what changed) -> update every affected doc; OR standalone revision, content brief (what the doc must say + for whom) -> rewrite. Both exit through doc-verifier confirming docs match code |
+| doc | two entry paths: code-diff-triggered, diff sweep (what changed) -> update every affected doc; OR standalone revision, content brief (what the doc must say + for whom) -> rewrite. Both exit through doc-verifier confirming docs match code |
 | migration | inventory the estate -> dry-run on a copy -> staged apply -> verify + record the run -> rollback path proven |
 | data-tool | spec/port the surface -> build -> recorded live run + negative control -> Done gate (proof-of-done indexes the run ledgers) |
 | incident | alert/symptom -> triage (witr/logs) -> root-cause BEFORE any fix (/kit:debug discipline) -> fix/mitigate -> INC-NNN record -> monitoring follow-up |
@@ -100,7 +100,7 @@ type-agnostic).
 | learning | ingest material -> explain/companion -> practice -> self-check >= the track's bar |
 | spec-feature | (code) pick a lane in "Size the work first" above |
 
-### Lane x type composition (SPEC-074 / ID-066)
+### Lane x type composition
 
 The classifiers always emit BOTH a lane and a type; every (lane, type) pair is legal.
 Two axes, two contracts:
@@ -114,7 +114,7 @@ Two axes, two contracts:
 Mapping rule (the lived wave-1 practice, now written): loop steps execute INSIDE the
 canonical phases (a loop's "sweep"/"dry-run"/"triage" is its build; its "frame the
 question" is think/spec). A matrix-required phase with no equivalent loop step is
-recorded `skipped "<loop-step note>"`, which disposes it (SPEC-063), never silently.
+recorded `skipped "<loop-step note>"`, which disposes it, never silently.
 
 Three precedence facts, already true in code, pinned in the suites:
 
@@ -222,12 +222,12 @@ integration levels can also be re-run on demand, read-only, with `/kit:verify` (
 decide it, so Opus is not burned on mechanical pass/fail (the forensic found Opus = 86.5% of
 spend). In order of preference:
 
-1. **Deterministic check** , a unit test, a linter, a `grep`/`bash` assertion. If the criterion
+1. **Deterministic check**, a unit test, a linter, a `grep`/`bash` assertion. If the criterion
    is mechanical (does it compile, does the test pass, is the string present), a deterministic
    check is the verifier; no model judgment is needed. `task-verifier` runs these.
-2. **Cheap-model verifier** , for a judgment that is shallow but not mechanical, prefer a cheap
+2. **Cheap-model verifier**, for a judgment that is shallow but not mechanical, prefer a cheap
    tier (set the dispatched agent's `model:` to a cheaper model) over Opus.
-3. **Opus reviewer** , reserve for genuine judgment calls (architecture, security reasoning,
+3. **Opus reviewer**, reserve for genuine judgment calls (architecture, security reasoning,
    subtle correctness). `/kit:review` / `/kit:review-team`.
 
 Pick the deterministic check whenever the acceptance criterion is mechanical; escalate only when
@@ -237,7 +237,7 @@ the question actually needs judgment.
 >2k-token tool outputs riding in context. Two levers:
 
 - **Bash, at the source:** set `BASH_MAX_OUTPUT_LENGTH` (e.g. `8000`) in your `settings.json`
-  `env` block. This caps shell output BEFORE it enters context , the only lever that removes the
+  `env` block. This caps shell output BEFORE it enters context, the only lever that removes the
   tokens for the current turn. For a single command, redirect to a file and read a slice
   (`cmd > out.txt; grep -n X out.txt`) instead of letting it all stream back.
 - **Non-Bash tools:** the `output-offload.sh` PostToolUse hook detects a `tool_response` over
@@ -267,7 +267,7 @@ Debug (off-cycle).
   command's own test-run step still runs at build and at ship too, but that is an
   inline check, not this agent).
 
-### Coverage: the V is fully covered (SG-04)
+### Coverage: the V is fully covered
 
 Every V-model artifact now has BOTH a static review and a dynamic test (SG-04 closed
 the last right-arm holes). Judged against PHILOSOPHY criterion #2 (a feature must
@@ -285,7 +285,7 @@ serve >= 2 lifecycle phases) and "no phantom features":
   any right-arm PASS's recorded command, catching a stale or fabricated PASS.
 
 Prior gaps closed 2026-05-23: the `security-reviewer` orphan (wired into
-`/kit:review-team`) and `/kit:verify` (SPEC-035). With SG-04, every left AND right
+`/kit:review-team`) and `/kit:verify`. With SG-04, every left AND right
 arm phase has a review/verifier agent; nothing further would be a phantom.
 
 ### Every-step review in the full-autonomous lane (P4, SG-05)
@@ -336,7 +336,7 @@ a kit-default lens never silently burns `opus` on every run (WORKFLOW.md verific
 cost routing). Born under ADR-0029 as the named-noun `advisor`, gated by the SG-01
 `agent-effectiveness` validator.
 
-<!-- review-loop --> **Two firing points on the full lane (SPEC-231).** Over-suggest
+<!-- review-loop --> **Two firing points on the full lane.** Over-suggest
 also runs at the DESIGN-TIME pass (the spec stage), not only at the ship boundary, so
 the full lane gets a generative pass while a fix is still one spec edit. Critique
 (P5) drives the bounded review-fix loop: after a fix batch clears the convergent
@@ -345,11 +345,11 @@ fix batch can reopen the bug it fixed. Both the design-time pass and the loop ar
 default-run on the full lane and opt-in below it (the scaling gate). Foundation:
 `docs/patterns/review-fix-loop.md`.
 
-## Role-specialist roster: two dispatch paths by type (SPEC-111)
+## Role-specialist roster: two dispatch paths by type
 
 The starter domain roster has ONE router with two live dispatch paths, matched to agent
 type: WORKER specialists (write-capable implementers, e.g. `db-migration-worker`,
-`data-etl-worker`) dispatch via `commands/execute.md` step 2b-0's reuse branch , the
+`data-etl-worker`) dispatch via `commands/execute.md` step 2b-0's reuse branch, the
 deterministic `role-classify.sh agent-for <domain>` lookup makes the reuse HIT. REVIEWER
 specialists (read-only judges, e.g. `performance-reviewer`, `api-reviewer`,
 `frontend-reviewer`, `infra-reviewer`) dispatch via `/kit:review-team`'s opt-in domain lens.
@@ -357,13 +357,13 @@ A read-only reviewer is NOT a 2b-0 target (it cannot implement a task). `generic
 unknown domain return empty from `agent-for` and escalate to SPEC-089 Mode-C synthesis (the
 dynamic long tail). 2b-0's reuse-vs-synthesize branch is the single router; no second one.
 
-## The V-model descent contract (SPEC-076 / ID-068)
+## The V-model descent contract
 
 Every left-arm step passes its review lens BEFORE the work descends, on EVERY lane:
 the lane's plan order (derived from the matrix below) IS the descent order, and the
 review obligation now exists on all five lanes (tiny carries a run-lite Review: a
 recorded self-review line; weight scales, the obligation never waives). Descent is
-DETECTED, never blocked mid-flight (ADR-0024): `bash lib/gate/gate-ledger.sh descent
+DETECTED, never blocked mid-flight: `bash lib/gate/gate-ledger.sh descent
 <rid> <lane>` replays the ledger timeline and names every phase recorded while an
 earlier plan phase was still undisposed; ship-gate surfaces the count as an
 advisory. Promotion to a hard gate is a retro decision after SPEC-073 telemetry
@@ -430,7 +430,7 @@ the V-model lens above. Every cell is one of:
 When a new phase is added to the cycle table (and the V-model lens gains a row),
 add a column here and assign a depth per lane before shipping the change.
 
-### Ship-time de-escalation (SPEC-141)
+### Ship-time de-escalation
 
 Escalation is not one-way. `/kit:assign`'s floor check (`lane-classify.sh check`, above) and
 `/kit:execute`'s spec->build re-classify (`lane-classify.sh escalate`, "## The V-model descent
@@ -453,20 +453,20 @@ significance record and the SPEC-140 pitch offer.
 ## Gate ledger and ship enforcement
 
 Every phase gate a run executes is recorded to a per-run ledger, so the run is
-auditable after the fact (ADR-0024). The lane×phase matrix above is the single
+auditable after the fact. The lane×phase matrix above is the single
 source for which gates a lane *requires* (its `measure-twice` cells);
 `lib/gate/gate-ledger.sh` parses it, with no second copy of the mapping.
 
 - **Record each gate as you run it:** `bash lib/gate/gate-ledger.sh record <rid> <Phase> ran "<note>"`, where `<Phase>` is a matrix row name (Spec, Validate, Build, Review, Docs, Ship, ...). Record a deliberate skip as `... <Phase> skipped "<why>"` so the skip is visible, not silent. Log actions with `action <rid> "<what>"`.
-- **The `advisor` emit is fail-open by explicit design (SPEC-145); every other emit site is bare.** `commands/review-team.md` Step 2b and `commands/mega.md`'s convergence-gate step both wrap their `advisor ran "mode=P5|P6 ..."` call in `|| echo "WARNING: ..." >&2` (NC2: a ledger-write failure must never fail the surrounding review/dispatch). The ~15 other call sites (`spec.md`, `design.md`, `review.md`, `docs.md`, `explain.md`, `grill.md`, `retro.md`, `test-plan.md`, `verify.md`, `think.md`, `ui-design.md`, `ship.md`, ...) stay bare -- not an oversight, but because `record()` behaves identically at every site (it prints an error and returns nonzero on a write failure, it never crashes the calling agent's turn), and none of those OTHER phases has advisor's specific NC2 contract requiring the failure be silently absorbed with a visible operator-facing warning. A future emit site that wants the same fail-open guarantee copies advisor's `||` idiom explicitly; it is not the ledger's default behavior.
+- **The `advisor` emit is fail-open by explicit design; every other emit site is bare.** `commands/review-team.md` Step 2b and `commands/mega.md`'s convergence-gate step both wrap their `advisor ran "mode=P5|P6 ..."` call in `|| echo "WARNING: ..." >&2` (NC2: a ledger-write failure must never fail the surrounding review/dispatch). The ~15 other call sites (`spec.md`, `design.md`, `review.md`, `docs.md`, `explain.md`, `grill.md`, `retro.md`, `test-plan.md`, `verify.md`, `think.md`, `ui-design.md`, `ship.md`, ...) stay bare -- not an oversight, but because `record()` behaves identically at every site (it prints an error and returns nonzero on a write failure, it never crashes the calling agent's turn), and none of those OTHER phases has advisor's specific NC2 contract requiring the failure be silently absorbed with a visible operator-facing warning. A future emit site that wants the same fail-open guarantee copies advisor's `||` idiom explicitly; it is not the ledger's default behavior.
 - **One append-only, redacted file per run** under `$DWARVES_KIT_LOG_DIR/runs/<slug>.log` (the existing hook-log convention; no command bodies or secret paths). It is an audit trail, never a source of state.
 - **Enforcement is at ship only.** `hooks/ship-gate.sh` refuses a feature-branch push or `gh pr create` when the active spec's lane has a `measure-twice` gate with no `ran`/`override` entry. Mid-flight phases are never blocked (Detect, don't dictate).
-- **Override, logged:** to ship past a missing gate, record a reason: `bash lib/gate/gate-ledger.sh override <rid> <Phase> "<reason>"`. The override is part of the audit trail; in a fully autonomous run it is agent-writable, so the guarantee is block-by-default plus every skip and override recorded, not a hard stop (ADR-0024).
-- **Understanding-axis markers (ADR-0031):** the same ledger also carries `| DEBT |` markers for
+- **Override, logged:** to ship past a missing gate, record a reason: `bash lib/gate/gate-ledger.sh override <rid> <Phase> "<reason>"`. The override is part of the audit trail; in a fully autonomous run it is agent-writable, so the guarantee is block-by-default plus every skip and override recorded, not a hard stop.
+- **Understanding-axis markers:** the same ledger also carries `| DEBT |` markers for
   a SEPARATE axis (advisory, never a ship block). See "## The understanding axis" below for the
   debt-budget model, where each beat fires, and a known wiring gap stated honestly rather than
   papered over.
-- **Gate-outcome markers (SPEC-129), a fourth additive verb:** beside `ran`/`skipped`, a gate
+- **Gate-outcome markers, a fourth additive verb:** beside `ran`/`skipped`, a gate
   can also emit `bash lib/gate/gate-ledger.sh outcome <rid> <phase> start|end [caught=<bool>]` -- a
   `start`/`end` pair bracketing the gate with a duration (`dur_s=`, the epoch delta of the two
   lines) plus whether the gate caught a defect. Same additive contract as `| GATE |` and the
@@ -476,7 +476,7 @@ source for which gates a lane *requires* (its `measure-twice` cells);
   on a clean pass) -- HOOK-ENFORCED, but ship-boundary-only, not yet per-phase (a future change
   could extend `outcome()` calls to the spec/review boundaries; not done here). Read a phase's
   outcome back with `outcome-read`.
-- **The confirmation table is GENERATED, never hand-authored (SPEC-132):** `bash
+- **The confirmation table is GENERATED, never hand-authored:** `bash
   lib/gate/proof-table-gen.sh <rid>` renders the SPEC-016 table-first shape from a rid's gate/run
   ledger under `docs/verification/generated/<rid>.md`, surfacing the OUTCOME marker above
   (Caught/Duration columns) when present and degrading gracefully when absent; it hard-refuses
@@ -497,10 +497,10 @@ those surfaces alone would not know either ran, or was skipped, this run).
 
 | Gate | What it checks | Live call site | Enforcement | Honesty note |
 |---|---|---|---|---|
-| `lib/gate/coverage-delta.sh` (SPEC-130) | a behavioral diff moved source with no matching test change | `commands/review-team.md` Step 1, the Build->Review boundary | PROSE-INVOKED (inside `/kit:review-team`'s own markdown, off the push blocker); records `\| GATE \| coverage-delta \| ran \|`, ALWAYS exits 0 | a diff-LINE HEURISTIC (changed non-test lines vs changed test lines), NOT a real %-coverage delta; `COVERAGE_DELTA_RUNNER` hooks in a real runner but is unset by default |
-| `lib/gate/mutation-smoke.sh` (SPEC-131) | a suite that stays green when a changed line is mutated (a false proof of correctness) | `commands/verify.md` Step 6b, inside `/kit:verify` | PROSE-INVOKED (inside `/kit:verify`'s own markdown, off the push blocker); records `\| MUTATION \|`, ALWAYS exits 0, `MUTATION_SMOKE_MAX` (default 5) bounds the run | a small FIXED mutation-operator set on the CHANGED HUNKS only, first-survivor-stops -- NOT a full mutation-testing sweep |
+| `lib/gate/coverage-delta.sh` | a behavioral diff moved source with no matching test change | `commands/review-team.md` Step 1, the Build->Review boundary | PROSE-INVOKED (inside `/kit:review-team`'s own markdown, off the push blocker); records `\| GATE \| coverage-delta \| ran \|`, ALWAYS exits 0 | a diff-LINE HEURISTIC (changed non-test lines vs changed test lines), NOT a real %-coverage delta; `COVERAGE_DELTA_RUNNER` hooks in a real runner but is unset by default |
+| `lib/gate/mutation-smoke.sh` | a suite that stays green when a changed line is mutated (a false proof of correctness) | `commands/verify.md` Step 6b, inside `/kit:verify` | PROSE-INVOKED (inside `/kit:verify`'s own markdown, off the push blocker); records `\| MUTATION \|`, ALWAYS exits 0, `MUTATION_SMOKE_MAX` (default 5) bounds the run | a small FIXED mutation-operator set on the CHANGED HUNKS only, first-survivor-stops -- NOT a full mutation-testing sweep |
 
-**The three-rung ladder (SPEC-247).** The rungs run in this order: **coverage** (the green
+**The three-rung ladder.** The rungs run in this order: **coverage** (the green
 suite, `/kit:battery` leg 1 plus `coverage-delta` above), then **probe** (`break-it`, the
 escalation lens dispatched from `/kit:battery` when the diff carries behavioral code with
 tests), then **mutation** (`lib/gate/mutation-smoke.sh`, `commands/verify.md` Step 6b). A
@@ -520,7 +520,7 @@ kit-run-integrity mega-goal's NOTES.md ("Proposed additions (TIER-4)"); that fol
 been retired from ops-toolkit and the recommendation survives only here. This section documents
 the gates as they ship; it does not promote them.
 
-## Command emit coverage (SPEC-139)
+## Command emit coverage
 
 The gate-ledger's `RUN_REPORT.md` (`/kit:mega`'s per-sub-goal gate matrix) can only show a phase
 as covered if SOME command actually calls `gate-ledger.sh` for it. A 2026-07-04 audit of every
@@ -532,7 +532,7 @@ source of truth for that distinction (parsed by `tests/test-command-emit-sweep.s
 copy): every command in `commands/` either contains a `gate-ledger` call, or is listed below with
 a reason it legitimately does not need one.
 
-**9 commands wired this pass** (SPEC-139): `spec.md`, `spec-validate.md`, `verify.md`,
+**9 commands wired this pass**: `spec.md`, `spec-validate.md`, `verify.md`,
 `think.md`, `design.md`, `ui-design.md`, `docs.md`, `retro.md`, `explain.md` -- each now records
 one line (`record <rid> <Phase> ran "<summary>"`) at its natural hand-off point, the same
 single-line convention `test-plan.md` / `review.md` / `devs-team.md` already use. `verify` and
@@ -545,19 +545,19 @@ their record-side gap.
 
 | Command | Why no direct emit |
 |---|---|
-| `absorb.md` | Maintainer-only external-source absorption audit (SPEC-004); propose-only, approves/merges nothing itself, and runs outside any spec's rid/lane lifecycle. |
+| `absorb.md` | Maintainer-only external-source absorption audit; propose-only, approves/merges nothing itself, and runs outside any spec's rid/lane lifecycle. |
 | `adopt.md` | One-time repo-bootstrap into a NEW consumer repo (injects AGENTS.md/CLAUDE.md/WORKFLOW pointer); runs BEFORE any rid or lane exists in that repo. |
 | `feature-map.md` | Standalone source-cited feature-inventory generator for ANY target project (this kit's own or an external one); not a `Lane x phase depth matrix` row (no lane requires it, the same carve-out as `verify.md`/`explain.md` above), so it has no phase to record against. |
-| `onboard.md` | Interactive first-run orchestrator (SPEC-199); CALLS start/adopt/config (each of which emits or is itself exempt) but owns no V-model phase and runs before any rid or lane exists in a fresh consumer, exactly like `adopt.md`. |
+| `onboard.md` | Interactive first-run orchestrator; CALLS start/adopt/config (each of which emits or is itself exempt) but owns no V-model phase and runs before any rid or lane exists in a fresh consumer, exactly like `adopt.md`. |
 | `next.md` | Pure read-only task dispatcher, own text says "Do NOT execute anything. Just detect and recommend."; hands off to `/kit:execute`, which is the one that emits. |
 | `start.md` | Pure read-only session entry-point detector, own text says "Do NOT execute anything."; same shape as `next.md`. |
 | `kit-health.md` | Self-assessment of the kit's OWN philosophy compliance (file count, hook perf, source citations); not a phase in any run's V-model lifecycle. |
 | `draft-agent.md` | Meta-agent generator (drafts a new subagent or mega-goal sub-goal file); a generator utility, not a V-model phase. |
-| `visual-team.md` | A critique lens invoked FROM `ui-design.md` Step 3, not an independent phase owner; the phase owner (`ui-design.md`) now emits `UI design` itself (SPEC-139), mirroring how `devs-team.md`'s own `design-critique` emit (below) already covers the design-critique lens it is invoked from. |
-| `mega.md` | Already emits via the driver: "The driver emits a `gate-ledger start` per dispatched sub-goal ... (SPEC-101)" (`commands/mega.md`, "Close the run visibly" section) -- the emission is real but happens in the orchestration driver at dispatch time, not as a literal call inside `mega.md`'s own prose. |
+| `visual-team.md` | A critique lens invoked FROM `ui-design.md` Step 3, not an independent phase owner; the phase owner (`ui-design.md`) now emits `UI design` itself, mirroring how `devs-team.md`'s own `design-critique` emit (below) already covers the design-critique lens it is invoked from. |
+| `mega.md` | Already emits via the driver: "The driver emits a `gate-ledger start` per dispatched sub-goal ..." (`commands/mega.md`, "Close the run visibly" section) -- the emission is real but happens in the orchestration driver at dispatch time, not as a literal call inside `mega.md`'s own prose. |
 | `dispatch.md` | Each fanned-out worker runs the FULL `/kit:execute` lifecycle (its own `gate-ledger.sh` calls) inside its own isolated worktree (see `commands/dispatch.md`'s worker prompt, "extends the `/kit:execute` worker contract"); `dispatch.md` itself is the fan-out lead, never a phase owner, and never calls `gate-ledger.sh` directly. |
 
-**Gate-recording gap CLOSED (ID-091):** `Build` and `Design record` -- both REQUIRED matrix
+**Gate-recording gap CLOSED:** `Build` and `Design record` -- both REQUIRED matrix
 rows -- used to have no command that called `gate-ledger.sh record` for their literal name, so a
 command-driven full-lane run reached ship with those two gates never recorded (only a hand
 `record`/`override` could satisfy them). Fixed by giving each row its natural phase owner: `execute.md`
@@ -572,7 +572,7 @@ asserts every full-lane `measure-twice` row is recorded by some command, with a 
 (`normalize_phase()` + the live `WORKFLOW.md`-derived required-set); this closed a RECORDING gap, not
 a naming one.
 
-## The understanding axis (ADR-0031)
+## The understanding axis
 
 A second axis, orthogonal to the verification gates above (ADR-0024/0025 stay the only hard
 stops): not "is it correct?" but "does the human understand the change enough to shape the next
@@ -608,7 +608,7 @@ loop?" Advisory by construction -- nothing below ever blocks a correct build.
   items into the operator's existing learning skills (`learning-day-process`, `learning-ledger`,
   `deep-understand`, `knowledge-capture`) rather than reinventing a second batching engine;
   `bin/learn debt mark-paid <rid>` closes an item so it is never re-collected.
-- **`significance-classify.sh record` wired at Ship (SPEC-136).** The verb that PERSISTS a raw
+- **`significance-classify.sh record` wired at Ship.** The verb that PERSISTS a raw
   `significance=`/`worthiness=`/`verdict=` `| DEBT |` marker independent of the quiz nudge --
   previously an honestly-documented gap with no invoking command -- is now called by
   `/kit:ship` Step 8, immediately before `quiz-gate.sh tap`, using the same files/description
@@ -711,7 +711,7 @@ The questions the report answers, and what each signal means:
 Telemetry proposes; the human at retro disposes ("Detect, don't dictate"). No daemon, no new
 store: the pipe-delimited ledgers under `~/.claude/dwarves-kit/logs/` are the only substrate.
 
-#### Review escalation (SPEC-069)
+#### Review escalation
 
 A run that touches `lib/` or `hooks/` (the enforcement layer itself) owes the multi-lens
 review (`/kit:review-team`, 3 parallel lenses), not a single lens: the 2026-06-10 quality
@@ -719,7 +719,7 @@ wave shipped two drafts with 2 HIGH findings each, both in those surfaces, both 
 only because the single reviewer happened to look in the right place. Lens diversity is
 the cheap insurance.
 
-#### What the operator sees, and when (SPEC-062)
+#### What the operator sees, and when
 
 | Scenario | Trigger | What appears |
 |---|---|---|
@@ -852,7 +852,7 @@ writing to a hands-off surface is warned and logged to
 The lead reviews the log at `/kit:ship` before integrating. Hard blocks are
 reserved for the safety subset (safety-gate hook, push-to-main blocker).
 
-## Mega-goal delegate execution (ADR-0032)
+## Mega-goal delegate execution
 
 `/kit:dispatch` above fans out N *disjoint* specs across worktrees in one session. A
 **mega-goal** (`_meta/megagoals/<slug>/`, `lib/queue/orchestrate.sh`) is a different shape: N
@@ -886,7 +886,7 @@ Route by the sub-goal's DOMINANT work-type at decompose time, not per-phase (a s
 can't switch model mid-run): **opus** for planning/design-heavy sub-goals, **sonnet** for
 execution-dominant ones, **haiku** for trivial ones.
 
-### Wavefront SPEC-number reservation (SPEC-128)
+### Wavefront SPEC-number reservation
 
 A concurrent wave (2+ admitted sub-goals dispatched at once) closes the SPEC-number race at
 DISPATCH, not at spec-time: `_wave_reserve_spec` (in `lib/queue/orchestrate.sh`) atomically claims
@@ -970,7 +970,7 @@ with no transcript yet is a skip-and-warn, not a failure).
 It does not lock phases. An experienced operator may skip /spec-validate on a
 normal-lane change or go straight to /next. The kit detects state
 (context-readiness hook: spec status + the board's queued count) and suggests
-the next step intent-first (SPEC-083); it never blocks progression. Hard stops are reserved for irreversible cost: destructive
+the next step intent-first; it never blocks progression. Hard stops are reserved for irreversible cost: destructive
 commands, push-to-main, premature completion, failed verification.
 
 ## Goal drafts (.claude/goals/)
@@ -978,7 +978,7 @@ The kit keeps candidate goal drafts in `.claude/goals/<slug>.md` (gitignored,
 per-machine) beside the built-in `/goal`'s single active slot
 `.claude/last-goal.md`. The kit writes the drafts; the filesystem
 (`ls .claude/goals/*.md`) is the sole source of truth, there is no derived cache
-(ADR-0023). The kit NEVER writes
+. The kit NEVER writes
 `last-goal.md`. Activating a draft means handing its body to
 whatever goal-loop activator is present (the built-in `/goal`, the `ralph-loop`
 plugin, or the `goal-craft` skill); if none is installed, the drafts still work
@@ -1042,7 +1042,7 @@ branch-switching is NOT a supported concurrency mode; use a worktree per spec.
 ### Multi-session (cross-session) coordination
 `/kit:dispatch` above is the **single-session** case: one lead session fans out workers
 and holds disjointness in its own context. The kit also supports the **multi-session**
-case (ADR-0022, SPEC-036): one operator opens several Claude sessions on one machine, one
+case: one operator opens several Claude sessions on one machine, one
 goal per session, and walks away. There is no shared lead, so the coordination moves onto
 disk, a **passive running-goal registry** under `$(git rev-parse --git-common-dir)/kit-goals/`
 (shared by every worktree of the repo, inherently untracked, never committed):
@@ -1120,7 +1120,7 @@ ID + BACKLOG row (approve-before-allocate, sanitized) before routing as usual.
                                                    ▼            ▼
                                                 backfill    how big / how risky ?
                                                             ├─ trivial edit ....... tiny
-                                                            ├─ one bounded change . normal
+                                                            ├─ one bounded change. normal
                                                             └─ risk-list match .... full
 ```
 
@@ -1163,7 +1163,7 @@ note to the spec's `## Open questions` and stops.
 **Debug loop** (`/kit:debug`, the `bug` lane). A systematic loop (Phase 0 + four phases)
 under one iron law: **NO FIX WITHOUT A RECORDED ROOT CAUSE.** Phase 0 builds the feedback
 loop first: a fast, deterministic, agent-runnable pass/fail signal that every later phase
-consumes (SPEC-059). Evidence accrues in an append-only
+consumes. Evidence accrues in an append-only
 ledger `.claude/debug/<slug>.md` whose `## Root cause` heading is the contract.
 Enforcer: the guess-fix guard (a gated mode of the anti-rationalization hook) blocks a
 fix/done claim while the open ledger's `## Root cause` is empty. Stop: root cause
@@ -1307,7 +1307,7 @@ mistake is irreversible:
 |---|---|---|---|
 | `/kit:start` | render queue + drafts | output rendered | none (detector) |
 | `/kit:assign <ID-NNN or freeform>` | goal draft + lane routing (freeform: delegate to `/kit:think`, then allocate ID + row) | draft written, status flipped, handed off | none (mutator; idempotent; approve-before-allocate) |
-| `/kit:dispatch <specs>` | disjointness gate -> N background worktree workers -> lead-owned convergence | all workers READY + drift-clean, converged via `/kit:ship` | disjointness gate + drift guard (`lib/gate/dispatch-gate.sh`); no auto-merge; no DAG (ADR-0019) |
+| `/kit:dispatch <specs>` | disjointness gate -> N background worktree workers -> lead-owned convergence | all workers READY + drift-clean, converged via `/kit:ship` | disjointness gate + drift guard (`lib/gate/dispatch-gate.sh`); no auto-merge; no DAG |
 | `/kit:think` | decision brief | brief written (if BUILD) | advisory |
 | `/kit:spec` | spec scaffold | spec exists, `Status: DRAFT` | spec-drift-guard hook |
 | `/kit:spec-validate` | 6-lens adversarial review (5 advisory, 1 blocking) | `Status: VALIDATED` | advisory (full lane) |
@@ -1318,3 +1318,5 @@ mistake is irreversible:
 | `/kit:ship` | ship pipeline | tagged/PR; spec `SHIPPED`; ID off queue | ship gate + push-to-main blocker (hard) |
 | `/kit:retro` | retrospective | `docs/retro/RETRO-<date>-<slug>.md` written | advisory |
 | a `/goal` activator | goal loop | `## Verification` passes + done-definition | anti-rationalization (hard) |
+
+<!-- provenance: SPEC-062 (telemetry closure), SPEC-063, SPEC-069 (review escalation), SPEC-074 (lane x type composition), SPEC-076 (V-model descent), SPEC-128 (wavefront spec-reservation), SPEC-129 (gate-outcome marker), SPEC-130 (coverage-delta), SPEC-131 (mutation-smoke), SPEC-132 (generated proof-table) -->
