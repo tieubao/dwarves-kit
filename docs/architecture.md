@@ -299,6 +299,11 @@ The active spec among these is resolved by the SPEC-005 rule (`docs/specs/`, bra
 
 ## Mega-goal orchestration: serial and wavefront (`lib/queue/orchestrate.sh`)
 
+> The kit runs agents four different ways (board, this orchestrator, the queue, the gauntlet).
+> `docs/execution-planes.md` compares them: what each is for, how they hand off, where they
+> deliberately do not connect, and their differing trust and isolation models. This section
+> owns this orchestrator's internals.
+
 `orchestrate.sh run <megagoal-dir>` drives a mega-goal ROADMAP as one fresh `claude -p` session per
 sub-goal (SPEC-087: no session accumulates more than one sub-goal's context). By default it runs
 **strictly serially**. Opt-in **wavefront** scheduling (SPEC-106, ADR-0030) lets dep-independent
@@ -606,7 +611,7 @@ guard), and how do I trigger it.
 | `DOCUMENTING` | doc sync + doc-verifier | `/docs` | docs match code |
 | `SHIPPING` | ship pipeline | `/ship` | tagged/PR; spec `SHIPPED` |
 | `REFLECTING` | retrospective | `/retro` | retro written |
-| `DEBUGGING` | off-cycle debug sub-machine (iron law) | `/debug` | root cause + fix + human-confirm |
+| `DEBUGGING` | off-cycle debug sub-machine (iron law) | `/debug` | root cause + fix verified; human-confirm only when `debug.confirm_fix=true` |
 | `BLOCKED` | meta-state: parked, awaiting a human | "park", "I'm stuck", a hard stop, escalate | unblock / abandon |
 | `SHIPPED` | terminal: the item is done | `/ship` completes | (re-open -> TRIAGING) |
 | `ABANDONED` | terminal: the item is dropped | "kill it" | none |

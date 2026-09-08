@@ -47,7 +47,7 @@
 |---|---|---|
 | commands/onboard.md | commands/onboard.md | Guided first-run: detect install mode, offer adopt, pick modules, preview writes, tour the loop |
 | commands/adopt.md | commands/adopt.md:1-48 | Adoption driver: install AGENTS.md, CLAUDE.md loader, WORKFLOW pointer, proof marker, .kit.toml, settings.json hooks |
-| commands/wrap.md | commands/wrap.md | Landing workflow, steps -1 through 9: before-seam, concurrent-check, board-rows, commit, merge PRs, deploy-check, cleanup, activity-log, learn, reflect, report. Three `[wrap]` autonomy knobs gate the write steps, all defaulting to act |
+| commands/wrap.md | commands/wrap.md | Landing workflow, steps -1 through 9: before-seam, concurrent-check, board-rows, commit, merge PRs, deploy-check, cleanup, activity-log, learn, reflect, report. Four `[wrap]` autonomy knobs gate the write steps; the three that finish requested work default to act, `drain_staged` defaults off because it starts unattended work |
 | wrap report | commands/wrap.md `### Step 9: report` | skim-first block: `Needs you` (✅/🔴, admission test: only what the operator alone can do), `What happened`, `Shipped` (#PR, deploy state), `Left alone` (derived from the closing `wrap scan`), `FYI`, overlays |
 
 ## Test Coverage

@@ -20,6 +20,35 @@ We believe the kit is a set of independently useful modules a consumer installs 
 
 **The anti-goal, stated plainly: the kit must never feel like one big product.** If installing it ever requires understanding the whole system before using any one part of it, the modularity has failed regardless of what the code looks like underneath.
 
+### "Reversible in git" is the line between acting and asking (2026-09-08)
+
+We believe an action a `git revert` undoes should be DONE and reported, never offered and
+waited on. Asking costs the operator a round trip to type "ok" and buys no safety, because the
+undo was already free. The line is not "risky versus safe", which nobody can apply
+consistently. It is mechanical: **can a revert undo it?** A commit in a private repo, a local
+file write, a branch or worktree delete, a merge of the operator's own green PR, all yes, so
+they act. A publish, a send, a charge, a production delete, a force-push, all no, so they ask.
+
+Every such action is a named knob whose shipped default acts, so an operator who wants the
+report instead flips one line rather than losing an argument. The full set lives in `kit.toml`
+under `[ship]`, `[debug]`, `[review]` and `[wrap]`; `bash bin/config list` renders it. A `false`
+turns that step's action into a report line. It never turns the step off, and it never relaxes
+a refusal the tools already make on their own.
+
+Two rules keep this from becoming recklessness. **Per-item verification stays the gate
+everywhere:** a review finding is applied only if the responding agent verified that specific
+item, and a fix is declared done only if its own test passes. **The exception is named, not
+implied:** the `til` publish leg stays gated because a deleted public note stays cached and
+indexed, and `wrap.drain_staged` ships `false` because it starts unattended work rather than
+finishing requested work. Naming the exceptions is what makes silence on everything else safe.
+
+**Decision this already made:** the `Needs you` admission test in `commands/wrap.md`, mechanised
+as `lib/wrap/report-lint.sh`, which fails a report whose item offers to do the work instead of
+naming a blocker.
+
+**Decision this would reject:** "ask before every commit, to be safe." The commit is not pushed,
+so the question protects nothing and spends the operator's attention, which is the scarce thing.
+
 ### Multi-agent future (a stated boundary)
 
 The standalone `<subsystem> <verb>` SHELL surface (`board`, `stats`, `gate`, `classify`, `spec`, `goal`, `session`) is runtime-agnostic: any shell-capable agent, pi, opencode, Claude Code, or a human at a terminal, can run `bash lib/gate/gate.sh ledger rid` directly, because it is bash reading and writing files git already tracks, nothing Claude-Code-specific. The agent-AUTHORING surface (`agents/`, `commands/`, `skills/`) is not: it is Claude Code's loader format specifically, frontmatter YAML, `/kit:<name>` namespacing, the Task-tool dispatch contract, and porting the kit to another runtime would mean that runtime growing its own loader for the same underlying scripts, not a rewrite of the scripts. This is a boundary the kit states honestly rather than papers over: the shell layer already is multi-agent-ready; the authoring layer is not, by construction, until a second loader exists to read it.

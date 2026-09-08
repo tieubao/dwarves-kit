@@ -11,15 +11,15 @@ filing accident, it is the module's whole contract.
 This dir is documentation only. **The module has no code of its own** and this README
 does not move any: all six executables live in the kit's flat `hooks/` dir alongside the
 spine hooks, because that is where the installer's hook map reads them from
-(`install.sh:181`). This dir exists so the module has a front door, a spec, and a proof
+(`install.sh `kit_module_hooks()``). This dir exists so the module has a front door, a spec, and a proof
 like every other module the kit contract (SPEC-200) enumerates.
 
 | What | Where |
 |---|---|
 | The six hook scripts | `hooks/{auto-format,notification,slop-cleaner,statusline,permission-auto-approve,codebase-index}.sh` |
-| Module -> hook map | `install.sh:181` (`kit_module_hooks()`) |
+| Module -> hook map | `install.sh `kit_module_hooks()`` (`kit_module_hooks()`) |
 | Event + matcher registration | `settings.json` (user install) and `hooks/hooks.json` (plugin install) |
-| statusLine registration | `settings.json` `.statusLine.command`, gated on the same `--with cosmetic` opt-in (`install.sh:736`) |
+| statusLine registration | `settings.json` `.statusLine.command`, gated on the same `--with cosmetic` opt-in (`install.sh's statusLine registration block`) |
 | Design | `lib/cosmetic/docs/specs/SPEC-201-cosmetic-hooks.md` |
 | Proof | `lib/cosmetic/docs/proof-of-done.md` |
 | Tests | `tests/test-hooks.sh`, section "cosmetic module: the non-blocking contract" (the shared hook suite, where every kit hook test lives) |

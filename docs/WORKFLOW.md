@@ -148,7 +148,7 @@ migration (same dry-run + rollback shape); agent-org config rides spec-feature l
 | Docs     | /kit:docs | README/CHANGELOG match code | advisory |
 | Ship     | /kit:ship | tagged + PR | ship gate (blocks on DO NOT SHIP), push-to-main blocker |
 | Reflect  | /kit:retro | docs/retro/v<version>.md written | advisory |
-| Debug (off-cycle) | /kit:debug | root cause recorded, fix verified, human-confirmed | iron law + guess-fix guard (anti-rationalization) |
+| Debug (off-cycle) | /kit:debug | root cause recorded, fix verified (human-confirmed only when `debug.confirm_fix=true`) | iron law + guess-fix guard (anti-rationalization) |
 
 Throughout: safety-gate blocks destructive Bash; anti-rationalization blocks
 premature "done"; auto-format runs on edit; session-state-save and
@@ -1167,7 +1167,7 @@ consumes (SPEC-059). Evidence accrues in an append-only
 ledger `.claude/debug/<slug>.md` whose `## Root cause` heading is the contract.
 Enforcer: the guess-fix guard (a gated mode of the anti-rationalization hook) blocks a
 fix/done claim while the open ledger's `## Root cause` is empty. Stop: root cause
-recorded + fix verified + human-confirmed.
+recorded + fix verified. `debug.confirm_fix` ships `false`, so the loop's own three conditions are the verdict; set it `true` to hold for a human.
 
 ```text
    /kit:debug
@@ -1312,7 +1312,7 @@ mistake is irreversible:
 | `/kit:spec` | spec scaffold | spec exists, `Status: DRAFT` | spec-drift-guard hook |
 | `/kit:spec-validate` | 6-lens adversarial review (5 advisory, 1 blocking) | `Status: VALIDATED` | advisory (full lane) |
 | `/kit:execute` | verification pipeline | all tasks + integration PASS | verification pipeline (hard) |
-| `/kit:debug` | feedback-loop-first debug loop (Phase 0 + 4 phases) | root cause + fix verified + human-confirmed | iron law + guess-fix guard |
+| `/kit:debug` | feedback-loop-first debug loop (Phase 0 + 4 phases) | root cause + fix verified (human-confirmed only when `debug.confirm_fix=true`) | iron law + guess-fix guard |
 | `/kit:review[-team]` | review | verdict recorded in the spec's `## Review` | advisory |
 | `/kit:docs` | doc sync + doc-verifier | docs match code | advisory |
 | `/kit:ship` | ship pipeline | tagged/PR; spec `SHIPPED`; ID off queue | ship gate + push-to-main blocker (hard) |
