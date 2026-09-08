@@ -39,3 +39,37 @@ git checkout 00246d9
 bash tests/test-config-registry.sh
 bash bin/config list | grep -E '^(ship|debug|review)\.'
 ```
+
+## wrap.drain_staged (09ea0df)
+
+The ninth knob, and the only one across `[wrap]`, `[ship]`, `[debug]` and `[review]` whose
+shipped default does NOT act. The asymmetry is the point: the other eight govern finishing work
+the operator already asked for, while this one starts work nobody has decided on, at the moment
+the operator said to stop.
+
+Command: `bash tests/test-config-registry.sh && bash tests/test-wrap.sh && bash tests/test-meta.sh && bash tests/test-docs-wiring.sh && bash tests/test-no-personal-paths.sh`
+Exit: 0 for each suite
+Output (excerpt): config-registry `41/41 passed` (38 before, 3 new); `test-wrap: all 236 passed`;
+`All meta tests passed.` after regenerating `docs/FEATURES.md`; docs-wiring `25/25 passed`
+Verdict: PASS
+
+Same three cases as every other knob: it ships `false`, an operator `kit.toml` setting `true` is
+honoured, a project `.kit.toml` setting `true` is ignored. The project fence matters more here
+than anywhere else in the set, because this key starts an unattended agent under
+`--dangerously-skip-permissions`, and a project `.kit.toml` rides inside a pull request.
+
+## NEGATIVE CONTROL (09ea0df)
+
+Command: `bash lib/gate/negctl.sh . "bash tests/test-config-registry.sh" "sed -i '' 's/^drain_staged = false/drain_staged = true/' kit.toml"`
+Exit: 0 green before; 1 under mutation; 0 after restore
+Output (excerpt): `Verdict: PASS`
+Verdict: RED-as-expected. Flipping the shipped default to `true` turns the suite red, so the
+default assertion reads the real file.
+
+## What is NOT proven here
+
+The drain path itself has never run. `wrap.drain_staged` is `false` in the shipped kit and no
+staged row in this repo carries a goal pointer, so the tsv emission, the `queue run` handoff and
+the pointerless-row skip are prompt text with no execution behind them. What IS proven is the
+knob: its default, its precedence, and its fence. A live drain owes its own entry here, with the
+journal path as the evidence.
