@@ -102,8 +102,14 @@ else
 fi
 
 echo "=== row 13: every forwarding branch uses exec -- regression, AC-10 (hop-1 structural) ==="
-assert "row13: exactly 5 forwarding branches use exec bash \$GOAL_DIR/..." \
-  "$([ "$(grep -cE '^\s+\S+\)\s+exec bash "\$GOAL_DIR' "$GOAL")" -eq 5 ] && echo 0 || echo 1)"
+# Assert the INVARIANT the row is named for, not a snapshot of how many branches exist.
+# The count was pinned at 5 and a sixth branch was added, so a passing structure read as a
+# regression. Derive both numbers and require they agree: every forwarding branch execs,
+# and at least one exists so the check cannot pass vacuously on an empty match.
+_fwd_exec="$(grep -cE '^\s+\S+\)\s+exec bash "\$GOAL_DIR' "$GOAL")"
+_fwd_all="$(grep -cE '^\s+\S+\)\s+(exec )?bash "\$GOAL_DIR' "$GOAL")"
+assert "row13: every forwarding branch uses exec (${_fwd_exec}/${_fwd_all})" \
+  "$([ "$_fwd_exec" -ge 1 ] && [ "$_fwd_exec" -eq "$_fwd_all" ] && echo 0 || echo 1)"
 
 echo "=== row 14: handoff-gen's own internal forwarding uses exec -- regression, AC-6 (hop 2), AC-10 ==="
 assert "row14: lib/goal/handoff-gen execs python3 at column 0" \
