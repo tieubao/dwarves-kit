@@ -53,8 +53,35 @@ Beyond the table, see [`docs/PHILOSOPHY.md`](docs/PHILOSOPHY.md) "What we explic
 1. Open an issue first if the change is non-trivial. We may already have it on the parking lot in `_meta/BACKLOG.md` or have rejected it before.
 2. Branch from `master`. The kit uses `master`, not `main`. The `safety-gate` hook blocks accidental pushes to `master`; use a feature branch.
 3. Run `bash tests/test-hooks.sh` locally. CI runs it on push. If your change touches hook behavior, add an assertion.
-4. Use conventional commits: `feat(scope): ...`, `fix(scope): ...`, `docs: ...`. One logical change per commit. Keep spec/task IDs OUT of the subject line (no `TASK-3`, no trailing `(SPEC-002 ...)` tags); that context belongs in the body or PR description.
+4. Use conventional commits: `feat(scope): ...`, `fix(scope): ...`, `docs: ...`. One logical change per commit. Keep spec/task IDs OUT of the subject line (no `TASK-3`, no trailing `(SPEC-002 ...)` tags); see "Where an ID may appear" below.
 5. Update `docs/CHANGELOG.md` under an `[Unreleased]` section if your PR is non-trivial (the root `CHANGELOG.md` is a thin pointer stub, SPEC-185). The maintainer moves it to a versioned section at release time.
+
+## Where an ID may appear
+
+A spec, task, ADR or ticket id belongs in exactly **one of three places**. Everywhere else,
+state the thing plainly: git already records which change introduced what.
+
+| Place | Example |
+|---|---|
+| The record that IS it | `docs/specs/SPEC-246-kit-wrap.md` referencing its own number |
+| A row or key keyed by it | a `_meta/BACKLOG.md` row; a ledger entry; `board = ["ID-420"]` that code reads |
+| One provenance footer, at the BOTTOM of a doc | `<!-- provenance: SPEC-246, ADR-0028 -->` |
+
+**Never** inline in prose, in a code comment mid-file, in a string the code prints, or anywhere
+in `commands/`, `agents/`, `skills/`. Those files load into a model's context every session and
+it cannot open the spec, so the token buys nothing and costs on every run.
+
+The footer is the "organized way" and it is deliberately one line at the bottom, not a citation
+next to each claim. One place per file is greppable and stays true. A tag beside every sentence
+is unreviewable, and it makes a reader chase a number instead of reading the claim.
+
+**Why not just cite the spec inline?** Because a citation answers a question the reader did not
+ask, in the middle of the sentence that was answering the one they did. If the spec contributes
+a constraint worth knowing, write the constraint. If it does not, the number is decoration.
+
+Enforced by `bash tests/test-no-scattered-ids.sh`, which is a RATCHET: it guards the zones that
+are already clean rather than the whole repo, and gains a zone each time a cleanup batch lands.
+A zone list that stops growing means the cleanup stopped.
 
 ## Introducing a component (skill, command, agent)
 

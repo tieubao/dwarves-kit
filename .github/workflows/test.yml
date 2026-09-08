@@ -192,6 +192,9 @@ jobs:
       - name: Run command emit-sweep no-orphan check (SPEC-139, kit-run-integrity sub-goal 05)
         run: bash tests/test-command-emit-sweep.sh
 
+      - name: Run the scattered-id ratchet
+        run: bash tests/test-no-scattered-ids.sh
+
       - name: Run pitch buy-in assembler tests (SPEC-140, kit-run-integrity sub-goal 06)
         run: bash tests/test-pitch.sh
 
