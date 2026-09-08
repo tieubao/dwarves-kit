@@ -43,3 +43,10 @@ Gitignored: may name unfiled work. NEVER the source of truth.
 - Tags: #u-mid #f-mid
 - Source: retro 2026-08-01 | RETRO-2026-08-01-backlog-reconcile.md
 
+## [staged] wrap merge union retry
+- Intent: bin/wrap merge: on a CONFLICTING squash caused by GitHub ignoring merge=union, merge the default branch into the branch worktree and retry once
+- Approach: (no approach extracted)
+- Tags: #u-lo #f-mid
+- Home: dwarves-kit
+- Source: session 2026-09-08
+
