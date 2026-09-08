@@ -271,6 +271,8 @@ create_changelog = false
 confirm_fix = true
 [review]
 apply_findings = false
+[wrap]
+drain_staged = true
 TOML
 cp "$AUT_OP/kit.toml" "$AUT_PROJ/.kit.toml"
 # key<TAB>shipped default<TAB>operator override
@@ -292,6 +294,7 @@ ship.confirm_bump|major|always
 ship.create_changelog|true|false
 debug.confirm_fix|false|true
 review.apply_findings|true|false
+wrap.drain_staged|false|true
 KEYS
 rm -rf "$AUTONOMY_DIR"
 
