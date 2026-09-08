@@ -60,11 +60,12 @@ Check if the project has a version file:
 
 If a version file exists:
 - Determine bump type from the changes:
-  - Breaking changes or major refactors: major bump (ask user to confirm)
+  - Breaking changes or major refactors: major bump
   - New features: minor bump
   - Bug fixes, docs, refactors: patch bump
-- Present the proposed bump: "Current: 1.2.3, Proposed: 1.3.0 (minor: new feature). Approve?"
-- Apply the bump to the version file.
+- Read `kit_config_get_root ship.confirm_bump "major"`. Its value names which bumps still need a yes: `"major"` (the default, the breaking bump alone), `"always"`, or `"never"`.
+- A bump that needs a yes: present it, "Current: 1.2.3, Proposed: 2.0.0 (major: breaking change). Approve?", and wait. A major bump is a semver promise to every consumer, which is why it is the one that holds by default.
+- Every other bump: apply it to the version file and report what changed, "1.2.3 to 1.3.0 (minor: new feature)". Nothing is pushed at this step, so a wrong bump is a follow-up commit before the tag exists.
 
 If no version file exists: skip this step silently.
 
@@ -113,7 +114,7 @@ If a changelog file exists (or the project follows a changelog convention):
   - [refactor/chore descriptions]
   ```
 - Prepend to the resolved changelog file (newest first).
-- If no changelog file exists: offer to create one at `CHANGELOG.md`. If user declines, skip.
+- If no changelog file exists: read `kit_config_get_root ship.create_changelog true`. True creates `CHANGELOG.md` and reports the new path; false offers it and skips on a decline.
 
 Source: Keep a Changelog format (keepachangelog.com).
 
@@ -130,7 +131,8 @@ Rules:
 - Include a body if the change touches more than 2 files
 
 Stage files intentionally. Do NOT `git add .` blindly.
-Show the proposed commit(s) and ask for confirmation before committing.
+
+Read `kit_config_get_root ship.confirm_commit false`. False, the default: commit, then show what landed, subject line and file count per commit. True: show the proposed commits and wait for a yes. The operator invoked `/kit:ship`, which is the request to commit; nothing is pushed at this step, so a wrong message is one `git commit --amend` away.
 
 ### Step 7: Update docs
 

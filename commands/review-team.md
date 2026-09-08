@@ -323,6 +323,8 @@ Close the `review` timing bracket opened at the top of this Process section (SPE
 
 If verdict is SHIP: suggest `/kit:docs` then `/kit:ship`.
 If verdict is FIX THEN SHIP: list the specific fixes needed, ask if the user wants to address them now. Unvalidated CRITICAL/HIGH findings are treated as LIVE (the SPEC-082 fail-safe); responding-to-review notes the unvalidated status when proposing their fixes. Route by class (SPEC-078), UNSUPPRESSED findings only (suppressed items never enter this gate, at any Route or severity): `gated_auto` findings go to the `responding-to-review` agent as input -- it verifies each item, pushes back on incorrect feedback, and proposes fixes in priority order without performative agreement; each `manual` finding becomes a board row in `_meta/BACKLOG.md` (design input owed, not an inline fix); `advisory` findings are recorded in the spec's `## Review` section and nothing else is owed.
+
+Then read `kit_config_get_root review.apply_findings true`. True, the default: dispatch `fix-agent` on the findings `responding-to-review` VERIFIED, scoped to those files and those issues, and report each fix with its finding. The branch is not the product, the PR is, and a fix sitting in a report costs a round trip to apply by hand. False: leave them proposed for the operator to apply. **The verification is the gate at either setting.** A finding `responding-to-review` pushed back on is never applied, because the agent judged the reviewer wrong; report the pushback and its reasoning instead. `manual` and `advisory` findings never reach this step.
 If verdict is DO NOT SHIP: explain what's fundamentally wrong.
 
 **Deslop strip (OPT-IN, before ship).** When the operator wants the AI-slop strip
@@ -330,9 +332,13 @@ before merge, dispatch `slop-stripper` (agents/slop-stripper.md) with the base r
 (`git merge-base <default-branch> HEAD`, or the diff range the lenses reviewed). It
 applies surgical, behavior-preserving edits to the branch diff (redundant comments,
 over-defensive handling, unnecessary casts, flattenable nesting, patterns
-inconsistent with the file) and returns a STRIP REPORT. Never auto-run: the
-operator's judgment at this gate is the gate (SPEC-078, `gated_auto` is applied
-after judgment, never blindly). Run `/kit:verify` after the strip, then `/kit:ship`.
+inconsistent with the file) and returns a STRIP REPORT. Never auto-run, and
+`review.apply_findings` does not change that: a strip rewrites the whole diff on
+style grounds rather than fixing a verified finding, so there is no per-item
+judgment to stand behind it. That is the line between the two. A `gated_auto`
+finding is applied only after `responding-to-review` verified that specific item
+(SPEC-078, never blindly); the strip has no such per-item verification, so it stays
+the operator's call. Run `/kit:verify` after the strip, then `/kit:ship`.
 
 <!-- review-loop -->
 ### Step 5b: The bounded review-fix loop (full lane)

@@ -168,6 +168,41 @@ push_url = ""                   # [impl] gateway base for `export --push` (FORGE
 runner_host = "local"           # "local" runs rounds on this machine; an ssh host alias (e.g. "build-box") ships committed state there, runs the round, pulls the record back. The host resolves the probe key from ITS OWN secret store; the key never travels over ssh.
 probe_key_ref = "op://Toolkit/anthropic-api-key/credential"  # 1P ref the RUNNER host resolves at run time; point at a dedicated spend-capped item when minted
 
+# Command autonomy. Same contract as the `[wrap]` knobs below: each key gates an
+# action that is REVERSIBLE IN GIT, the shipped default acts, and a `false` turns
+# the action into a report line rather than turning the step off. All of them read
+# from the operator `kit.toml` or the KIT-ROOT `kit.toml` ONLY, because each one
+# authorizes a write and a project `.kit.toml` rides inside an untrusted PR.
+
+[ship]                          # `/kit:ship` (commands/ship.md)
+confirm_commit   = false        # [impl] false = stage intentionally and commit, then show what
+                                 #        landed. true = show the proposed commits and wait. The
+                                 #        operator already invoked ship; a wrong message is one
+                                 #        `git commit --amend` away, before anything is pushed.
+confirm_bump     = "major"      # [impl] which version bumps still need a yes: "major" (default,
+                                 #        only the breaking bump, because that one is a semver
+                                 #        promise to consumers), "always", or "never". A minor or
+                                 #        patch bump applies and is reported.
+create_changelog = true         # [impl] true = create the changelog file when none exists, rather
+                                 #        than offering to. An unwanted file is one `git rm` away.
+
+[debug]                         # `/kit:debug` (commands/debug.md)
+confirm_fix      = false        # [impl] false = when Phase 4 has a failing test that now passes,
+                                 #        no other test broke, and the symptom is gone, declare it
+                                 #        fixed and report the evidence. true = hold the verdict for
+                                 #        a human yes. The loop's own verification is the proof; a
+                                 #        second confirmation re-asks a question already answered.
+                                 #        A fix that does NOT meet all three conditions is never
+                                 #        declared fixed, at either setting.
+
+[review]                        # `/kit:review-team` decision gate (commands/review-team.md)
+apply_findings   = true         # [impl] true = `gated_auto` findings the `responding-to-review`
+                                 #        agent VERIFIED are applied on the branch by `fix-agent`,
+                                 #        and the PR is the review surface. false = they are proposed
+                                 #        and the operator applies them. A finding that agent pushed
+                                 #        back on is never applied at either setting, and `manual`
+                                 #        and `advisory` findings never route here.
+
 [precedent]                     # `precedent find` inventory surface (lib/precedent/inventory.py)
 registry = ""                   # [consumer] extra scan locations for `find --surface inventory|all`:
                                  #        a `<kind> <path>` registry file (kind = repo|scripts|skills|
