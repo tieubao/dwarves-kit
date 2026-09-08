@@ -33,8 +33,12 @@ for t in tests/test-*.sh; do
     rc=$?
     [ "$rc" -eq 124 ] && echo "TIMEOUT (${TIMEOUT_SECS}s)" || echo "FAIL (rc=$rc)"
     failed="$failed $name"
-    # The tail is usually the assertion that failed; the whole log is rarely the useful part.
-    sed 's/^/      | /' /tmp/run-all-$$.log | tail -12
+    # Show the FAILING lines, then a short tail for context. A plain tail hid the real
+    # assertion in a suite with 840 of them: the failure was 700 lines above the summary.
+    if grep -qiE '(^|[^a-z])fail' /tmp/run-all-$$.log; then
+      grep -iE '(^|[^a-z])fail' /tmp/run-all-$$.log | head -20 | sed 's/^/      ! /'
+    fi
+    sed 's/^/      | /' /tmp/run-all-$$.log | tail -8
   fi
   rm -f /tmp/run-all-$$.log
 done
