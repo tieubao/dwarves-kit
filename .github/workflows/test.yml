@@ -43,5 +43,22 @@ jobs:
       - name: Verify jq available
         run: jq --version
 
+      # macOS ships bash 3.2 (2007) as /bin/bash for licensing reasons, and it is first on
+      # PATH. Parts of the kit declare bash 4+ at the top of the file and use mapfile or
+      # declare -A; those run fine on a developer Mac because Homebrew bash is on PATH there.
+      # Install it so CI matches the environment the code is actually written for, rather
+      # than rewriting working code to satisfy a shell nobody develops against.
+      - name: Install a modern bash (macOS ships 3.2)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install bash
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+
+      - name: Verify bash 4+ is first on PATH
+        run: |
+          bash --version | head -1
+          major="$(bash -c 'echo ${BASH_VERSINFO[0]}')"
+          [ "$major" -ge 4 ] || { echo "bash $major is too old; the kit needs 4+"; exit 1; }
+
       - name: Run every test suite (tests/run-all.sh)
         run: bash tests/run-all.sh
