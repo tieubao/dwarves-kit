@@ -506,8 +506,10 @@ it.
 -> `board promote`; `caught=bool` + override-rate per gate; delivery-ratio; kit-health;
 learn-propose precision tracking.
 
-**The gap:** the learning loop has one precision data point (calibrating, not yet trusted);
-review-economics unmeasured; context freshness is pull-based with no owner.
+**The gap:** the learning loop's one measured precision gap (ID-305, promote-precision on a
+labelled sample) has a fix plus a reconstructed-sample regression proof (24 -> 67 percent), but
+no live field remeasurement yet, so it is fixed, not yet trusted at scale; review-economics
+unmeasured; context freshness is pull-based with no owner.
 
 **A conforming proposal looks like:** it adds or consumes a measurable signal, feeds the Learn
 stage's staging file, and is itself measured (the meta-loop). **It would reject:** self-rewriting

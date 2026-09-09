@@ -54,8 +54,8 @@ map, not per-dir READMEs , `specs/` and `verification/` keep their own, delibera
   proof-of-done marker the ship-gate keys on (`hooks/ship-gate.sh`) , link it, never move it.
   `verification/generated/` holds the machine-generated companion run-tables (`proof-table-gen.sh`
   writes here; this folded the old repo-root `docs/runs/` in , never overwrites a canonical
-  `proof-of-done.md`). There is no separate `docs/proof/`: that fold is complete, its content lives
-  under `verification/` too.
+  `proof-of-done.md`). `docs/proof/` still holds a handful of pre-convention captures
+  (never migrated); new proof output goes to `verification/` exclusively.
 - [`retro/`](retro/) , per-cycle retrospectives (output of `/kit:retro`).
 - [`releases/`](releases/) , per-version release artifacts (one dir per shipped version).
 
