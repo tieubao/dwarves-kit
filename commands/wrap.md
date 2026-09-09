@@ -1,5 +1,5 @@
 ---
-description: "The session-scoped landing step after ship: flips board rows, merges the operator's own green PRs one at a time, checks deploys, tidies branches and worktrees, writes the activity line, calls /kit:retro when a shipped PR merged, and prints the skim-first report. Use when the operator says to wrap up or close out the session, land the work, or run the end-of-session routine: 'wrap up', 'wrap this up', 'close out', 'let's wrap', 'session wrap', 'land it', 'pack this up for the day', 'wrap up, update items status, commit, merge PRs and clean up worktrees and stale branches, then pull the latest'."
+description: "The session-scoped landing step after ship: flips board rows, merges the operator's own green PRs one at a time, checks deploys, tidies branches and worktrees, writes the activity line, calls /kit:retro when a shipped PR merged, and prints the skim-first report. Use when the operator says to wrap up or close out the session, land the work, or run the end-of-session routine: 'wrap up', 'wrap this up', 'close out', 'let's wrap', 'session wrap', 'land it', 'pack this up for the day', 'wrap up, update items status, commit, merge PRs and clean up worktrees and stale branches, then pull the latest', 'tổng kết session', 'wrap lại đi'. Also the door for the distill half when an operator has wired the seams: 'distill this session', 'check if you can learn from this session and distill anything into scripts, tools or skills for future replay'."
 ---
 
 Self-intro (AGENTS.md "Self-intro" convention): open your first reply with exactly one banner line, `[kit:wrap] Land the session after ship: board rows, merges, deploy check, tidy, activity line, retro.`, then proceed.
@@ -24,15 +24,21 @@ Bracket the phase for timing (SPEC-129) before starting: `bash lib/gate/gate-led
 
 Run the steps below once per repo the session touched (the current repo when the operator names none). Positional repo arguments; wrap never discovers touched repos on its own (Out of Scope).
 
-### Step -1: the before seam
+### Step -1: the seams
 
-An operator can put one skill in front of this command. Read the key first:
+An operator can hang one skill on each side of this command. Read both keys first:
 
 ```bash
-. lib/config/kit-config.sh && kit_config_get_root wrap.before ""
+. lib/config/kit-config.sh
+kit_config_get_root wrap.before ""
+kit_config_get_root wrap.after ""
 ```
 
-An empty value means no skill runs, which is the default; go straight to step 0. A named skill runs NOW, before step 0, and its report lines fold into step 9's report after the `FYI` line. The key resolves with `kit_config_get_root`, so it comes from the operator `kit.toml` or the kit-root `kit.toml` and never from a project `.kit.toml`: it names code this command runs, and a project toml rides inside an untrusted PR.
+An empty value means no skill runs on that side, which is the default for both. A named skill runs at its side's position and its report lines fold into step 9's report after the `FYI` line. Both keys resolve with `kit_config_get_root`, so each comes from the operator `kit.toml` or the kit-root `kit.toml` and never from a project `.kit.toml`: they name code this command runs, and a project toml rides inside an untrusted PR.
+
+**Pick the side by what the skill needs.** `wrap.before` runs ahead of step 0, so it sees the session's uncommitted state; a skill that must read a working tree before wrap commits or tidies it belongs there. `wrap.after` runs after step 8 and before the step 9 report, so the landing is already done; a skill that only reads what the session produced belongs there. **`after` is the right side for a knowledge flush**, and the reason is the operator's time: a flush on the `before` side greps every note store while the git work waits behind it, so the landing an operator asked for arrives last. Nothing in a flush informs a board flip or a merge, so nothing is gained by paying for it first.
+
+**Report the outcome, whichever side ran.** Step 9 owes a `**Seam:**` line and the lint fails without it. A seam that never ran because no key was set, and a seam that was silently skipped, are different facts; the `**Built:**` line exists for exactly this reason at step 7b, and the same hole is here. A named skill that fails to run is `SKIPPED: <why>`, never silence.
 
 Read the three autonomy knobs in the same call, once, and carry the values through the pass:
 
@@ -119,6 +125,10 @@ Otherwise, for each candidate run `bin/precedent find --surface inventory --json
 - **`nothing_matched` true, and the shape is obvious.** One home, one clear entry point, no design fork. BUILD IT in that home repo, commit, and report it as an FYI bullet naming the path and the commit.
 - **`nothing_matched` true, and the scope is a judgment.** Competing homes, an unclear boundary, or a build large enough that the wrong shape costs more than a revert. Stage it: `bin/wrap stage "<title>" "<intent>" "<home>" --repo <the checkout of that home repo>` with `<home>` the repo that would own it. The row lands in the home repo's `_meta/backlog-staging.md`, so `--repo` is what puts it there: without it the row lands in the current repo and `<home>` is only a text field (`already staged` from the verb needs no bullet). Say in the FYI bullet which fork made it a judgment.
 
+**Open the top hit rather than trusting its name**: `bin/precedent find --explain '<label as printed>'`. A hit that covers half the candidate still means ENHANCE that home, a verb, a flag, or a step in the existing skill, never a sibling next to it. The cases this gate was built from, so none is re-derived: a python board-flip written five times while `board set` existed; a merge helper one `.gitattributes` line replaced; two lessons filed as new memory notes while a note and a skill section already held them; kit features proposed that already existed as `/kit:*` commands; a session that hand-rolled `jq` over the session transcripts four times while `session recall` existed, and the mutate/test/restore loop four times while `proof-ledger.sh` was the home. Two first rungs came out of those: "which session did X" is `session recall <terms> --project <repo-name> --sessions`, and a proof's negative control is `bash lib/gate/negctl.sh <root> "<test-cmd>" "<mutate-cmd>"` after the change is committed.
+
+**Never grep or Read across repos, notes, or research to answer the overlap question yourself.** The scan is sub-second and costs no tokens; the model scanning the estate is the spend this gate removes.
+
 No candidates: `skipped: no candidates`. Nothing here reaches a public repo or an outward-facing surface; a candidate that would (a publish, a send, a charge) is never built here, it goes to `Needs you` under the admission test.
 
 **Draining what was staged.** Read `kit_config_get_root wrap.drain_staged false`. False, the default: report each staged row and its home in `FYI` and stop. This is the one knob in this command whose default does not act, and the reason is worth stating plainly: `queue run` drives a real interactive claude in a tmux window under `QUEUE_CLAUDE_FLAGS` (default `--dangerously-skip-permissions`) for up to `QUEUE_TIMEOUT_SECS` per row. Every other knob here governs finishing work the operator already asked for. This one starts work nobody has decided on yet, at the moment the operator said to stop.
@@ -134,6 +144,10 @@ c. Incidents. For every `docs/incidents/*.md` written this session whose `## Roo
 ### Step 8: reflect
 
 Resolve the kit log dir (`bash -c 'source lib/telemetry/kit-log-dir.sh; kit_resolve_log_dir'` prints it) and grep the run ledgers under it for a `| GATE | ship | ran | shipping pr=#<n>` line naming any PR number merged in step 3. Anchor the number so `#7` never matches `#71`: `grep -rE "shipping pr=#<n>([^0-9]|$)" "<log dir>"`. Any hit means run `/kit:retro` now, before the report. No hit means no spec cycle shipped this session; skip retro and say so in the report's FYI line.
+
+### Step 8b: the after seam
+
+Invoke the skill named by `wrap.after`, read back in step -1, through the Skill tool now. The landing is finished, so this skill reads what the session produced rather than racing it. Its report lines fold into step 9 after the `FYI` line, and its outcome is what the `**Seam:**` line names. An empty key runs nothing and reports `NOTHING: no seam configured`.
 
 ### Step 9: report
 
@@ -163,6 +177,10 @@ b. ...
    -- or -- NOTHING: no candidates
    -- or -- SKIPPED: <why>
 
+**Seam:** <side> <skill name> ran: <its one-line outcome>
+   -- or -- NOTHING: no seam configured
+   -- or -- SKIPPED: <why>
+
 **FYI:**
 - <what changes for the operator from now on>
 - <a state the operator will meet next time>
@@ -185,6 +203,7 @@ b. ...
 - The lane is read-and-move-on, never do-nothing-forever. The operator picks the follow-up back up from its home, not from a report they would have to remember. A single `- NOTHING` bullet when there is nothing to report.
 - A staged candidate, a filed memory note, or a knowledge-root fallback from step 7 is an `FYI` bullet naming the file or the reason, in the existing `FYI` grammar.
 - **`**Built:**` is REQUIRED, and the lint fails without it.** One line, after `FYI`, reporting step 7b's outcome as exactly one of three: what was built or staged (name the path and the commit), `NOTHING: no candidates` when the precedent check ran and found none, or `SKIPPED: <why>` when the step did not run. The three must stay distinguishable. A skipped 7b and an empty 7b used to look identical, which is how the step that builds instead of proposing got silently dropped from a whole session. This line is the trace every other step already leaves.
+- **`**Seam:**` is REQUIRED, and the lint fails without it.** One line, after `**Built:**`, reporting step -1's seams as exactly one of three: which side ran which skill and its outcome, `NOTHING: no seam configured` when neither key was set, or `SKIPPED: <why>` when a named skill did not run. It carries the same three-state rule as `**Built:**` and for the same reason: a seam that was never configured and a seam that was silently dropped read identically without it, and the seam is where an operator's whole distill half lives.
 - An overlay (a consumer's own routing, distill, or knowledge-capture step) appends its own labelled sections after `FYI`, in the same shape: a bold label line followed by bullets, one item per note, candidate, or queue entry; the kit's grammar stops there. A `wrap.before` skill's report lines fold in at that same place.
 - No table unless the session touched four or more repos. No restating what each step did.
 

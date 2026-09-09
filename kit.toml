@@ -225,6 +225,14 @@ before = ""                     # [consumer] name of a skill `/kit:wrap` invokes
                                  #        this key, because it names code the command runs. The
                                  #        skill's report lines fold into the wrap report after its
                                  #        `FYI` line. Empty = no skill runs, which is the default.
+                                 #        Pick this side only when the skill must read the working
+                                 #        tree before wrap commits or tidies it.
+after = ""                      # [consumer] name of a skill `/kit:wrap` invokes LAST, after step 8
+                                 #        and before the step 9 report. Same fence and fold as
+                                 #        `before`. The right side for a knowledge flush: a flush on
+                                 #        the `before` side greps every note store while the git work
+                                 #        waits behind it, and nothing in a flush informs a board flip
+                                 #        or a merge. Empty = no skill runs, which is the default.
 
 # Autonomy knobs. Each one authorizes a WRITE, so all three read from the
 # operator `kit.toml` or the KIT-ROOT `kit.toml` ONLY; a project `.kit.toml`

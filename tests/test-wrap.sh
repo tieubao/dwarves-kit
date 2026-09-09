@@ -849,11 +849,12 @@ chk_has "commands/wrap.md prescribes the recipe" "$(cat "$KIT_DIR/commands/wrap.
 echo
 echo "=== report lint ==="
 LINT="$KIT_DIR/lib/wrap/report-lint.sh"
-# Every fixture carries a `**Built:**` line because commands/wrap.md makes it REQUIRED of any
-# wrap report: step 7b must report which of built / NOTHING / SKIPPED happened. The fixtures
-# below exercise the `Needs you` lens, so they satisfy the Built rule and leave it alone. The
-# Built rule gets its own cases further down.
-_report() { printf '## Wrap: t\n\n%s\n\n**Built:** NOTHING: no candidates\n\n**What happened**\n- %s\n' "$1" "${2:-body}"; }
+# Every fixture carries a `**Built:**` and a `**Seam:**` line because commands/wrap.md makes
+# both REQUIRED of any wrap report: step 7b must report which of built / NOTHING / SKIPPED
+# happened, and step -1 owes the same three states for the before/after seams. The fixtures
+# below exercise the `Needs you` lens, so they satisfy both rules and leave them alone. Each
+# rule gets its own cases further down.
+_report() { printf '## Wrap: t\n\n%s\n\n**Built:** NOTHING: no candidates\n\n**Seam:** NOTHING: no seam configured\n\n**What happened**\n- %s\n' "$1" "${2:-body}"; }
 
 out="$(_report '🔴 **Needs you:**
 a. REVIEW then merge #523. Say go and I merge it.' | bash "$LINT" 2>&1)"; rc=$?
@@ -876,12 +877,12 @@ out="$(_report '🔴 **Needs you:**
 a. RUN gh pr merge 12 once security signs off; it is blocked on their approval.' | bash "$LINT" 2>&1)"; rc=$?
 chk_no "a stated blocker clears the warn" "$out" "names a command the kit can run"
 
-out="$(printf 'no needs-you section at all\n\n**Built:** SKIPPED: nothing to build\n' | bash "$LINT" 2>&1)"; rc=$?
+out="$(printf 'no needs-you section at all\n\n**Built:** SKIPPED: nothing to build\n\n**Seam:** SKIPPED: no seam\n' | bash "$LINT" 2>&1)"; rc=$?
 chk "a report with no Needs you block is clean" "$([ "$rc" -eq 0 ]; echo $?)"
 
 # The Built rule itself. commands/wrap.md: step 7b owes exactly one of built / NOTHING /
 # SKIPPED, so a skipped 7b can never read as an empty one. The lint shipped with no test.
-out="$(printf 'no needs-you section at all\n' | bash "$LINT" 2>&1)"; rc=$?
+out="$(printf 'no needs-you section at all\n\n**Seam:** NOTHING: no seam configured\n' | bash "$LINT" 2>&1)"; rc=$?
 chk "a report with no Built line fails" "$([ "$rc" -eq 1 ]; echo $?)"
 chk_has "the finding names step 7b" "$out" "step 7b (build the candidates) owes an outcome"
 
@@ -891,6 +892,20 @@ chk_has "the finding says it is empty" "$out" "is empty; name what was built"
 
 out="$(_report '✅ **Needs you:** NOTHING' | sed 's|^\*\*Built:\*\* .*|**Built:** lib/wrap/report-lint.sh @ abc1234|' | bash "$LINT" 2>&1)"; rc=$?
 chk "a Built line naming what was built passes" "$([ "$rc" -eq 0 ]; echo $?)"
+
+# The Seam rule. Same three states as Built, for the same reason one level up: a seam that was
+# never configured and a seam that was silently dropped read identically without the line, and
+# the seam is where an operator's whole distill half lives.
+out="$(printf 'no needs-you section at all\n\n**Built:** NOTHING: no candidates\n' | bash "$LINT" 2>&1)"; rc=$?
+chk "a report with no Seam line fails" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "the finding names step -1" "$out" "step -1 (the before/after seams) owes an outcome"
+
+out="$(_report '✅ **Needs you:** NOTHING' | sed 's/^\*\*Seam:\*\* .*/**Seam:**/' | bash "$LINT" 2>&1)"; rc=$?
+chk "an empty Seam line fails" "$([ "$rc" -eq 1 ]; echo $?)"
+chk_has "the finding says it is empty" "$out" "is empty; name the side and skill that ran"
+
+out="$(_report '✅ **Needs you:** NOTHING' | sed 's|^\*\*Seam:\*\* .*|**Seam:** after learning-ledger ran: KEPT 2 of 7 queued|' | bash "$LINT" 2>&1)"; rc=$?
+chk "a Seam line naming the side and skill passes" "$([ "$rc" -eq 0 ]; echo $?)"
 
 rc=0; bash "$LINT" /nonexistent-report-file >/dev/null 2>&1 || rc=$?
 chk "a missing file exits 2" "$([ "$rc" -eq 2 ]; echo $?)"
