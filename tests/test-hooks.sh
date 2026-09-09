@@ -1577,6 +1577,11 @@ assert_exit "rid refuses master" 1 $RC
 assert_eq_str() { TOTAL=$((TOTAL+1)); if [ "$2" = "$3" ]; then echo -e "  ${GREEN}PASS${NC} $1"; PASS=$((PASS+1)); else echo -e "  ${RED}FAIL${NC} $1 (expected '$2', got '$3')"; FAIL=$((FAIL+1)); fi; }
 assert_eq_str "rid on master prints nothing on stdout" "" "$OUT"
 
+# ID-651: the stderr reason names the branch as the cause, since /kit:wrap Step 7a
+# quotes this text verbatim in its structural-skip line (`skipped (structural): ...`).
+ERR=$(cd "$RIDD" && bash "$GL70" rid 2>&1 1>/dev/null)
+assert_output_contains "rid on master names 'not on a work branch' on stderr" "not on a work branch" "$ERR"
+
 # AC2: detached HEAD -> exit 1
 ( cd "$RIDD" && git switch -q --detach HEAD )
 OUT=$(cd "$RIDD" && bash "$GL70" rid 2>/dev/null); RC=$?
