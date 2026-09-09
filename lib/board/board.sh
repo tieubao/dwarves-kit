@@ -44,6 +44,12 @@
 #   board.sh all priority matrix [--repo-root <path>] [--registry <path>]
 #                                                               cross-repo urgency x repo pivot table
 #
+# STALENESS WARNING (every `all` mode): each render reads a repo's BACKLOG.md out of a LOCAL
+# checkout. A checkout behind its upstream returns rows that already shipped, and before this
+# check nothing in the output said so. `_behind_count` now probes each registered checkout, marks
+# a lagging repo's header `[STALE: N behind upstream]`, and prints one trailer naming every
+# lagging repo. See `_behind_count` for the never-fetch, fail-open contract and its blind spot.
+#
 #   board.sh queue [--dry-run] [--repo-root <path>] [--registry <path>]
 #                                                               walk the registry, parse every
 #                                                               repo's BACKLOG.md via
@@ -255,6 +261,51 @@ _resolve_repo_root() {
   _default_repo_root
 }
 
+# _behind_count <path-to-backlog-md> -- how many commits that file's checkout trails its upstream.
+#
+# NEVER fetches. A cockpit render runs many times a day, so one network round trip per registered
+# repo per render is a cost the operator would pay constantly for a check that helps rarely. This
+# compares HEAD against the upstream ref the clone ALREADY holds. The blind spot that leaves is
+# real and deliberate: a clone nobody has fetched reports 0 behind and renders clean, however far
+# origin has moved. Only a fetch can close that, and a fetch is what this check refuses to do.
+#
+# Fails open. No upstream, a detached HEAD, a path outside any git repo, or any other git error
+# all yield NOTHING, and the caller then renders that repo exactly as it did before. An odd
+# checkout must never break the render of the other sixteen.
+#
+# Prints the count only when the checkout is behind. A current repo prints nothing, so the caller
+# treats "behind" and "unknown" the same way, and a fully current estate renders byte for byte as
+# it did before this check existed.
+_behind_count() {
+  local dir="${1%/*}" n
+  [ "$dir" = "$1" ] && dir="."
+  n="$(git -C "$dir" rev-list --count "HEAD..@{u}" 2>/dev/null)" || return 0
+  case "$n" in ''|*[!0-9]*) return 0 ;; esac
+  [ "$n" -gt 0 ] && printf '%s' "$n"
+  return 0
+}
+
+# _stale_marker <behind-count-or-empty> -- the per-repo header suffix, empty when nothing is wrong.
+_stale_marker() {
+  [ -n "${1:-}" ] || return 0
+  printf ' [STALE: %s behind upstream]' "$1"
+}
+
+# _stale_trailer <name(N)>... -- one summary line naming every lagging checkout.
+#
+# The per-repo marker and this trailer both ship, and each answers a question the other cannot.
+# The marker sits on the header a reader is already looking at, so a single repo's rows can never
+# be read as current by accident. The trailer sits at the end, so an operator skimming seventeen
+# repos learns which ones to distrust without scrolling back through the whole render. Neither
+# prints when the estate is current.
+# Callers pass "${stale[@]:-}", which under `set -u` on bash 3.2 hands this one EMPTY argument
+# rather than none, so the guard tests the joined string instead of the argument count.
+_stale_trailer() {
+  local joined="$*"
+  [ -n "$joined" ] || return 0
+  printf '\nSTALE CHECKOUTS, rows above may be out of date: %s\n' "$joined"
+}
+
 # _repo_root_for <path-to-backlog-md> -- the git top-level containing that file, else its dir.
 _repo_root_for() {
   local dir; dir="$(cd "$(dirname "$1")" && pwd)"
@@ -418,9 +469,22 @@ cmd_all() {
 
   local sub="${args[0]:-board}"
   local mode="${args[1]:-overview}"
+  local stale=()   # "<name>(<N> behind)" per lagging checkout, feeds _stale_trailer
 
   if [ "$sub" = "priority" ] && [ "$mode" = "matrix" ]; then
     _priority_matrix "$registry"
+    # The matrix pivots rows from the same checkouts, so it owes the same warning. It renders one
+    # table rather than per-repo headers, so the trailer is the only place the warning fits.
+    local mname mpath mbehind
+    while read -r mname mpath _rest; do
+      [ -z "${mname:-}" ] && continue
+      case "$mname" in \#*) continue ;; esac
+      mpath="${mpath/#\~/$HOME}"
+      [ -f "$mpath" ] || continue
+      mbehind="$(_behind_count "$mpath")"
+      [ -n "$mbehind" ] && stale+=("${mname}(${mbehind} behind)")
+    done < "$registry"
+    _stale_trailer "${stale[@]:-}"
     return 0
   fi
 
@@ -433,9 +497,12 @@ cmd_all() {
         printf '\n=== %s ===\n(MISSING: %s)\n' "$name" "$path"
         continue
       fi
+      local behind; behind="$(_behind_count "$path")"
+      [ -n "$behind" ] && stale+=("${name}(${behind} behind)")
       local out; out="$(_priority_render "$path" "$mode" 2>&1 || true)"
-      printf '\n=== %s ===\n%s\n' "$name" "$out"
+      printf '\n=== %s%s ===\n%s\n' "$name" "$(_stale_marker "$behind")" "$out"
     done < "$registry"
+    _stale_trailer "${stale[@]:-}"
     return 0
   fi
 
@@ -447,13 +514,16 @@ cmd_all() {
       printf '\n=== %s ===\n(MISSING: %s)\n' "$name" "$path"
       continue
     fi
+    local behind; behind="$(_behind_count "$path")"
+    [ -n "$behind" ] && stale+=("${name}(${behind} behind)")
     local out; out="$(BACKLOG_FILE="$path" bash "$BACKLOG_SH" "$sub" 2>&1 || true)"
     if [ "$sub" = "next" ]; then
-      printf '%-14s %s\n' "$name" "$out"
+      printf '%-14s %s%s\n' "$name" "$out" "$(_stale_marker "$behind")"
     else
-      printf '\n=== %s ===\n%s\n' "$name" "$out"
+      printf '\n=== %s%s ===\n%s\n' "$name" "$(_stale_marker "$behind")" "$out"
     fi
   done < "$registry"
+  _stale_trailer "${stale[@]:-}"
 }
 
 # ---------------------------------------------------------------------------

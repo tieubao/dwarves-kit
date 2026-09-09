@@ -9,6 +9,9 @@
 #   AC5  single-repo board/next/set/states/priority all delegate correctly on a fixture
 #   AC6  cross-repo `all board|next|states|priority overview|priority matrix` render correctly
 #        on a 2-repo fixture registry
+#   AC7  cross-repo staleness warning (ID-652): a checkout behind its upstream is marked in its
+#        header AND named in one trailer; a current checkout, a checkout with no upstream, and a
+#        detached HEAD all render exactly as before, with no marker and no trailer
 #
 #   NC-a zero tokens              -> `queue` emits nothing on stdout, "0 rows" on stderr, exit 0
 #   NC-b repo not in boards.txt   -> skipped with a logged reason (repo mismatch / spoofing)
@@ -23,6 +26,11 @@
 #                                    $KIT_SIBLING_ROOT/ops-toolkit and hard-codes no home. SKIPS
 #                                    (not fails) when that is unset or absent, which is the CI case
 #                                    -- same precedent as test-weekend-batch.sh's dotfiles skip.
+#                                    Both sides run THIS checkout: the shim resolves the kit
+#                                    through $DWARVES_KIT, which the pair() helper pins to KIT_DIR.
+#                                    Without that pin the shim reaches the operator's INSTALLED
+#                                    kit, and every branch that changes render output fails here
+#                                    for version skew rather than for a regression.
 #
 # Run: bash tests/test-board.sh   (exit 0 = all AC/NC green, including expected skips)
 
@@ -229,13 +237,110 @@ ALL_STATES="$(bash "$BOARD" all states --registry "$REGISTRY")"
 assert "all states renders per repo" "$({ trap '' PIPE; printf '%s\n' "$ALL_STATES" 2>/dev/null || :; } | grep -q '=== fixA ===' && echo 0 || echo 1)"
 
 echo ""
+echo "=== AC7: cross-repo staleness warning (ID-652) ==="
+# Four checkouts, one per branch of _behind_count's contract. All local, no network: the "behind"
+# repo is made behind by resetting its branch back one commit, so the render never has to fetch.
+STALE_ROOT="$TMPDIR_T/stale-world"
+UP="$STALE_ROOT/upstream.git"
+S_BEHIND="$STALE_ROOT/behindrepo"
+S_CURRENT="$STALE_ROOT/currentrepo"
+S_NOUP="$STALE_ROOT/nouprepo"
+S_DETACHED="$STALE_ROOT/detachedrepo"
+mkdir -p "$STALE_ROOT"
+
+write_board() {   # write_board <repo-root> <ID-prefix>
+  mkdir -p "$1/_meta"
+  {
+    echo '# Backlog'
+    echo '## Active queue'
+    echo '| ID | Title | Source | Target | Lane | Status |'
+    echo '|----|-------|--------|--------|------|--------|'
+    printf '| %s-001 | A row #u-hi #f-hi | test | TBD | normal | queued |\n' "$2"
+  } > "$1/_meta/BACKLOG.md"
+}
+
+git init -q --bare "$UP"
+git clone -q "$UP" "$S_BEHIND" 2>/dev/null
+git -C "$S_BEHIND" config user.email t@t; git -C "$S_BEHIND" config user.name t
+write_board "$S_BEHIND" SB
+git -C "$S_BEHIND" add -A; git -C "$S_BEHIND" commit -q -m c1
+echo second > "$S_BEHIND/second.txt"
+git -C "$S_BEHIND" add -A; git -C "$S_BEHIND" commit -q -m c2
+git -C "$S_BEHIND" push -q -u origin HEAD
+git -C "$S_BEHIND" reset -q --hard HEAD~1   # branch trails its ALREADY-KNOWN upstream by one
+
+git clone -q "$UP" "$S_CURRENT" 2>/dev/null
+git -C "$S_CURRENT" config user.email t@t; git -C "$S_CURRENT" config user.name t
+write_board "$S_CURRENT" SC   # uncommitted edit, so the branch stays level with upstream
+
+git init -q "$S_NOUP"
+git -C "$S_NOUP" config user.email t@t; git -C "$S_NOUP" config user.name t
+write_board "$S_NOUP" SN
+git -C "$S_NOUP" add -A; git -C "$S_NOUP" commit -q -m c1
+
+git clone -q "$UP" "$S_DETACHED" 2>/dev/null
+git -C "$S_DETACHED" config user.email t@t; git -C "$S_DETACHED" config user.name t
+git -C "$S_DETACHED" checkout -q --detach
+write_board "$S_DETACHED" SD
+
+STALE_REG="$STALE_ROOT/boards.txt"
+cat > "$STALE_REG" <<SREG
+behindrepo    $S_BEHIND/_meta/BACKLOG.md
+currentrepo   $S_CURRENT/_meta/BACKLOG.md
+nouprepo      $S_NOUP/_meta/BACKLOG.md
+detachedrepo  $S_DETACHED/_meta/BACKLOG.md
+SREG
+
+STALE_OUT="$(bash "$BOARD" all board --registry "$STALE_REG" 2>/dev/null)"; STALE_RC=$?
+has() { printf '%s\n' "$STALE_OUT" | grep -qF "$1"; }
+
+assert "AC7: the render still exits 0 with an odd checkout in the registry" "$([ "$STALE_RC" -eq 0 ] && echo 0 || echo 1)"
+assert "AC7: a behind checkout is marked in its own header" \
+  "$(has '=== behindrepo [STALE: 1 behind upstream] ===' && echo 0 || echo 1)"
+assert "AC7: a current checkout renders an unmarked header" \
+  "$(has '=== currentrepo ===' && echo 0 || echo 1)"
+assert "AC7: a checkout with no upstream renders an unmarked header" \
+  "$(has '=== nouprepo ===' && echo 0 || echo 1)"
+assert "AC7: a detached HEAD renders an unmarked header" \
+  "$(has '=== detachedrepo ===' && echo 0 || echo 1)"
+assert "AC7: the trailer names the behind repo and its count" \
+  "$(printf '%s\n' "$STALE_OUT" | grep -q '^STALE CHECKOUTS.*behindrepo(1 behind)' && echo 0 || echo 1)"
+assert "AC7: the trailer names ONLY the behind repo" \
+  "$(printf '%s\n' "$STALE_OUT" | grep '^STALE CHECKOUTS' | grep -qE 'currentrepo|nouprepo|detachedrepo' && echo 1 || echo 0)"
+assert "AC7: every repo's rows still render (the warning never replaces content)" \
+  "$(has 'SB-001' && has 'SC-001' && has 'SN-001' && has 'SD-001' && echo 0 || echo 1)"
+
+# `next` uses a one-line-per-repo shape, so the marker rides the same line rather than a header.
+STALE_NEXT="$(bash "$BOARD" all next --registry "$STALE_REG" 2>/dev/null)"
+assert "AC7: 'all next' carries the marker on the behind repo's line" \
+  "$(printf '%s\n' "$STALE_NEXT" | grep '^behindrepo' | grep -qF '[STALE: 1 behind upstream]' && echo 0 || echo 1)"
+assert "AC7: 'all next' leaves the current repo's line unmarked" \
+  "$(printf '%s\n' "$STALE_NEXT" | grep '^currentrepo' | grep -qF 'STALE' && echo 1 || echo 0)"
+
+# The cross-repo pivot renders no per-repo header, so the trailer is its whole warning surface.
+STALE_MATRIX="$(bash "$BOARD" all priority matrix --registry "$STALE_REG" 2>/dev/null)"
+assert "AC7: 'all priority matrix' still warns via the trailer" \
+  "$(printf '%s\n' "$STALE_MATRIX" | grep -q '^STALE CHECKOUTS.*behindrepo(1 behind)' && echo 0 || echo 1)"
+
+# A fully current estate must render exactly as it did before the check existed: no marker, no
+# trailer, not one added byte. This is what keeps every downstream reader of `all` safe.
+CLEAN_REG="$STALE_ROOT/clean-boards.txt"
+cat > "$CLEAN_REG" <<CREG
+currentrepo   $S_CURRENT/_meta/BACKLOG.md
+nouprepo      $S_NOUP/_meta/BACKLOG.md
+CREG
+CLEAN_OUT="$(bash "$BOARD" all board --registry "$CLEAN_REG" 2>/dev/null)"
+assert "AC7: a current estate emits no trailer and no marker" \
+  "$(printf '%s\n' "$CLEAN_OUT" | grep -q 'STALE' && echo 1 || echo 0)"
+
+echo ""
 echo "=== NC-e: RENDER NON-REGRESSION against the REAL ops-toolkit cockpit ==="
 OPS="${KIT_SIBLING_ROOT:-}/ops-toolkit"
 if [ -x "$OPS/_meta/board" ] && [ -x "$OPS/_meta/board-all" ] && [ -f "$OPS/_meta/BACKLOG.md" ]; then
   RP="$TMPDIR_T/render-proof"; mkdir -p "$RP"
   pair() {
     local label="$1" before="$2" after="$3"
-    bash -c "$before" > "$RP/$label.before" 2>&1
+    DWARVES_KIT="$KIT_DIR" bash -c "$before" > "$RP/$label.before" 2>&1
     bash -c "$after"  > "$RP/$label.after"  2>&1
     if cmp -s "$RP/$label.before" "$RP/$label.after"; then
       assert "NC-e: $label byte-identical" 0
