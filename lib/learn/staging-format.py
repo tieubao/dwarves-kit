@@ -21,6 +21,7 @@ sub-goal files use); a plain `import staging_format` cannot see it, so importers
 Stdlib only.
 """
 import json
+import os
 import sys
 import re
 from datetime import date, datetime
@@ -131,20 +132,53 @@ def render_block(candidate):
         f"- Source: {source}\n\n"
     )
 
+_BOARD_ROW_RE = re.compile(r"\s*\|\s*[A-Z]+-\d+\s*\|\s*([^|]+)\|")
+# `- [ ] title` / `- [x] title`. A CHECKED item counts for dedup too: it is finished work,
+# and re-proposing finished work is the second-largest false-positive class (ID-294).
+_CHECKBOX_RE = re.compile(r"(?m)^\s*[-*]\s*\[[ xX]\]\s*(.+?)\s*$")
+# A cockpit registry line: `<name>  <path-to-BACKLOG.md>`, `#` comments, `~` expands.
+_REGISTRY_RE = re.compile(r"^([^\s#]+)\s+(\S.*)$")
+
+
+def _registry_boards(path):
+    """The board files a cockpit registry points at. Unreadable lines contribute nothing."""
+    out = []
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                m = _REGISTRY_RE.match(line)
+                if m:
+                    out.append(os.path.expanduser(m.group(2).strip()))
+    except OSError:
+        return []
+    return out
+
+
 def existing_keys(*sources):
     """Build the dedup key SET from any number of (kind, path) sources.
 
     kind == "staging" -> parse `## [<state>] <title>` blocks (ALL states: staged,
     rejected, expired, promoted -- a rejected/expired proposal must never be re-proposed).
     kind == "board"   -> parse board rows `| ID-NNN | Item | ... |` (the Item cell).
+    kind == "cockpit" -> a `name  path/to/BACKLOG.md` registry; every board it lists.
+    kind == "roadmap" -> a megagoal ROADMAP/TODO: its checkbox items and any board rows.
     A missing file contributes nothing. Keys are norm()'d titles; membership is EXACT
     (the anchored dedup form).
+
+    The last two kinds close the anchor gap ID-294 measured: 28 of 69 staged candidates
+    duplicated work already tracked on a cross-repo cockpit board or a megagoal TODO,
+    surfaces this set never read, so that work re-entered staging as new.
     """
-    import os
     keys = set()
-    board_row = re.compile(r"\s*\|\s*[A-Z]+-\d+\s*\|\s*([^|]+)\|")
     for kind, path in sources:
         if not path or not os.path.isfile(path):
+            continue
+        if kind == "cockpit":
+            for board in _registry_boards(path):
+                keys |= existing_keys(("board", board))
             continue
         with open(path, encoding="utf-8") as fh:
             text = fh.read()
@@ -154,7 +188,16 @@ def existing_keys(*sources):
                     keys.add(norm(b["title"]))
         elif kind == "board":
             for line in text.splitlines():
-                m = board_row.match(line)
+                m = _BOARD_ROW_RE.match(line)
+                if m:
+                    keys.add(norm(m.group(1)))
+        elif kind == "roadmap":
+            for m in _CHECKBOX_RE.finditer(text):
+                # `change -- owner: x -- deadline: y`: the change alone is the title a
+                # proposal would carry, so the trailing metadata must not join the key.
+                keys.add(norm(re.split(r"\s+--\s+", m.group(1))[0]))
+            for line in text.splitlines():
+                m = _BOARD_ROW_RE.match(line)
                 if m:
                     keys.add(norm(m.group(1)))
     return keys
@@ -166,7 +209,6 @@ def cmd_stage():
     `### Interfaces` `staging-format.py stage` paragraph, SPEC-249 TASK-003. The dedupe
     check runs immediately before the append, in this same process -- there is no window
     between "is it staged" and "stage it" for another writer to land in."""
-    import os
     try:
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):

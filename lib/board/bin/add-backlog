@@ -17,11 +17,25 @@ Usage:
   board promote all             promote every staged candidate
   board promote reject <n>...   mark candidates rejected (not promoted)
 
+Three refusals guard the board at promote time (a candidate is never deleted, it stays
+`[staged]` for the operator to fix or reject):
+
+  - judgment-free : Intent is nothing but the block's own source URL.
+  - stale         : the block was staged more than BOARD_PROMOTE_MAX_AGE_DAYS ago, so it may
+                    already be done. ID-294 measured 19 of 69 candidates finished inside a
+                    16-day triage gap, which is why the default window is 14 days and not
+                    `learn drain`'s looser 30. Override with BOARD_PROMOTE_STALE_OK=1 once
+                    the work is confirmed still open.
+  - mis-homed     : the block names a Home, cites a file path, and that path lives in THIS
+                    repo instead of the named one.
+
 Env: BACKLOG_STAGE_BACKLOG, BACKLOG_STAGE_STAGING (same names + repo-relative
-defaults as hooks/backlog-stage.py: `git rev-parse --show-toplevel` else $PWD).
+defaults as hooks/backlog-stage.py: `git rev-parse --show-toplevel` else $PWD),
+BACKLOG_PROMOTE_HOMES (directory the Home names resolve under; default: this repo's parent).
 Promoted rows land in a `### Conversation intake` section (created if missing);
 re-file into the right section by hand later. Stdlib only.
 """
+import datetime
 import fcntl
 import hashlib
 import os
@@ -95,6 +109,77 @@ def judgment_free(b):
         _norm_url(b["fields"].get("Source", "")),
         _norm_url(b["fields"].get("Approach", "")),
     )
+
+
+MAX_AGE_DAYS = int(os.environ.get("BOARD_PROMOTE_MAX_AGE_DAYS") or 14)
+_SOURCE_DATE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})")
+# A repo-relative file path with an extension: `tools/repo-sweep/whathas.py`, `lib/x.sh`.
+_CITED_PATH_RE = re.compile(r"(?<![\w/.])((?:[\w.-]+/)+[\w.-]+\.[A-Za-z0-9]+)")
+
+
+def stale_days(b):
+    """Whole days since the block's Source date, or None when it carries no parseable one.
+    Age unknown is never treated as stale (the same rule `learn drain` expiry follows)."""
+    m = _SOURCE_DATE_RE.search(b["fields"].get("Source", ""))
+    if not m:
+        return None
+    try:
+        staged = datetime.date.fromisoformat(m.group(1))
+    except ValueError:
+        return None
+    return (datetime.date.today() - staged).days
+
+
+def home_dir(home):
+    """Resolve a Home name to a checkout directory, or None when it names nothing we see.
+    Looks under BACKLOG_PROMOTE_HOMES (default: this repo's parent, the workspace layout)."""
+    home = home.strip().strip("`")
+    if not home or "/" in home or " " in home:
+        return None
+    root = os.path.realpath(_ROOT)
+    if os.path.basename(root) == home:
+        return root
+    base = os.environ.get("BACKLOG_PROMOTE_HOMES") or os.path.dirname(root)
+    cand = os.path.join(base, home)
+    return cand if os.path.exists(os.path.join(cand, ".git")) else None
+
+
+def mis_homed(b):
+    """The cited path that proves the block is filed against the wrong repo, else None.
+
+    Both halves are required: the path must be ABSENT from the named home AND PRESENT in
+    this repo. Absence alone is not evidence, because a proposal may name a file that does
+    not exist yet; presence here is what makes the wrong home decisive (ID-294 candidate 35
+    targeted a dotfiles hook that only ever lived in the kit). An unresolvable home is
+    unknown, not wrong, and never refuses.
+    """
+    hd = home_dir(b["fields"].get("Home", ""))
+    if not hd or os.path.realpath(hd) == os.path.realpath(_ROOT):
+        return None
+    for field in ("Intent", "Approach", "Source"):
+        for m in _CITED_PATH_RE.finditer(b["fields"].get(field, "")):
+            path = m.group(1)
+            if os.path.exists(os.path.join(_ROOT, path)) and not os.path.exists(
+                    os.path.join(hd, path)):
+                return path
+    return None
+
+
+def refusal(b):
+    """The one-line reason this block must not reach the board, or None to promote it."""
+    if judgment_free(b):
+        return ("Intent is nothing but the source URL, no judgment was exercised; route it "
+                "through the digest / work-intake intake door instead of board promote.")
+    age = stale_days(b)
+    if age is not None and age > MAX_AGE_DAYS and not os.environ.get("BOARD_PROMOTE_STALE_OK"):
+        return (f"staged {age}d ago (>{MAX_AGE_DAYS}d), so it may already be done; confirm "
+                "the work is still open, then re-run with BOARD_PROMOTE_STALE_OK=1.")
+    path = mis_homed(b)
+    if path:
+        home = b["fields"].get("Home", "").strip()
+        return (f"Home says {home}, but the cited {path} lives in this repo and not there; "
+                "fix the Home before promoting.")
+    return None
 
 
 def make_row(cid, b):
@@ -174,12 +259,12 @@ def main(argv):
         print(f"rejected {len(chosen)} candidate(s).")
         return 0
 
-    refused = [b for b in chosen if judgment_free(b)]
-    for b in refused:
-        print(f"refused {b['title']!r}: Intent is nothing but the source URL, "
-              "no judgment was exercised; route it through the digest / "
-              "work-intake intake door instead of board promote.", file=sys.stderr)
-    refused_ids = {id(b) for b in refused}
+    refused_ids = set()
+    for b in chosen:
+        why = refusal(b)
+        if why:
+            refused_ids.add(id(b))
+            print(f"refused {b['title']!r}: {why}", file=sys.stderr)
     chosen = [b for b in chosen if id(b) not in refused_ids]
     if not chosen:
         return 1

@@ -47,6 +47,9 @@ EOF
   export BACKLOG_STAGE_STAGING="$STAGING" BACKLOG_STAGE_BACKLOG="$BACKLOG"
   export LEARN_PROPOSE_RID="test-rid" DWARVES_KIT_LOG_DIR="$TD/logs"
   export LEARN_PROPOSE_VERIFIER="$TD/verify-holds.sh"
+  # The widened dedup anchor reads a cockpit registry + a megagoal tree. Point both at the
+  # sandbox so a suite run never reads (or is deduped by) the real repo's surfaces.
+  export LEARN_PROPOSE_COCKPIT="$TD/boards.txt" LEARN_PROPOSE_MEGAGOALS="$TD/megagoals"
 }
 # write a mock interpreter emitting the given JSON array literal
 mock_interp() { cat > "$TD/interp.sh" <<EOF
@@ -306,6 +309,49 @@ DRY="$RT/dry.md"
 python3 "$PROPOSE" --retro "$RT/RETRO-2026-07-15.md" --staging "$DRY" --backlog "$RT/BACKLOG.md" --dry-run >/dev/null 2>&1
 [ ! -f "$DRY" ]; assert_true "T7h NC: --dry-run writes NO staging file" $?
 rm -rf "$RT"
+
+# ============================================================
+echo "== ID-305 widened anchor: a cockpit board and a megagoal TODO both dedup =="
+# ============================================================
+# ID-294 measured 28/69 staged candidates duplicating work tracked on a cross-repo cockpit
+# board or a megagoal TODO. The anchor read neither surface, so that work re-staged as new.
+setup
+mkdir -p "$TD/other" "$TD/megagoals/nft-migration"
+cat > "$TD/other/BACKLOG.md" <<'EOF'
+| ID | Item | Notes | Status |
+|---|---|---|---|
+| CL-001 | Port the NFT contract to the new chain | tracked elsewhere | executing |
+EOF
+printf '# registry\nother  %s/other/BACKLOG.md\n' "$TD" > "$TD/boards.txt"
+cat > "$TD/megagoals/nft-migration/TODO.md" <<'EOF'
+# TODO
+
+- [ ] Retire the legacy indexer -- owner: @tieubao
+- [x] Backfill the token metadata
+EOF
+mock_interp '[
+ {"title":"Port the NFT contract to the new chain","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"},
+ {"title":"Retire the legacy indexer","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"},
+ {"title":"Backfill the token metadata","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"},
+ {"title":"Genuinely new proposal","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"}]'
+OUT="$(python3 "$PROPOSE" --aggregate-file "$AGG" 2>&1)"
+assert_true "widened: a cockpit board row is deduped" "$([ ! -f "$STAGING" ] || ! grep -q 'Port the NFT contract' "$STAGING"; echo $?)"
+assert_true "widened: an OPEN megagoal TODO item is deduped" "$([ ! -f "$STAGING" ] || ! grep -q 'Retire the legacy indexer' "$STAGING"; echo $?)"
+assert_true "widened: a DONE megagoal TODO item is deduped too" "$([ ! -f "$STAGING" ] || ! grep -q 'Backfill the token metadata' "$STAGING"; echo $?)"
+assert_true "widened: 3 duplicates reported" "$({ trap '' PIPE; echo "$OUT" 2>/dev/null || :; } | grep -q '3 duplicate'; echo $?)"
+# NEGATIVE CONTROL: the widening must not swallow a candidate that matches NOTHING.
+assert_true "widened NC: an unmatched proposal still stages" "$(grep -q '## \[staged\] Genuinely new proposal' "$STAGING"; echo $?)"
+
+# NEGATIVE CONTROL: with both surfaces absent, the same batch stages all four. This is the
+# pre-fix behaviour, and it is what makes the three drops above attributable to the widening.
+setup
+mock_interp '[
+ {"title":"Port the NFT contract to the new chain","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"},
+ {"title":"Retire the legacy indexer","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"},
+ {"title":"Backfill the token metadata","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"},
+ {"title":"Genuinely new proposal","intent":"x","approach":"y","u":"mid","f":"mid","home":"","signal":"S1"}]'
+python3 "$PROPOSE" --aggregate-file "$AGG" >/dev/null 2>&1
+assert_true "widened NC: no cockpit + no megagoal stages all 4" "$([ "$(grep -c '## \[staged\]' "$STAGING")" -eq 4 ]; echo $?)"
 
 echo ""
 echo "== $((PASS+FAIL)) run, $PASS passed, $FAIL failed =="

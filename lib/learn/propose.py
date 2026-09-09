@@ -12,7 +12,8 @@ CLAUDE.md. The three disciplines ARE the feature:
                        citation is REBUILT from the deterministic aggregate, NEVER taken
                        from the model (a model cannot inject a fabricated figure).
   - dedup HARD       : anchored exact-key membership vs open + staged + [expired] +
-                       [rejected] rows; a rejected proposal never reappears.
+                       [rejected] rows, the cross-repo cockpit boards, and every megagoal
+                       ROADMAP/TODO; a rejected proposal never reappears.
 
 Three stages (docs/research/2026-07-05-auto-improvement-loop-design.md):
 
@@ -41,6 +42,10 @@ Env / seams:
   LEARN_PROPOSE_RID=STR         rid for the TOKENS markers (default: gate rid / date slug).
   BACKLOG_STAGE_STAGING / BACKLOG_STAGE_BACKLOG   staging + board defaults (shared with the
                                 hook + add-backlog, so propose writes where board promote reads).
+  LEARN_PROPOSE_COCKPIT         cross-repo board registry read for dedup (default
+                                <repo>/_meta/boards.txt).
+  LEARN_PROPOSE_MEGAGOALS       megagoal tree whose ROADMAP/TODO files join the dedup anchor
+                                (default <repo>/_meta/megagoals).
   REPO_ROOT                     consumer seam for the two defaults above.
   STATS_LEARNED_MD              learned-ledger path (starvation counter; skip-safe when unset).
 
@@ -104,6 +109,34 @@ def _default_staging():
 def _default_backlog():
     return os.environ.get("BACKLOG_STAGE_BACKLOG") or os.path.join(
         _repo_root(), "_meta", "BACKLOG.md")
+
+
+_ROADMAP_FILES = ("ROADMAP.md", "TODO.md")
+
+
+def _dedup_sources(staging, backlog):
+    """The dedup anchor set: this repo's staging + board, PLUS the cross-repo cockpit
+    registry and every megagoal ROADMAP/TODO under this repo.
+
+    ID-294 measured 28 of 69 staged candidates duplicating work already tracked on exactly
+    those two surfaces. The anchor read neither, so that work re-entered staging as new.
+    Archived megagoals stay in the set on purpose: they hold finished work, and proposing
+    finished work is the same false positive.
+
+    LEARN_PROPOSE_COCKPIT / LEARN_PROPOSE_MEGAGOALS override the two default locations; a
+    missing path contributes nothing, so a repo without either surface behaves as before.
+    """
+    root = _repo_root()
+    sources = [("staging", staging), ("board", backlog)]
+    sources.append(("cockpit", os.environ.get("LEARN_PROPOSE_COCKPIT")
+                    or os.path.join(root, "_meta", "boards.txt")))
+    megagoals = os.environ.get("LEARN_PROPOSE_MEGAGOALS") or os.path.join(
+        root, "_meta", "megagoals")
+    for dirpath, _dirs, files in os.walk(megagoals):
+        for name in files:
+            if name in _ROADMAP_FILES:
+                sources.append(("roadmap", os.path.join(dirpath, name)))
+    return sources
 
 
 def _rid():
@@ -354,7 +387,7 @@ def interpret(aggregate, staging, backlog, rid):
     table = "\n".join(
         f"{s['id']}: lens={s['lens']} figure=\"{s['figure']}\" rids={','.join(s['rids']) or '(none)'}"
         for s in aggregate["signals"])
-    existing = "\n".join(sorted(sf.existing_keys(("staging", staging), ("board", backlog)))) or "(none)"
+    existing = "\n".join(sorted(sf.existing_keys(*_dedup_sources(staging, backlog)))) or "(none)"
     prompt = (_INTERPRET_PROMPT + table
               + "\n\n=== ALREADY ON BOARD / STAGED (do not re-propose) ===\n" + existing + "\n")
     cmd = os.environ.get("LEARN_PROPOSE_INTERPRETER") or DEFAULT_INTERPRETER
@@ -476,7 +509,7 @@ def run_retro(retro_path, staging, backlog, dry_run):
     """Stage a retro's action items. Deterministic: no LLM, no grounding pass, no refute.
     The items were written by a human in a retro; the evidence IS the retro."""
     cands = parse_retro_actions(retro_path)
-    dedup = sf.existing_keys(("staging", staging), ("board", backlog))
+    dedup = sf.existing_keys(*_dedup_sources(staging, backlog))
     blocks, staged, skipped = [], [], []
     for c in cands:
         key = sf.norm(c["title"])
@@ -523,7 +556,7 @@ def run(days, megas, staging, backlog, dry_run, aggregate_file):
     by_id = {s["id"]: s for s in aggregate["signals"]}
     hypotheses = interpret(aggregate, staging, backlog, rid)
 
-    dedup = sf.existing_keys(("staging", staging), ("board", backlog))
+    dedup = sf.existing_keys(*_dedup_sources(staging, backlog))
     staged_blocks = []
     dropped = {"ungrounded": 0, "refuted": 0, "duplicate": 0}
 
