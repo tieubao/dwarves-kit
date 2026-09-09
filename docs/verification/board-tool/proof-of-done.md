@@ -319,6 +319,41 @@ foundation-ops OPS-12
 STALE CHECKOUTS, rows above may be out of date: ops-toolkit(12 behind)
 ```
 
+**Mechanised negative control.** No hand edit. `git checkout` swaps `lib/board/board.sh` between
+the committed change and its parent, so the revert and the restore are both exact by construction:
+
+```
+$ git checkout HEAD~1 -- lib/board/board.sh      # revert to the pre-change file
+ lib/board/board.sh | 76 +++--------------------------------------------------
+ 1 file changed, 3 insertions(+), 73 deletions(-)
+
+$ bash tests/test-board.sh
+=== AC7: cross-repo staleness warning (ID-652) ===
+  PASS AC7: the render still exits 0 with an odd checkout in the registry
+  FAIL AC7: a behind checkout is marked in its own header
+  PASS AC7: a current checkout renders an unmarked header
+  PASS AC7: a checkout with no upstream renders an unmarked header
+  PASS AC7: a detached HEAD renders an unmarked header
+  FAIL AC7: the trailer names the behind repo and its count
+  PASS AC7: the trailer names ONLY the behind repo
+  PASS AC7: every repo's rows still render (the warning never replaces content)
+  FAIL AC7: 'all next' carries the marker on the behind repo's line
+  PASS AC7: 'all next' leaves the current repo's line unmarked
+  FAIL AC7: 'all priority matrix' still warns via the trailer
+  PASS AC7: a current estate emits no trailer and no marker
+  TOTAL: 57   PASS: 53   FAIL: 4   SKIP: 0
+
+$ git checkout HEAD -- lib/board/board.sh        # restore
+$ git status --porcelain lib/board/board.sh
+                                                 # empty: byte-identical to the committed file
+$ bash tests/test-board.sh
+  TOTAL: 57   PASS: 57   FAIL: 0   SKIP: 0
+```
+
+The four assertions that DETECT staleness flip red. The eight that assert fail-open behavior and
+no regression stay green, which is correct: with no check present nothing warns and nothing
+breaks. Nothing outside AC7 moves, so the new assertions are sensitive to this change alone.
+
 **NC-e version-skew fix.** NC-e's `all-*` pairs ran the ops-toolkit shim, which resolves the kit
 through `$DWARVES_KIT` and therefore reached the operator's INSTALLED kit rather than the checkout
 under test. Every branch that changed render output failed there for version skew, not for a
