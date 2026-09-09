@@ -89,11 +89,11 @@ echo "case AC6 (diverged remote, CONFLICTING board edit -> no markers, abort, rc
 mkrepo "$WORK/r5"
 git clone -q -b main "$WORK/r5.remote" "$WORK/r5b"
 # same line edited differently on both sides = guaranteed rebase conflict
-sed -i '' 's/| ID-1 | thing | notes | queued |/| ID-1 | thing | notes | executing |/' "$WORK/r5b/_meta/BACKLOG.md"
+sed -i.bak 's/| ID-1 | thing | notes | queued |/| ID-1 | thing | notes | executing |/' "$WORK/r5b/_meta/BACKLOG.md"
 git -C "$WORK/r5b" -c user.email=t@t -c user.name=t add -A
 git -C "$WORK/r5b" -c user.email=t@t -c user.name=t commit -qm "upstream: conflicting board edit"
 git -C "$WORK/r5b" push -q origin main
-sed -i '' 's/| ID-1 | thing | notes | queued |/| ID-1 | thing | notes | parked |/' "$WORK/r5/_meta/BACKLOG.md"
+sed -i.bak 's/| ID-1 | thing | notes | queued |/| ID-1 | thing | notes | parked |/' "$WORK/r5/_meta/BACKLOG.md"
 out="$(cd "$WORK/r5" && GIT_AUTHOR_EMAIL=t@t GIT_AUTHOR_NAME=t GIT_COMMITTER_EMAIL=t@t GIT_COMMITTER_NAME=t \
   bash "$BOARD_SH" publish --backlog-file "$WORK/r5/_meta/BACKLOG.md" 2>&1)"; rc=$?
 [ "$rc" -eq 3 ] && ok "conflicting divergence exits 3" || bad "rc=$rc (want 3): $out"

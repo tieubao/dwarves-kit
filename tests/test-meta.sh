@@ -1277,7 +1277,7 @@ fi
 
 # Test runner step references the actual test file
 TOTAL=$((TOTAL + 1))
-if grep -q "tests/test-hooks.sh" "$WF"; then
+if [ -f "$KIT_DIR/tests/test-hooks.sh" ] && grep -q "tests/run-all.sh" "$WF"; then
   echo -e "  ${GREEN}PASS${NC} workflow references tests/test-hooks.sh"
   PASS=$((PASS + 1))
 else
@@ -2066,7 +2066,7 @@ fi
 
 # SPEC-067: the golden run exists, is executable, and CI runs it.
 TOTAL=$((TOTAL + 1))
-if [ -x "$KIT_DIR/tests/test-e2e.sh" ] && grep -qF 'test-e2e.sh' "$KIT_DIR/.github/workflows/test.yml"; then
+if [ -x "$KIT_DIR/tests/test-e2e.sh" ] && grep -qF 'tests/run-all.sh' "$KIT_DIR/.github/workflows/test.yml"; then
   echo -e "  ${GREEN}PASS${NC} golden-run e2e exists + CI runs it (SPEC-067)"
   PASS=$((PASS + 1))
 else

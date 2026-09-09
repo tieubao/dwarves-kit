@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# requires: claude codex opencode
 # test-harness-dispatch.sh
 # Pins the ID-390 WIRING: the `Harness:` goal-file header actually routes a sub-goal to a non-claude
 # CLI. tests/test-harness-adapter.sh pins the argv RESOLVER; this file pins that orchestrate.sh

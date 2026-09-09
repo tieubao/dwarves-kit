@@ -85,20 +85,23 @@ fi
 # 6. NEGATIVE CONTROL: revert the fix (stash the working-tree edit to lib/gate/proof-ledger.sh
 #    itself), re-run the SAME check against the SAME fixture -> must go RED (the bug reproduces
 #    without the fix), then restore.
-if git -C "$KIT" diff --quiet -- lib/gate/proof-ledger.sh; then
-  echo "[NO EXECUTABLE CHECK: lib/gate/proof-ledger.sh has no uncommitted diff to revert for the negative control -- run this from the fix branch before committing]"
-  fails=$((fails+1))
-else
-  STASH_TAG="test-proof-override-order-negctl-$$"
-  git -C "$KIT" stash push -u -m "$STASH_TAG" -- lib/gate/proof-ledger.sh >/dev/null 2>&1
-  if bash "$LIB" check "$F" "$BASE" "$SLUG" >/dev/null 2>&1; then
-    fail "negative control: reverting the fix should turn this RED (old override-first order should still block) but it stayed PASS"
+# History-independent: build the PRE-FIX lib from the CURRENT one by deleting the single
+# line that makes a real proof win outright. Without it the override check short-circuits
+# first, which is exactly the old order and the bug. The previous form stashed an
+# uncommitted working-tree edit, so it could only ever run before its own fix was
+# committed and reported a permanent FAIL afterwards; it also stashed the SHARED
+# checkout, which a concurrent session can lose work to.
+OLDLIB="$(dirname "$LIB")/.proof-order-oldlib.tmp.sh"
+trap 'rm -f "$OLDLIB"' EXIT
+grep -v '^  \[ "\$ok" -eq 0 \] && return 0$' "$LIB" > "$OLDLIB"
+if ! grep -q '^  \[ "\$ok" -eq 0 \] && return 0$' "$OLDLIB" && [ -s "$OLDLIB" ]; then
+  if bash "$OLDLIB" check "$F" "$BASE" "$SLUG" >/dev/null 2>&1; then
+    fail "negative control: the pre-fix order should turn this RED (override short-circuits a real proof) but it stayed PASS"
   else
-    pass "negative control: reverting the fix correctly goes RED (old order re-blocks a real proof)"
+    pass "negative control: the pre-fix order correctly goes RED (old order re-blocks a real proof)"
   fi
-  # stash@{0} is this push (nothing else touches the stash stack in between): pop restores
-  # the fix and drops the entry in one step, no bare-SHA stash-drop (that form does not work).
-  git -C "$KIT" stash pop >/dev/null 2>&1
+else
+  echo "[NO EXECUTABLE CHECK: could not build the pre-fix lib; the proof-first line moved]"; fails=$((fails+1))
 fi
 
 echo "---"

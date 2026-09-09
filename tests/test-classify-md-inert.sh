@@ -44,7 +44,12 @@ F=/tmp/cls-code; build "$F" code "tweak the helper"
 # as stateful (the bug). History-independent: construct the pre-fix lib from the CURRENT one
 # (awk the inert-FIRST block out), so this stays valid even after the fix is merged to master.
 F=/tmp/cls-md   # reuse the md-only 'migrate' fixture
-OLD=/tmp/cls-oldlib.sh
+# The stripped copy MUST live beside the real lib: proof-ledger.sh resolves its siblings
+# (lib/telemetry/kit-log-dir.sh) relative to its own path, so a copy in /tmp aborts with
+# FATAL before it can classify anything. That dependency arrived after this test was
+# written, which is why the control silently stopped reproducing the bug.
+OLD="$(dirname "$LIB")/.cls-oldlib.tmp.sh"
+trap 'rm -f "$OLD"' EXIT
 awk '/# inert FIRST/{s=1} /^  subjects=/{s=0} !s' "$LIB" > "$OLD"
 if [ -s "$OLD" ] && grep -q 'stateful: deploy' "$OLD" && ! grep -q 'inert FIRST' "$OLD"; then
   [ "$(cls "$OLD" "$F")" = stateful ] && pass "inert-FIRST-stripped lib classifies md-only 'migrate' as stateful (the bug; fix is load-bearing)" || fail "stripped lib should reproduce the stateful bug, got $(cls "$OLD" "$F")"
