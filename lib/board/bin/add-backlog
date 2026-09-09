@@ -68,9 +68,26 @@ def parse_staging(text):
     return blocks
 
 
-def next_id(backlog_text):
-    nums = [int(n) for n in re.findall(r"ID-(\d+)", backlog_text)]
-    return f"ID-{((max(nums) + 1) if nums else 1):03d}"  # 3-digit to match board convention
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.realpath(__file__)))), "sync"))
+from sync_core import history_max_id  # noqa: E402
+from sync_core import next_id as _core_next_id  # noqa: E402
+
+
+def next_id(backlog_text, floor=0):
+    """One past the highest id in play. Delegates to the sync_core minter so
+    this file stops carrying a second, weaker rule: the old local version
+    regex-scanned the whole text for `ID-\\d+`, so a token quoted in a notes
+    cell counted as a real row (the ID-480 bug sync_core already fixed).
+
+    `floor` carries the git-history maximum from `history_max_id`, which the
+    caller computes ONCE outside its promote loop: without it the mint sees
+    only the working copy, and a checkout lagging origin re-claims an id
+    another session already pushed.
+    """
+    n = max(_core_next_id(backlog_text, "ID"), floor + 1)
+    return f"ID-{n:03d}"  # 3-digit to match board convention
 
 
 def clean(s):
@@ -197,9 +214,11 @@ def main(argv):
     lock = open(lock_path, "w")
     fcntl.flock(lock, fcntl.LOCK_EX)
     btext = open(BACKLOG, encoding="utf-8").read()  # read AFTER the lock
+    # once, not per row: one git read covers every id this promote run mints
+    floor = history_max_id(BACKLOG)
     promoted = []
     for b in chosen:
-        cid = next_id(btext)
+        cid = next_id(btext, floor)
         row = make_row(cid, b)
         if len(re.split(r"(?<!\\)\|", row.rstrip("\n"))) != 6:
             print(f"refusing malformed row for {cid}: {row!r}", file=sys.stderr)

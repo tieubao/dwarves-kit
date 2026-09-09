@@ -1,5 +1,6 @@
 """Source-agnostic core of backlog-sync: board parsing/writing, the three-way
-planner, snapshot state. Pure logic, no I/O. See docs/specs/SPEC-001.
+planner, snapshot state. Pure logic apart from `history_max_id`, the one git
+read the ID mint needs to stay correct. See docs/specs/SPEC-001.
 
 Normalized spoke item: {rid, title, done, body, status} where status is a
 board keyword when the adapter can state it definitively, else None (then
@@ -8,8 +9,10 @@ plus the per-spoke rid recorded in the snapshot.
 """
 
 import re
+import subprocess
 from dataclasses import dataclass, field
 from datetime import date
+from pathlib import Path
 
 ACTIVE_STATUSES = {"queued", "claimed", "speccing", "validated", "executing"}
 BOARD_STATES = ["queued", "claimed", "speccing", "validated", "executing",
@@ -102,7 +105,36 @@ def parse_board(text: str, strict_id: bool = True,
     return rows
 
 
-def next_id(text: str, prefix: str = "ID") -> int:
+def history_max_id(path, prefix: str = "ID") -> int:
+    """Highest `<prefix>-N` this board file ever carried, across every ref in
+    the clone. Returns 0 when git cannot answer.
+
+    The working copy alone is not the set of ids in play. A checkout that lags
+    origin reads a board missing rows another session already pushed, so the
+    mint hands out an id that is already taken. Measured live on the
+    ops-toolkit board: the working copy topped out at ID-822 while history
+    already held ID-823, so the very next mint would have collided.
+
+    `--all` reaches remote-tracking refs, so a stale working TREE stops
+    mattering once the clone has fetched. `-p` reaches rows later deleted or
+    archived out of the file, which a tip-only scan misses. The line shape is
+    the same row-anchored one `next_id` uses, after the diff marker, so a
+    `<prefix>-N` token sitting in prose or a notes cell still never counts.
+    """
+    p = Path(path)
+    try:
+        r = subprocess.run(
+            ["git", "log", "-p", "--all", "--format=", "--", p.name],
+            cwd=str(p.parent), capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return 0
+    if r.returncode != 0:
+        return 0
+    hit = re.compile(r"^[-+ ]?\| " + re.escape(prefix) + r"-(\d+) \|", re.M)
+    return max((int(m) for m in hit.findall(r.stdout)), default=0)
+
+
+def next_id(text: str, prefix: str = "ID", path=None) -> int:
     """Mint one past the highest id in play, from PARSED row ids -- never from
     a bare regex over the raw text (ID-480): a token anywhere in the text (a
     notes cell, a prose paragraph, a quoted log line) used to count the same
@@ -111,12 +143,17 @@ def next_id(text: str, prefix: str = "ID") -> int:
     (`| <prefix>-N |` at line start) so a row that fails to fully parse
     (test_next_id_skips_id_in_malformed_row) still blocks id reuse, while
     prose elsewhere never does.
+
+    Pass `path` (the board file on disk) and the git history of that file
+    raises the floor too. Every caller that has a real file passes it; the
+    text-only form stays for pure unit tests and callers holding no file.
     """
     row_nums = [int(rid.rsplit("-", 1)[1])
                 for rid in parse_board(text, prefix=prefix)]
     line_re = re.compile(r"^\| " + re.escape(prefix) + r"-(\d+) \|", re.M)
     line_nums = [int(m) for m in line_re.findall(text)]
-    return max(row_nums + line_nums, default=0) + 1
+    hist = [history_max_id(path, prefix)] if path is not None else []
+    return max(row_nums + line_nums + hist, default=0) + 1
 
 
 def escape(cell: str) -> str:
@@ -505,9 +542,13 @@ def plan_pull_only(text: str, items: list, cap: int = INTAKE_CAP) -> Plan:
 # --- board apply -------------------------------------------------------------
 
 
-def apply_board(text: str, plan: Plan,
-                prefix: str = "ID") -> tuple[str, dict[str, str]]:
-    """Apply board-side actions. Returns (new_text, {rid: assigned_board_id})."""
+def apply_board(text: str, plan: Plan, prefix: str = "ID",
+                path=None) -> tuple[str, dict[str, str]]:
+    """Apply board-side actions. Returns (new_text, {rid: assigned_board_id}).
+
+    `path` is the board file this text came from; it raises the mint floor to
+    include ids only git history knows about (see `history_max_id`).
+    """
     lines = text.splitlines(keepends=True)
     rows = parse_board(text, prefix=prefix)
 
@@ -531,7 +572,7 @@ def apply_board(text: str, plan: Plan,
 
     assigned: dict[str, str] = {}
     if plan.board_add:
-        nid = next_id(text, prefix)
+        nid = next_id(text, prefix, path)
         new_rows = []
         for rid, title, body, kw in plan.board_add:
             bid = f"{prefix}-{nid}"

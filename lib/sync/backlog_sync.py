@@ -139,7 +139,7 @@ def sync_pull_only(src, backlog: Path, dry_run: bool) -> None:
         print(f"dry-run {header}")
         print(describe(plan))
         return
-    new_text, assigned = apply_board(text, plan, prefix=prefix)
+    new_text, assigned = apply_board(text, plan, prefix=prefix, path=backlog)
     if new_text != text:
         atomic_write(backlog, new_text)
     print(f"synced {header}")
@@ -224,7 +224,7 @@ def sync_source(src, backlog: Path, state_path: Path, dry_run: bool,
               f"scope (cap {max(cap, allow)}). Review with --dry-run, then "
               f"re-run with --allow-scope-exit {exits}.")
         return
-    new_text, assigned = apply_board(text, plan, prefix=prefix)
+    new_text, assigned = apply_board(text, plan, prefix=prefix, path=backlog)
     if new_text != text:
         atomic_write(backlog, new_text)
     rows_after = parse_board(new_text, prefix=prefix)
