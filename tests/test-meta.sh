@@ -2539,6 +2539,20 @@ assert_eq "assign.md derives RID via gate-ledger rid" 0 $RC
 RC=0; grep -q 'SPEC-070' "$KIT_DIR/AGENTS.md" || RC=1
 assert_eq "AGENTS.md carries the one-rid-per-run contract" 0 $RC
 
+# ============================================================
+echo ""
+echo "=== ID-651: wrap Step 7a reports a structural skip, not a clean one ==="
+# ============================================================
+# Landing from master/main makes gate-ledger.sh rid refuse outright, so the DEBT marker was
+# never reachable this run. That is a different fact than "nothing to record", and Step 7a
+# must say so instead of printing the same wording as a genuinely clean skip.
+RC=0; grep -q 'rid_rc' "$KIT_DIR/commands/wrap.md" || RC=1
+assert_eq "wrap.md Step 7a captures the rid exit code, not just stdout" 0 $RC
+RC=0; grep -q 'skipped (structural)' "$KIT_DIR/commands/wrap.md" || RC=1
+assert_eq "wrap.md Step 7a names the structural-skip wording" 0 $RC
+RC=0; grep -q 'Do not synthesize a rid' "$KIT_DIR/commands/wrap.md" || RC=1
+assert_eq "wrap.md Step 7a rules out a session-derived rid (ledger key stays branch-only)" 0 $RC
+
 
 # ============================================================
 echo ""
