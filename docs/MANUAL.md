@@ -285,8 +285,8 @@ Related, **2b-0 role synthesis** (inside `/kit:execute`): each task is classifie
 ### `/kit:ship`
 
 **Phase:** review gate, version bump, changelog, commit, PR
-**Reads:** `docs/specs/SPEC-NNN-<slug>.md` (including its `## Review` verdict), `VERSION`, `CHANGELOG.md`
-**Writes:** bumped `VERSION`, new `CHANGELOG.md` entry, git tag, PR via `gh`
+**Reads:** `docs/specs/SPEC-NNN-<slug>.md` (including its `## Review` verdict), `VERSION`, the resolved changelog file (`docs/CHANGELOG.md` if it exists, SPEC-185, else root `CHANGELOG.md`)
+**Writes:** bumped `VERSION`, a new entry in the resolved changelog file, git tag, PR via `gh`
 **When to invoke:** review is green and docs are synced
 **Common gotcha:** blocks if the spec's `## Review` verdict is DO NOT SHIP. Use `/review-team` and `responding-to-review` to triage before re-running ship.
 **Release-hygiene warn (Step 4a):** at the version step it warns (never blocks) on a phantom cut, `VERSION` naming a version with no matching git tag, with a heads-up when `[Unreleased]` is accumulating above it. Warn-only; tag `v<version>` or confirm intentional, then continue.
@@ -459,9 +459,12 @@ mints the ID for you. Hand it freeform intent instead of an `ID-NNN`:
      2. approve              -> pause for your approval (approve-before-allocate: a vague
                                 brief never auto-creates a row)
      3. sanitize + allocate  -> escape `|`/newlines for the table cells; reduce the slug
-                                to [a-z0-9-]+; re-read the max ID and write the next
-                                ID-NNN row into _meta/BACKLOG.md in the same step, with a
-                                loud equal-ID collision check (atomic-allocate)
+                                to [a-z0-9-]+; raise the mint floor past the working copy
+                                with the board file's own git history (history_max_id(),
+                                so a lagging or archived-row checkout cannot re-hand-out a
+                                taken ID); write the next ID-NNN row into _meta/BACKLOG.md
+                                in the same step, with a loud equal-ID collision check
+                                (atomic-allocate)
      4. rejoin the ID tail   -> write the goal draft, pick the lane, route (Scenario 2's
                                 flow), exactly as for an ID-NNN argument
 ```

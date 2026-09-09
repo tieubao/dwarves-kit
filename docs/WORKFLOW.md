@@ -526,8 +526,9 @@ The gate-ledger's `RUN_REPORT.md` (`/kit:mega`'s per-sub-goal gate matrix) can o
 as covered if SOME command actually calls `gate-ledger.sh` for it. A 2026-07-04 audit of every
 file under `commands/` found 11 of 29 commands with a real `bash lib/gate/gate-ledger.sh <verb>` call
 and 18 dark, with no distinction between "this phase genuinely has no ledger concern" and "nobody
-wired it yet" -- the RUN_REPORT under-counts silently either way (`commands/` has since grown to
-36 files; 26 now match `gate-ledger.sh`). This section is the single
+wired it yet" -- the RUN_REPORT under-counts silently either way (`commands/` has grown since; the
+exemption table below plus `tests/test-command-emit-sweep.sh` are the live count, never this
+aside). This section is the single
 source of truth for that distinction (parsed by `tests/test-command-emit-sweep.sh`, no second
 copy): every command in `commands/` either contains a `gate-ledger` call, or is listed below with
 a reason it legitimately does not need one.
