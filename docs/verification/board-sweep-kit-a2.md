@@ -48,3 +48,5 @@ bash tests/test-meta.sh
 ## Scope note
 
 The backlog row for ID-642 names a third copy, `SECRET_SHAPE_RE` in ops-toolkit's `repo-sweep` tool. That file lives in the sibling `tieubao/ops-toolkit` repo, out of reach from a dwarves-kit-only branch and worktree. Only the two dwarves-kit copies (`lib/precedent/inventory.py`, `lib/session/recall/session_recall.py`) are widened here, kept byte-equal per the existing `tests/test-precedent.sh` pin. Widening the ops-toolkit copy to match is a follow-up in that repo.
+
+**Follow-up closed, no work needed.** ops-toolkit deleted its copy on 2026-09-06 and pointed `repo-sweep whathas` at `precedent find --surface inventory`, so it inherits this regex at runtime. Verified against ops-toolkit `origin/main`: `git grep SECRET_SHAPE_RE -- tools/repo-sweep/` returns nothing. The kit holds two copies, not three.

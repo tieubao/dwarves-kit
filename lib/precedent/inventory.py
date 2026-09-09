@@ -34,7 +34,9 @@ import time
 
 # ---------------------------------------------------------------------------
 # SECRET_SHAPE_RE and LINE_CAP mirror lib/session/recall/session_recall.py:189-211
-# (DEC-004: a third copy, the regex pinned equal by a test, not a shared import).
+# (DEC-004: a second copy, the regex pinned equal by a test, not a shared import).
+# There is no third copy downstream: ops-toolkit's repo-sweep whathas forwards to
+# `precedent find --surface inventory`, so it inherits this regex at runtime.
 # DATA_MARKER differs by design: files here, transcripts there.
 # Widened per SPEC-245 review finding 12 (ID-642): the original shape missed AWS
 # secret access keys (no fixed prefix, so scoped to an aws*secret/access*=value
