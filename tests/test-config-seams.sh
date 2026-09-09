@@ -3,8 +3,8 @@
 # seam report over the "## Seams" join table (lib/config/config.sh `_seam_rows` /
 # `_seam_resolve` / `cmd_seams`).
 #
-# Two registries are exercised: the LIVE lib/config/module-registry.md (its five real seam
-# rows: wrap.before, wrap.activity_log, precedent.registry, knowledge.root, PROSE_RAG_BIN),
+# Two registries are exercised: the LIVE lib/config/module-registry.md (its six real seam
+# rows: wrap.before, wrap.after, wrap.activity_log, precedent.registry, knowledge.root, PROSE_RAG_BIN),
 # and a small FIXTURE registry (CONFIG_REGISTRY_FILE is overridable, same as
 # tests/test-config-registry.sh's own fixtures) that adds a malformed row and an unknown-kind
 # row -- neither of which the live registry can carry (it is lint-guarded by
@@ -95,8 +95,9 @@ OUT1="$(HOME="$HOME_DIR" KIT_CONFIG_ROOT="$ROOT_DIR" KIT_CONFIG_OPERATOR="$NO_OP
 RC1=$?
 chk "all-default: exits 0" "$RC1"
 ROWCOUNT1="$(printf '%s\n' "$OUT1" | tail -n +2 | grep -c .)"
-chk "all-default report has five rows" "$([ "$ROWCOUNT1" -eq 5 ] && echo 0 || echo 1)"
+chk "all-default report has six rows" "$([ "$ROWCOUNT1" -eq 6 ] && echo 0 || echo 1)"
 chk_has "all-default: wrap.before shows default" "$OUT1" "wrap.before"
+chk_has "all-default: wrap.after shows default" "$OUT1" "wrap.after"
 chk_has "all-default: PROSE_RAG_BIN shows absent (nothing on the stripped PATH)" "$(printf '%s\n' "$OUT1" | grep '^PROSE_RAG_BIN')" "absent"
 
 # --------------------------------------------------------------------------- case 2: skill filled + resolving

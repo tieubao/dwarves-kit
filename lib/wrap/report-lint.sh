@@ -102,6 +102,19 @@ elif ! printf '%s' "$input" | grep -qE '\*\*Built:\*\*[[:space:]]*(NOTHING|SKIPP
   findings=$((findings + 1))
 fi
 
+# Step -1 coverage, the same three-state rule as `Built:` above. A seam that was never
+# configured and a seam that was silently dropped read identically without this line, and the
+# seam is where an operator's whole distill half lives: `wrap.before`/`wrap.after` name a
+# skill this command runs, so a dropped step -1 loses that skill with no trace in the report.
+if ! printf '%s' "$input" | grep -q '\*\*Seam:\*\*'; then
+  echo "line 0: no '**Seam:**' line; step -1 (the before/after seams) owes an outcome" >&2
+  echo "  add one of: '**Seam:** <side> <skill> ran: <outcome>', '**Seam:** NOTHING: no seam configured', '**Seam:** SKIPPED: <why>'" >&2
+  findings=$((findings + 1))
+elif ! printf '%s' "$input" | grep -qE '\*\*Seam:\*\*[[:space:]]*(NOTHING|SKIPPED|[^[:space:]])'; then
+  echo "line 0: '**Seam:**' is empty; name the side and skill that ran, or NOTHING, or SKIPPED with a reason" >&2
+  findings=$((findings + 1))
+fi
+
 if [ "$findings" -gt 0 ]; then
   echo "report-lint: ${findings} finding(s), ${warns} warn(s)" >&2
   exit 1
