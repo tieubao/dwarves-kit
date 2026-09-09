@@ -73,15 +73,29 @@ else no "rc=$RC out=$OUT"; fi
 
 echo "[9] a negctl FAIL block does NOT satisfy proof-ledger check() (reviewer H1)"
 PR="$TMP/p"; mkrepo "$PR"
+# The base ref must be the branch `git init` actually made. Hardcoding `master` here read as
+# a passing gate on any machine whose init.defaultBranch is `main`: check() fails open on an
+# unresolvable base by contract, so BOTH the FAIL block and the PASS block returned 0 and the
+# assertion never reached the gate at all. Ask the repo for its own default branch instead.
+BASE="$(git -C "$PR" symbolic-ref --short HEAD)"
 git -C "$PR" checkout -q -b feat
 printf 'x\n' >> "$PR/lib.sh"; mkdir -p "$PR/docs/verification"
 { echo "# proof"; echo "Command: bash test.sh"; echo "Exit: 0 (green before mutation)"; echo "## Negative control (negctl)"; echo "Verdict: FAIL: test stayed green under the mutation (the check is vacuous)"; } > "$PR/docs/verification/x.md"
 git -C "$PR" add -A && git -C "$PR" -c user.name=t -c user.email=t@t commit -q -m "feat: change"
-bash "$PL" check "$PR" master >/dev/null 2>&1; RC_FAIL=$?
+bash "$PL" check "$PR" "$BASE" >/dev/null 2>&1; RC_FAIL=$?
 sed -i.bak 's/^Verdict: FAIL.*/Verdict: PASS/' "$PR/docs/verification/x.md" && rm -f "$PR/docs/verification/x.md.bak"
 git -C "$PR" -c user.name=t -c user.email=t@t commit -q -am "proof pass"
-bash "$PL" check "$PR" master >/dev/null 2>&1; RC_PASS=$?
+bash "$PL" check "$PR" "$BASE" >/dev/null 2>&1; RC_PASS=$?
 if [ "$RC_FAIL" -ne 0 ] && [ "$RC_PASS" -eq 0 ]; then ok "FAIL block blocked (rc=$RC_FAIL), PASS block accepted"; else no "check rc FAIL-block=$RC_FAIL PASS-block=$RC_PASS"; fi
+
+echo "[9b] an unresolvable base fails OPEN, and that is not a gate pass"
+# Pins the behaviour that hid [9] for four commits. check() returns 0 on a base that is not a
+# commit (documented fail-open: a gate bug must never block unrelated work). Naming it here
+# stops the next reader mistaking a disarmed gate for a satisfied one. hooks/ship-gate.sh
+# resolves the base through merge-base and only calls check() with a real commit, so the
+# fail-open is unreachable from the shipping path.
+bash "$PL" check "$PR" no-such-branch-here >/dev/null 2>&1; RC_OPEN=$?
+if [ "$RC_OPEN" -eq 0 ]; then ok "unresolvable base returns 0 by contract, gate never ran"; else no "expected fail-open 0, got $RC_OPEN"; fi
 
 echo "[10] usage on missing args names the verb (non-vacuous: not the unknown-verb 64)"
 OUT="$(bash "$NC" "$REPO" 2>&1)"; RC=$?
