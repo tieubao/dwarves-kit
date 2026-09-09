@@ -105,6 +105,8 @@ a. DEBT marker.
 rid=$(bash lib/gate/gate-ledger.sh rid)
 ```
 
+**Every skip in this sub-step skips ONLY this sub-step.** `a` is the DEBT marker and nothing else; `b` and `c` do not depend on a run id, a run log, or the classifier, and they run whatever `a` reported. A real session on 2026-09-09 read `skipped: no run id` as "step 7 does not apply" and never ran `b`, which is the step that builds rather than proposes. If `a` skips, say so and go straight to `b`.
+
 An empty `rid` prints `skipped: no run id`. Otherwise resolve the log dir with `logdir=$(bash -c 'source lib/telemetry/kit-log-dir.sh; kit_resolve_log_dir')` (the file is source-only and prints nothing when run as a command); a missing `runs/<rid>.log` prints `skipped: no run log`; a `| DEBT |` line already in it prints `skipped: DEBT marker present`. Otherwise `bash lib/classify/significance-classify.sh record <rid> "<one-line session description>"`; a non-zero exit prints `skipped: classifier failed (rc N)` and the step continues to b.
 
 b. Candidates. A candidate is anything this session BUILT or proposed to build that could outlive the session: a new script or tool, an enhancement the operator asked for and the session deferred, a manual multi-step procedure run three or more times, or a one-off script the operator called recurring. The check runs on the first one, not the third, because a single-purpose script written next to an existing tool is the fragment this step exists to prevent. `wrap.build_candidates` false: run the precedent check anyway, then stage every candidate with the `bin/wrap stage` line below and quote the top hit in the FYI bullet where one came back. Building is what the knob governs; checking precedent is not optional at either setting, because a staged row that does not name the tool it should have joined recreates the fragment one release later.
@@ -155,6 +157,10 @@ b. ...
    -- or --
 - NOTHING
 
+**Built:** <path + commit of what step 7b built or staged>
+   -- or -- NOTHING: no candidates
+   -- or -- SKIPPED: <why>
+
 **FYI:**
 - <what changes for the operator from now on>
 - <a state the operator will meet next time>
@@ -176,6 +182,7 @@ b. ...
 - **Every `FYI` bullet of the second kind NAMES ITS HOME**, the file or board where the follow-up already lives. That is this section's own admission test. A bullet carrying future work with no home is a task hiding in the read-only lane, which is how a good idea reaches the end of a session and dies there; give it a home first, then report the path. A bullet that needs a decision, a command, or a review FROM THE OPERATOR was misfiled and belongs in `Needs you` instead.
 - The lane is read-and-move-on, never do-nothing-forever. The operator picks the follow-up back up from its home, not from a report they would have to remember. A single `- NOTHING` bullet when there is nothing to report.
 - A staged candidate, a filed memory note, or a knowledge-root fallback from step 7 is an `FYI` bullet naming the file or the reason, in the existing `FYI` grammar.
+- **`**Built:**` is REQUIRED, and the lint fails without it.** One line, after `FYI`, reporting step 7b's outcome as exactly one of three: what was built or staged (name the path and the commit), `NOTHING: no candidates` when the precedent check ran and found none, or `SKIPPED: <why>` when the step did not run. The three must stay distinguishable. A skipped 7b and an empty 7b used to look identical, which is how the step that builds instead of proposing got silently dropped from a whole session. This line is the trace every other step already leaves.
 - An overlay (a consumer's own routing, distill, or knowledge-capture step) appends its own labelled sections after `FYI`, in the same shape: a bold label line followed by bullets, one item per note, candidate, or queue entry; the kit's grammar stops there. A `wrap.before` skill's report lines fold in at that same place.
 - No table unless the session touched four or more repos. No restating what each step did.
 
