@@ -10,6 +10,16 @@
 # try. It catches the one shape that is always wrong: an item whose own text offers to do
 # the work itself.
 #
+# It also enforces that step 7b reported an outcome at all. Step 7b (build the candidates
+# this session produced, rather than proposing them) used to be the one step that left no
+# trace when skipped, and no trace when it ran and found nothing. Those two outcomes were
+# indistinguishable in the report, so skipping it was invisible: it was skipped in a real
+# 20-hour session on 2026-09-09 and only caught because the operator asked. Every other step
+# leaves evidence, a board flip, a merge sha, an activity line. This one now owes a `Built:`
+# line naming which of three things happened, so "did not run" can never read as "found
+# nothing". That distinction is the same one in
+# ops-toolkit/research/2026-09-09-checks-need-a-third-state.md, and this file had the bug.
+#
 # Usage: report-lint.sh [<file>]   (reads stdin when no file is given)
 # Exit:  0 clean, 1 a finding (each printed as `line <n>: <reason>` on stderr), 2 usage.
 
@@ -78,6 +88,19 @@ while IFS= read -r line; do
     warns=$((warns + 1))
   fi
 done <<< "$input"
+
+# Step 7b coverage. The line must be present AND carry one of the three outcomes, so an
+# empty `**Built:**` header cannot satisfy it. BUILT names what was built or staged;
+# NOTHING says the precedent check ran and produced no candidate; SKIPPED says the step did
+# not run and why. A report with no such line means nobody can tell which happened.
+if ! printf '%s' "$input" | grep -q '\*\*Built:\*\*'; then
+  echo "line 0: no '**Built:**' line; step 7b (build the candidates) owes an outcome" >&2
+  echo "  add one of: '**Built:** <what>', '**Built:** NOTHING: no candidates', '**Built:** SKIPPED: <why>'" >&2
+  findings=$((findings + 1))
+elif ! printf '%s' "$input" | grep -qE '\*\*Built:\*\*[[:space:]]*(NOTHING|SKIPPED|[^[:space:]])'; then
+  echo "line 0: '**Built:**' is empty; name what was built, or NOTHING, or SKIPPED with a reason" >&2
+  findings=$((findings + 1))
+fi
 
 if [ "$findings" -gt 0 ]; then
   echo "report-lint: ${findings} finding(s), ${warns} warn(s)" >&2
