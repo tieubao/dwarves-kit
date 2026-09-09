@@ -2,7 +2,9 @@
 adapter with fake transports; live runs are recorded in docs/proof-of-done.md.
 """
 
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -13,6 +15,7 @@ from sync_core import (  # noqa: E402
     build_state,
     describe,
     extract_tags,
+    history_max_id,
     next_id,
     parse_board,
     parse_title,
@@ -91,6 +94,111 @@ def test_next_id_ignores_id_token_in_notes_prose():
         "| queued |\n"
     )
     assert next_id(poisoned) == 15  # from the real ID-14 row, not the token
+
+
+HEADER = "| ID | Item | Notes & source | Status |\n|---|---|---|---|\n"
+
+
+def _git(repo, *args):
+    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+                   cwd=repo, check=True, capture_output=True, text=True)
+
+
+def _board_repo(tmp, rows):
+    """A git repo whose committed board holds `rows`. Returns the board path."""
+    repo = Path(tmp)
+    _git(repo, "init", "-q", "-b", "master")
+    board = repo / "BACKLOG.md"
+    board.write_text(HEADER + "".join(
+        f"| ID-{n} | row {n} | notes | queued |\n" for n in rows))
+    _git(repo, "add", "BACKLOG.md")
+    _git(repo, "commit", "-qm", "board")
+    return board
+
+
+def test_next_id_skips_an_id_only_git_history_still_holds():
+    """The measured defect: the mint read the board file on disk and nothing
+    else, so any id missing from that copy read as free. Here ID-823 is
+    committed and then dropped from the working file (an archive pass, a
+    reverted row, a checkout behind origin). Minting from the file alone
+    hands out 823 a second time.
+
+    Not hypothetical: on 2026-09-09 the live ops-toolkit board's working copy
+    topped out at ID-822 while its history already held ID-823.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        board = _board_repo(tmp, [820, 821, 822, 823])
+        stale = HEADER + "".join(
+            f"| ID-{n} | row {n} | notes | queued |\n"
+            for n in (820, 821, 822))
+        board.write_text(stale)
+
+        assert next_id(stale) == 823           # file alone: reuses a taken id
+        assert history_max_id(board) == 823    # history knows better
+        assert next_id(stale, "ID", board) == 824
+
+
+def test_next_id_sees_an_id_taken_on_another_ref():
+    """The stale-checkout shape exactly: another session's row is committed on
+    a ref this checkout has not merged (origin/master after a fetch). It is
+    absent from HEAD and from the working file, so a file-only mint re-claims
+    it. `--all` reaches that ref, so the mint steps past it.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        board = _board_repo(tmp, [820, 821])
+        _git(board.parent, "checkout", "-qb", "other")
+        board.write_text(board.read_text()
+                         + "| ID-822 | other session | notes | queued |\n")
+        _git(board.parent, "commit", "-qam", "other session mints 822")
+        _git(board.parent, "checkout", "-q", "master")
+
+        text = board.read_text()
+        assert "ID-822" not in text            # this checkout never saw it
+        assert next_id(text) == 822            # file alone: collides
+        assert next_id(text, "ID", board) == 823
+
+
+def test_next_id_history_floor_is_prefix_scoped_and_row_shaped():
+    """The history floor inherits next_id's own two rules: a foreign prefix
+    never inflates this board's mint, and an id-shaped token in prose is not
+    a row. Otherwise the fix would reintroduce the ID-480 bug through git.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        board = _board_repo(tmp, [820])
+        board.write_text(board.read_text()
+                         + "| WS-909 | foreign prefix | notes | queued |\n"
+                         + "| ID-821 | real | mentions ID-99999999 in prose "
+                           "| queued |\n")
+        _git(board.parent, "commit", "-qam", "more rows")
+
+        assert history_max_id(board, "ID") == 821
+        assert history_max_id(board, "WS") == 909
+
+
+def test_history_max_id_returns_zero_outside_a_repo():
+    """A board outside git must still mint. No repo means no floor, not a
+    crash and not a refusal."""
+    with tempfile.TemporaryDirectory() as tmp:
+        board = Path(tmp) / "BACKLOG.md"
+        board.write_text(HEADER + "| ID-5 | row | notes | queued |\n")
+        assert history_max_id(board) == 0
+        assert next_id(board.read_text(), "ID", board) == 6
+
+
+def test_apply_board_mint_clears_ids_only_history_holds():
+    """The sync intake path threads the board path through, so a spoke-born
+    row never lands on an id git already knows is taken."""
+    with tempfile.TemporaryDirectory() as tmp:
+        board = _board_repo(tmp, [820, 823])
+        stale = HEADER + "| ID-820 | row 820 | notes | queued |\n"
+        board.write_text(stale)
+        plan = Plan(board_add=[("r1", "new work", "", "queued")])
+
+        _, blind = apply_board(stale, plan)
+        assert blind["r1"] == "ID-821"  # free by the file, taken in history
+
+        _, assigned = apply_board(stale, plan, path=board)
+        assert assigned["r1"] == "ID-824"
 
 
 def test_next_id_and_title_and_tags():

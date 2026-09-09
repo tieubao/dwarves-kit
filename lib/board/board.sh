@@ -797,7 +797,7 @@ from sync_core import detect_prefix, next_id, escape
 path = Path(sys.argv[1])
 text = path.read_text()
 prefix = detect_prefix(text)
-bid = f"{prefix}-{next_id(text, prefix)}"
+bid = f"{prefix}-{next_id(text, prefix, path)}"
 title, notes = sys.argv[2], sys.argv[3] or "filed via board capture"
 row = f"| {bid} | {escape(' '.join(title.split()))} | {escape(notes)} | queued |\n"
 lines = text.splitlines(keepends=True)
