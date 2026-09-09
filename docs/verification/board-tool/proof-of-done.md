@@ -13,10 +13,13 @@
 | AC7 | **NEGATIVE CONTROL (NC-c):** pointer outside allow-listed dirs incl. `../` traversal, plus a dangling pointer -> skipped w/ reason | PASS (6/6) | "NC-c" section |
 | AC8 | **NEGATIVE CONTROL (NC-d):** shell-metachar field never reaches an exec boundary (dynamic canary + static source audit) | PASS (4/4) | "NC-d" section |
 | AC9 | **NEGATIVE CONTROL (NC-e), LOAD-BEARING:** render byte-identical to the pre-migration ops-toolkit `_meta/board`/`_meta/board-all`, against the REAL 13-repo cockpit | PASS (9/9) | "NC-e" section (real ops-toolkit path present on this machine; SKIPS in CI, same precedent as `test-weekend-batch.sh`'s dotfiles-path check) |
+| AC10 | Cross-repo staleness warning (ID-652): a checkout behind its upstream is marked in its header and named in one trailer; a current checkout, a checkout with no upstream, and a detached HEAD all render unmarked; a fully current estate adds no output at all | PASS (12/12) | "AC7" section |
 | CD | Coverage delta | PASS | 0 -> 44 board-tool-specific assertions |
 
 **Total: 45/45 PASS, 0 FAIL, 0 SKIP** (ops-toolkit happened to be present on this run, so NC-e ran
 for real rather than skipping).
+
+**Staleness re-run (ID-652): 57/57 PASS, 0 FAIL, 0 SKIP.**
 
 ## Implementation
 
@@ -271,6 +274,56 @@ Attempts, and why each is blocked:
 untrusted content.**
 
 **VERDICT: SECURE**
+
+## Cross-repo staleness warning (ID-652)
+
+`board all` reads each registered repo's `BACKLOG.md` out of a LOCAL checkout. Nothing in the
+render told the reader whether that checkout was current, so a lagging clone returned rows that
+had already shipped and they read as open. `_behind_count` now probes every registered checkout.
+
+**Shape.** A lagging repo gets `[STALE: N behind upstream]` on its own header (or, under `next`,
+on its own line), and every lagging repo is named once more in a trailer at the end. Both ship
+because each answers a question the other cannot: the marker sits where the rows are read, so a
+single repo's rows can never pass as current; the trailer sits where a reader who has skimmed
+seventeen repos ends up, so the warning survives the scroll. No emoji.
+
+**Never fetches.** `git rev-list --count HEAD..@{u}` compares HEAD against the upstream ref the
+clone already holds. A render runs many times a day, so a network round trip per repo per render
+is a constant cost for a rare payoff. **Blind spot this leaves open:** a clone nobody has fetched
+reports 0 behind and renders clean, however far origin has moved. Closing that needs a fetch, and
+a fetch is exactly what this check refuses to do.
+
+**Fails open.** No upstream, a detached HEAD, a path outside any git repo, or any other git error
+yields an empty count, and that repo renders exactly as it did before. Verified by the `nouprepo`
+and `detachedrepo` fixtures.
+
+**Cost, measured over the real 17-repo registry** (best of 5 runs each, wall clock):
+
+| Mode | Before | After | Added |
+|---|---|---|---|
+| `all board` | 768 ms | 886 ms | 118 ms |
+| `all next` | 215 ms | 318 ms | 103 ms |
+| `all priority overview` | 104 ms | 208 ms | 104 ms |
+
+Roughly 105 ms of added probe time across all seventeen repos, inside the ~200 ms budget.
+
+**Live run against the real cockpit** (ops-toolkit was genuinely behind at the time):
+
+```
+$ bash bin/board all next --repo-root ~/workspace/<owner>/ops-toolkit
+ops-toolkit     [STALE: 12 behind upstream]
+books          (no queued items)
+...
+foundation-ops OPS-12
+
+STALE CHECKOUTS, rows above may be out of date: ops-toolkit(12 behind)
+```
+
+**NC-e version-skew fix.** NC-e's `all-*` pairs ran the ops-toolkit shim, which resolves the kit
+through `$DWARVES_KIT` and therefore reached the operator's INSTALLED kit rather than the checkout
+under test. Every branch that changed render output failed there for version skew, not for a
+regression. `pair()` now pins `DWARVES_KIT="$KIT_DIR"` on the before side, so both sides run this
+checkout and NC-e measures what it was written to measure.
 
 ## Reproduce
 
