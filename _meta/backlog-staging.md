@@ -57,3 +57,10 @@ Gitignored: may name unfiled work. NEVER the source of truth.
 - Home: dwarves-kit
 - Source: session 2026-09-08
 
+## [promoted ID-651] wrap Step 7a is unreachable when landing from a default branch
+- Intent: gate-ledger.sh rid refuses on master/main ('not on a work branch'), so /kit:wrap Step 7a silently skips the DEBT marker for exactly the sessions most likely to need it: a long multi-repo session landed from the default branch. Either derive a rid from the session rather than the branch, or make Step 7a say the marker was skipped for a structural reason rather than reporting a clean skip.
+- Approach: (no approach extracted)
+- Tags: #u-lo #f-mid
+- Home: dwarves-kit
+- Source: session 2026-09-09
+
